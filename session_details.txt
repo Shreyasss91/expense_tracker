@@ -1,0 +1,11 @@
+Version:          2.1.228
+Session name:     personal_expense_record
+Session ID:       baba8c46-6231-4bf0-bccb-389b0731788a
+Session kind:     interactive
+cwd:              C:\Users\admin\Downloads\chat
+Login method:     Claude Pro account
+Organization:     aeunit04@gmail.com's Organization
+Email:            aeunit04@gmail.com
+Model:            opus (claude-opus-5)
+IDE:              Installed VS Code extension
+Setting sources:  User settings
