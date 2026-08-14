@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
-import { formatINR } from "@/lib/money";
+import { emitLedgerMutation } from "@/lib/events";
+import { formatINR, paiseToDbString } from "@/lib/money";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS, TRANSACTION_TAG_LABELS } from "@/lib/constants";
+import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
 
 type Step = "amount" | "category" | "details";
@@ -76,6 +78,30 @@ export function QuickAddSheet({
 
   async function submit() {
     if (!categoryId || paise <= 0) return;
+    const member = members.find((m) => m.id === activeMemberId) ?? members[0];
+    const category = categories.find((c) => c.id === categoryId);
+    if (!member || !category) return;
+
+    // §6.2 step 5 — fully optimistic: build the row locally and apply it to the
+    // ledger immediately; the server action confirms (tempId → real id) or
+    // reverts (row removed) when it resolves.
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const optimisticRow: TransactionListRow = {
+      id: tempId,
+      memberId: member.id,
+      categoryId: category.id,
+      type,
+      tag: type === "expense" ? tag : null,
+      amount: paiseToDbString(paise),
+      note: note || null,
+      date,
+      time: `${time}:00`,
+      createdAt: new Date().toISOString(),
+      member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
+      category: { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug },
+    };
+    emitLedgerMutation({ kind: "create", tempId, row: optimisticRow });
+
     setSaving(true);
     // §5.2 discriminated union: expense carries a tag, income forbids one
     const base = {
@@ -90,13 +116,23 @@ export function QuickAddSheet({
       type === "expense"
         ? { ...base, type: "expense" as const, tag }
         : { ...base, type: "income" as const, tag: undefined };
-    const res = await createTransaction(payload);
+    let res: Awaited<ReturnType<typeof createTransaction>>;
+    try {
+      res = await createTransaction(payload);
+    } catch {
+      emitLedgerMutation({ kind: "create-revert", tempId });
+      setSaving(false);
+      toast.error("Could not save");
+      return;
+    }
     setSaving(false);
     if (res.ok) {
+      emitLedgerMutation({ kind: "create-confirm", tempId, id: res.id });
       toast.success("Transaction added");
       reset();
       onClose();
     } else {
+      emitLedgerMutation({ kind: "create-revert", tempId });
       toast.error(res.error ?? "Could not save");
     }
   }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getTransactionsPage, deleteTransaction } from "@/actions/transactions";
-import { LEDGER_REFRESH_EVENT } from "@/lib/events";
+import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
 import { dateGroupLabel } from "@/lib/dates";
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
@@ -12,6 +12,30 @@ import { TransactionEditDialog } from "./transaction-edit-dialog";
 import { Button } from "@/components/ui/button";
 
 const UNDO_WINDOW_MS = 5000; // §6.4.1 ~5 seconds
+
+/** §7.3 total order: date DESC, time DESC, created_at DESC, id DESC. */
+function compareRows(a: TransactionListRow, b: TransactionListRow): number {
+  if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+  if (a.time !== b.time) return a.time < b.time ? 1 : -1;
+  if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+  return a.id === b.id ? 0 : a.id < b.id ? 1 : -1;
+}
+
+/**
+ * Mirror of the server-side WHERE clause so optimistic rows only appear when
+ * they actually satisfy the active filters (member/category/tag/month/search).
+ */
+function matchesFilters(row: TransactionListRow, f: TransactionListFilters): boolean {
+  if (f.memberId && row.memberId !== f.memberId) return false;
+  if (f.categoryId && row.categoryId !== f.categoryId) return false;
+  if (f.tag && row.tag !== f.tag) return false;
+  if (f.month && !row.date.startsWith(f.month)) return false;
+  if (f.search?.trim()) {
+    const q = f.search.trim().toLowerCase();
+    if (!(row.note ?? "").toLowerCase().includes(q)) return false;
+  }
+  return true;
+}
 
 export function TransactionsList({
   initialRows,
@@ -54,12 +78,47 @@ export function TransactionsList({
     };
   }, []);
 
-  // React to mutations made elsewhere (Quick Add, edit dialog, settings)
+  // Apply optimistic mutations locally; only settings renames fall back to a refetch.
   useEffect(() => {
-    const onRefresh = () => void refreshFirstPage();
-    window.addEventListener(LEDGER_REFRESH_EVENT, onRefresh);
-    return () => window.removeEventListener(LEDGER_REFRESH_EVENT, onRefresh);
-  }, [refreshFirstPage]);
+    const onMutation = (e: Event) => {
+      const m = (e as CustomEvent<LedgerMutation>).detail;
+      switch (m.kind) {
+        case "create": {
+          if (!matchesFilters(m.row, filters)) return;
+          setRows((prev) => [...prev.filter((r) => r.id !== m.tempId), m.row].sort(compareRows));
+          break;
+        }
+        case "create-confirm": {
+          setRows((prev) => prev.map((r) => (r.id === m.tempId ? { ...r, id: m.id } : r)));
+          break;
+        }
+        case "create-revert": {
+          setRows((prev) => prev.filter((r) => r.id !== m.tempId));
+          break;
+        }
+        case "update": {
+          setRows((prev) => {
+            const exists = prev.some((r) => r.id === m.id);
+            if (!exists) {
+              // e.g. a failed-edit revert restoring a row that was optimistically
+              // removed because the new values stopped matching the active filters
+              if (!matchesFilters(m.row, filters)) return prev;
+              return [...prev, m.row].sort(compareRows);
+            }
+            if (!matchesFilters(m.row, filters)) return prev.filter((r) => r.id !== m.id);
+            return prev.map((r) => (r.id === m.id ? m.row : r)).sort(compareRows);
+          });
+          break;
+        }
+        case "refetch": {
+          void refreshFirstPage();
+          break;
+        }
+      }
+    };
+    window.addEventListener(LEDGER_MUTATION_EVENT, onMutation);
+    return () => window.removeEventListener(LEDGER_MUTATION_EVENT, onMutation);
+  }, [filters, refreshFirstPage]);
 
   // §7.3 infinite scroll — keyset pagination, page size 50
   useEffect(() => {

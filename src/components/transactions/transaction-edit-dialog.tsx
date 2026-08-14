@@ -15,9 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
-import { formatINR, rupeesToPaise } from "@/lib/money";
+import { formatINR, paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
-import { notifyLedgerChanged } from "@/lib/events";
+import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,6 @@ export function TransactionEditDialog({
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // (Re)initialise the form whenever a different row is opened.
@@ -70,21 +69,54 @@ export function TransactionEditDialog({
       setError("Enter a valid amount");
       return;
     }
-    setSaving(true);
+    const member = members.find((m) => m.id === memberId);
+    const category = categories.find((c) => c.id === categoryId);
+    if (!member || !category) {
+      setError("Pick a member and category");
+      return;
+    }
+
+    // Fully optimistic: build the updated row locally, apply it and close the
+    // dialog immediately; on failure the original row is emitted back.
+    const originalRow = row;
+    emitLedgerMutation({
+      kind: "update",
+      id: row.id,
+      row: {
+        ...row,
+        memberId,
+        categoryId,
+        type,
+        tag: type === "expense" ? (tag as TransactionListRow["tag"]) : null,
+        amount: paiseToDbString(paise),
+        note: note || null,
+        date,
+        time: `${time}:00`,
+        member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
+        category: { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug },
+      },
+    });
+    onOpenChange(false);
+
     // §5.2 discriminated union: expense carries a tag, income forbids one
     const base = { memberId, categoryId, amount: paise, date, time, note: note || null };
     const payload =
       type === "expense"
         ? { ...base, type: "expense" as const, tag: tag as "one_time" | "recurring" | "lifestyle" }
         : { ...base, type: "income" as const, tag: undefined };
-    const res = await updateTransaction(row.id, payload);
-    setSaving(false);
+    let res: Awaited<ReturnType<typeof updateTransaction>>;
+    try {
+      res = await updateTransaction(originalRow.id, payload);
+    } catch {
+      emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
+      toast.error("Could not save");
+      return;
+    }
     if (res.ok) {
       toast.success("Transaction updated");
-      notifyLedgerChanged();
-      onOpenChange(false);
     } else {
-      setError(res.error ?? "Could not save");
+      emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
+      toast.error(res.error ?? "Could not save");
     }
   }
 
@@ -212,8 +244,8 @@ export function TransactionEditDialog({
           >
             Delete
           </Button>
-          <Button onClick={save} disabled={saving}>
-            {saving ? "Saving…" : "Save changes"}
+          <Button onClick={save}>
+            Save changes
           </Button>
         </DialogFooter>
       </DialogContent>

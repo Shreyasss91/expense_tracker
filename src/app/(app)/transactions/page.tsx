@@ -72,7 +72,9 @@ export default async function TransactionsPage({
         <ExportButton />
       </div>
       <FiltersBar members={memberOptions} categories={categoryOptions} filters={ledgerFilters} />
+      {/* remount on filter change so client state resets to the new server page */}
       <TransactionsList
+        key={JSON.stringify(filters)}
         initialRows={firstPage.rows}
         initialCursor={firstPage.nextCursor}
         filters={filters}

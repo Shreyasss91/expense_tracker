@@ -7,7 +7,7 @@ import { ArrowDown, ArrowUp, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateCategory, reorderCategories } from "@/actions/settings";
-import { notifyLedgerChanged } from "@/lib/events";
+import { emitLedgerMutation } from "@/lib/events";
 import type { CategoryOption } from "@/components/quick-add/types";
 
 export function CategoriesManager({ categories }: { categories: CategoryOption[] }) {
@@ -22,7 +22,7 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
     setItems(next);
     void reorderCategories(next.map((c) => c.id)).then(() => {
       toast.success("Order saved");
-      notifyLedgerChanged();
+      emitLedgerMutation({ kind: "refetch" });
       router.refresh();
     });
   }
@@ -37,7 +37,7 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
     });
     if (res.ok) {
       toast.success("Saved");
-      notifyLedgerChanged();
+      emitLedgerMutation({ kind: "refetch" });
       router.refresh();
     } else {
       toast.error(res.error ?? "Could not save");
