@@ -22,6 +22,7 @@ export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) 
   revalidatePath("/transactions");
   revalidatePath("/settings");
   revalidateTag("transactions");
+  revalidateTag("categories");
   return { ok: true as const };
 }
 
@@ -35,6 +36,7 @@ export async function reorderCategories(ids: string[]) {
   });
   revalidatePath("/transactions");
   revalidatePath("/settings");
+  revalidateTag("categories");
   return { ok: true as const };
 }
 
@@ -53,6 +55,7 @@ export async function updateMember(raw: z.infer<typeof updateMemberSchema>) {
   revalidatePath("/transactions");
   revalidatePath("/settings");
   revalidateTag("transactions");
+  revalidateTag("members");
   return { ok: true as const };
 }
 
@@ -66,5 +69,6 @@ export async function reorderMembers(ids: string[]) {
   });
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidateTag("members");
   return { ok: true as const };
 }

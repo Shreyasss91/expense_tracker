@@ -1,7 +1,5 @@
-import { asc } from "drizzle-orm";
-import { db } from "@/db";
-import { categories, members } from "@/db/schema";
 import { getTransactionsPage } from "@/actions/transactions";
+import { getCategories, getMembers } from "@/lib/meta";
 import { FiltersBar, type LedgerFilters } from "@/components/transactions/filters";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { ExportButton } from "@/components/transactions/export-button";
@@ -44,8 +42,8 @@ export default async function TransactionsPage({
 
   const [firstPage, memberRows, categoryRows] = await Promise.all([
     getTransactionsPage({ cursor: null, filters }),
-    db.select().from(members).orderBy(asc(members.sortOrder)),
-    db.select().from(categories).orderBy(asc(categories.sortOrder)),
+    getMembers(),
+    getCategories(),
   ]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({

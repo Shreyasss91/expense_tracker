@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { asc } from "drizzle-orm";
 import { auth } from "@/auth";
-import { db } from "@/db";
-import { categories, members } from "@/db/schema";
+import { getCategories, getMembers } from "@/lib/meta";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { QuickAddProvider } from "@/components/quick-add/quick-add-context";
@@ -16,10 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieStore = await cookies();
   const activeMemberId = cookieStore.get("active_member_id")?.value;
 
-  const [memberRows, categoryRows] = await Promise.all([
-    db.select().from(members).orderBy(asc(members.sortOrder)),
-    db.select().from(categories).orderBy(asc(categories.sortOrder)),
-  ]);
+  const [memberRows, categoryRows] = await Promise.all([getMembers(), getCategories()]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,

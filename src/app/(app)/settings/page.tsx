@@ -1,6 +1,4 @@
-import { asc } from "drizzle-orm";
-import { db } from "@/db";
-import { categories, members } from "@/db/schema";
+import { getCategories, getMembers } from "@/lib/meta";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { MembersManager } from "@/components/settings/members-manager";
@@ -9,10 +7,7 @@ import type { CategoryOption, MemberOption } from "@/components/quick-add/types"
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows] = await Promise.all([
-    db.select().from(members).orderBy(asc(members.sortOrder)),
-    db.select().from(categories).orderBy(asc(categories.sortOrder)),
-  ]);
+  const [memberRows, categoryRows] = await Promise.all([getMembers(), getCategories()]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,
