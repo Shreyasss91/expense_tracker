@@ -53,6 +53,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run db:push` | Push schema directly (dev convenience) |
 | `npm run db:seed` | Seed members, categories and the 1,157 transactions (idempotent) |
 | `npm run db:setup` | Push schema + seed |
+| `npm run test:seed-roundtrip` | Prove the CSV export reproduces `seed.csv` (header, 8 columns, HH:MM, 2-dp amounts, ordering) |
 
 ## Architecture notes (spec highlights)
 

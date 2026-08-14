@@ -9,6 +9,7 @@ import { categories, members, transactions } from "@/db/schema";
 import { paiseToDbString } from "@/lib/money";
 import { transactionSchema, type TransactionInput } from "@/lib/validations";
 import { buildWhere, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
+import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 
 /**
  * §7.1 createTransaction — every mutating action must, before any write:
@@ -165,22 +166,19 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
     .innerJoin(categories, eq(transactions.categoryId, categories.id))
     .orderBy(sql`date ASC, created_at ASC`);
 
-  const header = "date,time,member,type,item,amount,category,tag";
   const lines = rows.map((r) =>
-    [
-      r.date,
-      r.time.slice(0, 5), // §5.6 HH:MM display form
-      r.member,
-      r.type,
-      r.note ?? "",
-      Number(r.amount).toFixed(2), // plain 2-dp decimal, no grouping (§6.6)
-      r.category,
-      r.type === "expense" ? (r.tag ?? "") : "", // tag empty for income (§6.6)
-    ]
-      .map((f) => (typeof f === "string" ? f : String(f)))
-      .join(","),
+    formatCsvLine({
+      date: r.date,
+      time: r.time,
+      member: r.member,
+      type: r.type,
+      note: r.note,
+      amount: r.amount,
+      category: r.category,
+      tag: r.tag,
+    }),
   );
 
-  const csv = [header, ...lines].join("\n") + "\n";
+  const csv = [CSV_HEADER, ...lines].join("\n") + "\n";
   return { ok: true, csv, filename: `family-ledger-export-${new Date().toISOString().slice(0, 10)}.csv` };
 }

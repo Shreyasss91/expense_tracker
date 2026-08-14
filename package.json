@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
-    "db:setup": "drizzle-kit push && npm run db:seed"
+    "db:setup": "drizzle-kit push && npm run db:seed",
+    "test:seed-roundtrip": "tsx src/db/seed-roundtrip-test.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
