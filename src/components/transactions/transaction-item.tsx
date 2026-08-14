@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { displayTime } from "@/lib/dates";
 import type { TransactionListRow } from "@/lib/query";
@@ -73,14 +73,21 @@ export function TransactionItem({
         <Trash2 className="h-5 w-5" />
       </button>
 
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         className={cn(
-          "relative flex w-full items-center gap-3 rounded-xl bg-card px-3 py-3 text-left shadow-sm transition-transform duration-200",
+          "relative flex w-full cursor-pointer items-center gap-3 rounded-xl bg-card px-3 py-3 text-left shadow-sm transition-transform duration-200",
           "active:bg-accent",
         )}
         style={{ transform: `translateX(${dx}px)` }}
@@ -111,11 +118,23 @@ export function TransactionItem({
         >
           {row.member.emoji}
         </span>
+        {/* visible edit affordance — tap the row also opens the editor */}
+        <button
+          type="button"
+          aria-label="Edit transaction"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(row);
+          }}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
         <span className={cn("shrink-0 text-sm font-semibold tabular-nums", isExpense ? "text-red-600" : "text-emerald-600")}>
           {isExpense ? "−" : "+"}
           {formatINR(paise)}
         </span>
-      </button>
+      </div>
     </div>
   );
 }

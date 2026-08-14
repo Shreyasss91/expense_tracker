@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { addMonths, format, parse } from "date-fns";
 import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
@@ -5,8 +6,11 @@ import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthEndInIST, monthKeyInIST } from "@/lib/dates";
+import { getCategories, getMembers } from "@/lib/meta";
+import { getTransactionsPage } from "@/actions/transactions";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { CategoryPie, MemberSplit, TagBar, TrendChart } from "@/components/dashboard/charts";
+import { TransactionsList } from "@/components/transactions/transactions-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -116,7 +120,18 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const monthKey = typeof sp.month === "string" && MONTH_RE.test(sp.month) ? sp.month : monthKeyInIST();
-  const data = await getDashboardData(monthKey);
+  const [data, firstPage, memberRows, categoryRows] = await Promise.all([
+    getDashboardData(monthKey),
+    getTransactionsPage({ cursor: null, filters: { month: monthKey } }),
+    getMembers(),
+    getCategories(),
+  ]);
+  const memberOptions = memberRows.map((m) => ({
+    id: m.id, slug: m.slug, name: m.name, emoji: m.emoji, color: m.color, sortOrder: m.sortOrder,
+  }));
+  const categoryOptions = categoryRows.map((c) => ({
+    id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder,
+  }));
 
   return (
     <div className="space-y-4">
@@ -191,6 +206,26 @@ export default async function DashboardPage({
         </CardHeader>
         <CardContent>
           <TrendChart points={data.trend} />
+        </CardContent>
+      </Card>
+
+      {/* Month-wise transactions panel — tap a row to edit, swipe to delete */}
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm">Transactions</CardTitle>
+          <Link href={`/transactions?month=${monthKey}`} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
+            View all in Ledger
+          </Link>
+        </CardHeader>
+        <CardContent>
+          <TransactionsList
+            key={`dashboard-${monthKey}`}
+            initialRows={firstPage.rows}
+            initialCursor={firstPage.nextCursor}
+            filters={{ month: monthKey }}
+            members={memberOptions}
+            categories={categoryOptions}
+          />
         </CardContent>
       </Card>
     </div>
