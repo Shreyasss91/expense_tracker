@@ -23,6 +23,18 @@ export interface LedgerFilters {
   q?: string;
 }
 
+/** Serialize the filter state into the ledger URL — shared by the filter bar and the month strip. */
+export function buildLedgerUrl(filters: LedgerFilters): string {
+  const params = new URLSearchParams();
+  if (filters.memberId) params.set("member", filters.memberId);
+  if (filters.categoryId) params.set("category", filters.categoryId);
+  if (filters.tag) params.set("tag", filters.tag);
+  if (filters.month) params.set("month", filters.month);
+  if (filters.q?.trim()) params.set("q", filters.q.trim());
+  const qs = params.toString();
+  return qs ? `/transactions?${qs}` : "/transactions";
+}
+
 function pill(active: boolean) {
   return cn(
     "h-8 shrink-0 rounded-full px-3 text-xs font-medium transition-colors",
@@ -47,14 +59,7 @@ export function FiltersBar({
   }, [filters.q]);
 
   function push(next: LedgerFilters) {
-    const params = new URLSearchParams();
-    if (next.memberId) params.set("member", next.memberId);
-    if (next.categoryId) params.set("category", next.categoryId);
-    if (next.tag) params.set("tag", next.tag);
-    if (next.month) params.set("month", next.month);
-    if (next.q?.trim()) params.set("q", next.q.trim());
-    const qs = params.toString();
-    router.push(qs ? `/transactions?${qs}` : "/transactions");
+    router.push(buildLedgerUrl(next));
   }
 
   // debounce search
@@ -121,24 +126,6 @@ export function FiltersBar({
             {TRANSACTION_TAG_LABELS[t]}
           </button>
         ))}
-        <Select value={filters.month ?? ""} onValueChange={(v) => push({ ...filters, month: v || undefined })}>
-          <SelectTrigger className="h-8 w-32 shrink-0 text-xs">
-            <SelectValue placeholder="All months" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All months</SelectItem>
-            {Array.from({ length: 60 }, (_, i) => {
-              const d = new Date();
-              d.setMonth(d.getMonth() - i);
-              const v = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-              return (
-                <SelectItem key={v} value={v}>
-                  {d.toLocaleDateString("en-IN", { month: "long", year: "numeric" })}
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
         <Select value={filters.categoryId ?? ""} onValueChange={(v) => push({ ...filters, categoryId: v || undefined })}>
           <SelectTrigger className="h-8 w-36 shrink-0 text-xs">
             <SelectValue placeholder="All categories" />

@@ -1,7 +1,9 @@
 import "server-only";
 
-import { and, desc, eq, gte, ilike, lt, lte, or, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { db } from "@/db";
 import { transactions } from "@/db/schema";
+import { rupeesToPaise } from "@/lib/money";
 
 export const PAGE_SIZE = 50; // §7.3
 
@@ -130,3 +132,31 @@ export const listOrderBy = [
   desc(transactions.createdAt),
   desc(transactions.id),
 ];
+
+export interface LedgerSummary {
+  incomePaise: number;
+  expensePaise: number;
+  netPaise: number;
+  count: number;
+}
+
+/**
+ * One-pass aggregate for the ledger's summary header. Uses the same
+ * buildWhere() as the list, so the numbers describe exactly the filtered set
+ * (month + member + category + tag + search) — never just the visible page.
+ */
+export async function getLedgerSummary(filters: TransactionListFilters): Promise<LedgerSummary> {
+  const where = buildWhere(filters, null);
+  const rows = await db
+    .select({
+      income: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'income'), 0)`,
+      expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(transactions)
+    .where(where);
+  const r = rows[0];
+  const incomePaise = rupeesToPaise(r.income);
+  const expensePaise = rupeesToPaise(r.expense);
+  return { incomePaise, expensePaise, netPaise: incomePaise - expensePaise, count: Number(r.count) };
+}
