@@ -5,9 +5,10 @@ name: Prod smoke
 # the GitHub deployments API, then smoke-tests the live app: boots, logs in,
 # renders the exact seeded totals, and stays within the response-time budget.
 #
-# Gated at the step level because `secrets` is not available in job-level
-# `if:`. Requires the MASTER_PASSWORD secret (the prod login password);
-# PROD_URL defaults to the app and can be overridden via secret.
+# Steps are gated on HAS_PASSWORD because `secrets` is not valid in `if:` —
+# only in `env:`, so the presence check happens there. Requires the
+# MASTER_PASSWORD secret (the prod login password); PROD_URL defaults to the
+# app and can be overridden via secret.
 
 on:
   push:
@@ -18,6 +19,7 @@ jobs:
     name: Smoke test deployed app
     runs-on: ubuntu-latest
     env:
+      HAS_PASSWORD: ${{ secrets.MASTER_PASSWORD != '' }}
       PROD_URL: ${{ secrets.PROD_URL != '' && secrets.PROD_URL || 'https://tokenscript.vercel.app' }}
       MASTER_PASSWORD: ${{ secrets.MASTER_PASSWORD }}
     steps:
@@ -28,10 +30,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: No MASTER_PASSWORD secret — skipping smoke
-        if: ${{ secrets.MASTER_PASSWORD == '' }}
+        if: ${{ env.HAS_PASSWORD != 'true' }}
         run: echo "::notice title=skipped::Set the MASTER_PASSWORD secret to enable the prod smoke test."
       - name: Wait for Vercel production deploy
-        if: ${{ secrets.MASTER_PASSWORD != '' }}
+        if: ${{ env.HAS_PASSWORD == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -55,5 +57,5 @@ jobs:
           echo "Timed out waiting for the Vercel production deploy (is the repo linked to Vercel?)"
           exit 1
       - name: Smoke test
-        if: ${{ secrets.MASTER_PASSWORD != '' }}
+        if: ${{ env.HAS_PASSWORD == 'true' }}
         run: npm run smoke:prod
