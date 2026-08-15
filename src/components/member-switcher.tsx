@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,22 @@ export function MemberSwitcher({
 }) {
   const router = useRouter();
   const active = members.find((m) => m.id === activeMemberId) ?? members[0];
+
+  // §3.2 fresh-session bootstrap: the (app) layout only defaults the DISPLAY
+  // member when the active_member_id cookie is absent; it does not establish
+  // the cookie. Quick Add must never own member identity, so this — the
+  // member-selection component — establishes the deterministic default through
+  // the existing mechanism (updateActiveMember, the same action used for
+  // explicit switches). No new cookie logic, no new state architecture.
+  useEffect(() => {
+    if (!active) return;
+    const hasCookie = document.cookie
+      .split(";")
+      .some((c) => c.trim().startsWith("active_member_id="));
+    if (!hasCookie) {
+      void updateActiveMember(active.id);
+    }
+  }, [active]);
 
   async function select(memberId: string) {
     await updateActiveMember(memberId);
