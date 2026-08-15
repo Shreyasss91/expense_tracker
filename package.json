@@ -14,7 +14,9 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:setup": "drizzle-kit push && npm run db:seed",
     "test:seed-roundtrip": "tsx src/db/seed-roundtrip-test.ts",
-    "test:rename-roundtrip": "tsx src/db/category-rename-test.ts"
+    "test:rename-roundtrip": "tsx src/db/category-rename-test.ts",
+    "smoke:prod": "node scripts/smoke-prod.mjs",
+    "verify:export-live": "node scripts/export-live-check.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
