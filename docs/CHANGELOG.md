@@ -7,6 +7,62 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## v1.2 Amendment — 15 August 2026 (owner decisions)
+
+The Phase-0 v1.2 compliance audit (15 Aug 2026) returned **PHASE 0 — NOT CLEARED** with
+three owner-level decisions required. The user has now made all three; this entry records
+them as **specification amendments**. **No application code, schema, migration, or
+`seed.csv` was changed** — the repository's implementation was already the user's intended
+state; this entry reconciles the frozen spec with it.
+
+### Amendment 1 — Dark mode permitted (§6.1, §11)
+
+- **Decision:** keep the existing dark-mode implementation. It is an explicit v1.2 feature
+  (user-requested during development), not a scope violation.
+- **§6.1** theme wording updated: light remains the default; dark mode is supported via a
+  header sun/moon toggle; the first visit defaults to the user's **system preference**;
+  the choice persists locally. Implementation is class-based `next-themes` with a `.dark`
+  variable block in `globals.css`. No theme-system redesign is authorized.
+- **§11** exclusion list: the *"Dark mode"* bullet is **removed** and annotated in place.
+- **Supersedes:** the v1.2 "Unchanged" clause listing dark mode as out of scope, and the
+  Phase-0 findings F-01 / §6.1-R3 / §11-R1 (all FAIL).
+
+### Amendment 2 — Quick Add sequence Amount → Details → Category (§6.2)
+
+- **Decision:** keep the implemented sequence **Amount → Details → Category** — category
+  selection is the final, tap-to-commit step. This is the authoritative v1.2 sequence;
+  the earlier "Amount → Category → Details" wording is superseded.
+- **§6.2** steps renumbered (1 Trigger, 2 Amount, 3 Details, 4 Category, 5 Submit) with an
+  explicit note that the category tap is the committing action; surrounding wording kept
+  internally consistent.
+- **Supersedes:** the v1.2 "Unchanged" clause stating the Quick Add flow is unchanged, and
+  the Phase-0 finding F-02 / §6.2-R1 (FAIL).
+
+### Amendment 3 — Family password is environment-managed (§6.5, §9)
+
+- **Decision:** no credentials table, password database, password-management subsystem, or
+  deployment-control architecture. `FAMILY_MASTER_PASSWORD` remains the single,
+  environment-managed secret used for authentication (§3.1, §9).
+- **§6.5** no longer requires "Change family password". The application provides **no
+  in-app password-change facility in v1.2**; changing the password is an
+  **environment/deployment administration operation** (update the env var on the
+  deployment platform and redeploy).
+- **Resolves SPEC-CONFLICT-1** (§6.5 password change vs §9 env-only secrets): the clauses
+  no longer conflict because §6.5 no longer mandates an in-app change facility.
+- **Supersedes:** the Phase-0 finding F-03 / §6.5-R3 (MISSING) — the requirement is
+  **removed** by owner decision, not deferred.
+
+### Effect on the Phase-0 finding counts
+
+- **Pre-amendment corrected counts:** FAIL **3** (the executive summary mis-stated FAIL 0;
+  the requirement matrix actually carried three FAIL rows — §6.1-R3, §6.2-R1, §11-R1),
+  MISSING 1, SPEC-CONFLICT 1, scope violations 1, PARTIAL 4, UNVERIFIED 6.
+- **Post-amendment:** FAIL **0** · MISSING **0** · SPEC-CONFLICT **0** · scope violations
+  **0**. PARTIAL (4) and UNVERIFIED (6) are unchanged — the P2/P3 findings remain open per
+  the owner's instruction ("do not fix the P2/P3 findings yet").
+
+---
+
 ## v1.2 — 12 August 2026
 
 Corrects a factual error introduced by the v1.1 audit, then hardens the specification with
@@ -280,9 +336,16 @@ are not reproduced in this changelog.
 
 ### Unchanged
 
+> ⚠️ **PARTIALLY SUPERSEDED 15 Aug 2026.** The clauses below stating that *"Quick Add
+> flow"* is unchanged and that *"dark mode … stays out of scope"* are superseded by the
+> **v1.2 Amendment — 15 August 2026** entry above (dark mode permitted; Quick Add sequence
+> amended to Amount → Details → Category). All other clauses in this section remain valid.
+
 - **The v1 exclusion list is untouched and remains frozen** — budgets, automated recurring
   generation, PWA/offline, receipt attachments, multi-currency, budget alerts, digests,
   merchant auto-categorization, voice input and dark mode all stay out of scope.
+  *(Superseded 15 Aug 2026 with respect to **dark mode only** — see the v1.2 Amendment
+  entry above.)*
 - All v1.1 decisions not explicitly amended above carry forward, including §5.6 time
   handling (CSV stays `HH:MM`, column stays Postgres `TIME`) and the 19 category names.
 - Auth pattern, tag triad definitions, Quick Add flow, build milestones and environment

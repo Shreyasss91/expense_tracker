@@ -2,14 +2,20 @@
 
 | | |
 |---|---|
-| **Document Status** | ❄️ FROZEN — no changes permitted |
+| **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
 | **Companion File** | `seed.csv` (historical data, 1,157 transactions — referenced, not embedded) |
 | **Implementation Trigger** | Work begins ONLY when user says: **"lets start the project"** |
+
+> **v1.2 amendment pass — 15 August 2026.** Three owner decisions are incorporated into
+> this document: (1) **dark mode is permitted** (§6.1, §11); (2) the **Quick Add sequence
+> is Amount → Details → Category** (§6.2); (3) the **family password is environment-managed**
+> with no in-app change facility (§6.5, §9). Each is recorded in `CHANGELOG.md`. No
+> implementation, schema, migration, or `seed.csv` change accompanied these amendments.
 
 ---
 
@@ -302,15 +308,17 @@ One representation, end to end. Mixing representations is the defect this sectio
 ### 6.1 Global Layout
 - **Header:** App Logo/Title (left), Member Switcher Dropdown (right), Settings icon (far right).
 - **Bottom Navigation (Mobile):** Dashboard · Transactions · **Quick Add (center, prominent FAB)**.
-- **Theme:** Light by default; clean, minimal; shadcn/ui default palette.
+- **Theme:** Light by default; clean, minimal; shadcn/ui default palette. **Dark mode is permitted in v1.2** (owner amendment, 15 Aug 2026 — removed from the §11 exclusion list): a sun/moon toggle in the header switches between light and dark, the first visit defaults to the user's **system preference**, and the choice persists locally. The implementation is class-based (`next-themes` with a `.dark` variable block in `globals.css`); no redesign of the theme system is authorized.
 
 ### 6.2 The "Quick Add" Flow (Critical Path — optimize ruthlessly)
 One-handed mobile use, < 5 seconds:
 1. **Trigger:** Large Floating Action Button with `+`.
 2. **Step 1 (Amount):** Full-screen numpad, large ₹ display.
-3. **Step 2 (Category):** Grid of 19 categories (emoji + name), single tap.
-4. **Step 3 (Details, optional):** Expense/Income toggle, Tag selector (defaults `lifestyle`; hidden **and cleared to `NULL`** for income — §5.2), Date/Time picker (defaults to *now* **in `Asia/Kolkata`** — §5.7), Note input.
-5. **Submit:** Server Action → optimistic UI update → toast confirmation. The amount is captured as integer paise (§5.8); the time is normalized `HH:MM` → `HH:MM:00` (§5.6); the `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
+3. **Step 2 (Details, optional):** Expense/Income toggle, Tag selector (defaults `lifestyle`; hidden **and cleared to `NULL`** for income — §5.2), Date/Time picker (defaults to *now* **in `Asia/Kolkata`** — §5.7), Note input.
+4. **Step 3 (Category):** Grid of 19 categories (emoji + name) — the **final step**: single-tapping a category commits the entry (see Step 5).
+5. **Submit:** the category tap triggers the Server Action → optimistic UI update → toast confirmation. The amount is captured as integer paise (§5.8); the time is normalized `HH:MM` → `HH:MM:00` (§5.6); the `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
+
+> **Sequence is normative — owner amendment, 15 Aug 2026.** The authoritative v1.2 sequence is **Amount → Details → Category** (category selection is the committing step). The earlier "Amount → Category → Details" wording is superseded; see `CHANGELOG.md`.
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
@@ -363,7 +371,7 @@ Swipe-left delete on a device that gets handed between family members makes acci
 
 ### 6.5 Settings
 - Manage categories: **rename, emoji, reorder only**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3).
-- Change family password.
+- **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized.
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
 
 ### 6.6 Canonical CSV Export — Normative
@@ -662,7 +670,10 @@ If a secret is ever observed in conversation, in a terminal, or in a file, it mu
 - Telegram/email monthly digest
 - Merchant auto-categorization
 - Voice input
-- Dark mode
+
+> *"Dark mode" was **removed from this exclusion list** by owner amendment on 15 August
+> 2026 — dark mode is a permitted v1.2 feature (§6.1). All other items above remain
+> excluded. See `CHANGELOG.md`.*
 
 ---
 
