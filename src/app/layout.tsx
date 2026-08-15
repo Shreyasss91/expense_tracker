@@ -22,7 +22,10 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
+  // cover lets env(safe-area-inset-*) resolve on iOS — the bottom nav and
+  // sheets pad against the home indicator with it; no maximumScale so
+  // pinch-zoom stays available (a11y).
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

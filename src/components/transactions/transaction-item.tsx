@@ -126,7 +126,7 @@ export function TransactionItem({
             e.stopPropagation();
             onEdit(row);
           }}
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>

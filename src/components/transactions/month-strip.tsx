@@ -33,7 +33,7 @@ export function MonthStrip({
 
   // keep the selected month visible — center it when the strip or selection changes
   useEffect(() => {
-    if (selected) refs.current.get(selected)?.scrollIntoView({ inline: "center", block: "nearest" });
+    if (selected) refs.current.get(selected)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
   }, [selected]);
 
   function pushMonth(month?: string) {
@@ -41,7 +41,7 @@ export function MonthStrip({
   }
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-1">
+    <div className="flex snap-x items-center gap-2 overflow-x-auto pb-1">
       <button type="button" className={chip(!selected)} onClick={() => pushMonth(undefined)}>
         All
       </button>
@@ -53,7 +53,7 @@ export function MonthStrip({
             else refs.current.delete(m);
           }}
           type="button"
-          className={chip(selected === m)}
+          className={cn(chip(selected === m), "snap-center")}
           onClick={() => pushMonth(m)}
         >
           {format(parse(`${m}-01`, "yyyy-MM-dd", new Date()), "MMM yy")}

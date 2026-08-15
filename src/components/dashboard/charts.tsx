@@ -153,7 +153,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+          <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => (Number(v) >= 100000 ? `${Number(v) / 100000}L` : `${Number(v) / 1000}k`)} />
           <Tooltip formatter={(v, name) => [inr(Number(v)), name === "expensePaise" ? "Expense" : "Income"]} contentStyle={tooltipStyle} />
           {hasExpense && <Line type="monotone" dataKey="expensePaise" name="Expense" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />}

@@ -19,7 +19,7 @@ export function MonthPicker({ month }: { month: string }) {
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => go(-1)} aria-label="Previous month">
         <ChevronLeft className="h-4 w-4" />
       </Button>
-      <span className="min-w-[9.5rem] text-center text-lg font-semibold">{label}</span>
+      <span className="min-w-[8.5rem] text-center text-base font-semibold sm:min-w-[9.5rem] sm:text-lg">{label}</span>
       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => go(1)} aria-label="Next month">
         <ChevronRight className="h-4 w-4" />
       </Button>

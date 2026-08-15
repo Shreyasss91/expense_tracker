@@ -203,7 +203,7 @@ export function QuickAddSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { reset(); onClose(); } }}>
-      <SheetContent side="bottom" className="mx-auto max-w-2xl rounded-t-2xl px-4 pb-6 sm:px-6" showCloseButton={false}>
+      <SheetContent side="bottom" className="mx-auto max-w-2xl rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-2 flex items-center gap-2">
           {step !== "amount" && (
@@ -223,7 +223,7 @@ export function QuickAddSheet({
         {step === "amount" && (
           <div className="flex flex-col">
             <div className="py-6 text-center">
-              <div className="text-5xl font-bold tracking-tight tabular-nums">
+              <div className="truncate px-2 text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
                 {formatINR(paise)}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">Enter amount</div>
