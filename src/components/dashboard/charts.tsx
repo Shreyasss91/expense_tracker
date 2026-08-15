@@ -70,7 +70,9 @@ export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
       <div className="h-48">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={slices} dataKey="paise" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2} strokeWidth={1}>
+            {/* slice strokes follow the theme background so slices read as
+                one chart in both modes (white gaps look harsh in dark) */}
+            <Pie data={slices} dataKey="paise" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2} strokeWidth={1} stroke="hsl(var(--background))">
               {slices.map((s) => (
                 <Cell key={s.name} fill={s.color} />
               ))}
@@ -153,9 +155,11 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-          <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
-          <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v) => (Number(v) >= 100000 ? `${Number(v) / 100000}L` : `${Number(v) / 1000}k`)} />
-          <Tooltip formatter={(v, name) => [inr(Number(v)), name === "expensePaise" ? "Expense" : "Income"]} contentStyle={tooltipStyle} />
+          {/* tick fill defaults to #666, which is unreadable on a dark card —
+              pin it to the theme's muted foreground instead */}
+          <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => (Number(v) >= 100000 ? `${Number(v) / 100000}L` : `${Number(v) / 1000}k`)} />
+          <Tooltip formatter={(v, name) => [inr(Number(v)), name === "expensePaise" ? "Expense" : "Income"]} contentStyle={tooltipStyle} cursor={{ stroke: "hsl(var(--border))" }} />
           {hasExpense && <Line type="monotone" dataKey="expensePaise" name="Expense" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />}
           {hasIncome && <Line type="monotone" dataKey="incomePaise" name="Income" stroke="#059669" strokeWidth={2} dot={{ r: 2 }} />}
         </LineChart>
