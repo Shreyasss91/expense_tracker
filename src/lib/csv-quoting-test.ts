@@ -178,10 +178,12 @@ for (let i = 0; i < rows.length; i++) {
 ok("formatCsvLine: adversarial member/note/category fields serialize to correct RFC 4180 lines");
 
 // ---------------------------------------------------------------------------
-// 4. Full round-trip: serialize all rows (LF-joined, trailing newline) then
-//    parse with the real parser and compare every field.
+// 4. Full round-trip: serialize ALL rows with the ACTUAL serializer (CRLF
+//    records per RFC 4180), then parse with the real parser and compare every
+//    field. This is the genuine serializer → CSV document → parser → fields
+//    path; section 3 above is the independent known-answer check.
 // ---------------------------------------------------------------------------
-const csv = expectedLines.join("\n") + "\n";
+const csv = rows.map(formatCsvLine).join("\r\n") + "\r\n";
 const parsed = parseCsv(csv);
 const expectedFields = [
   ["2026-08-15", "21:49", "Dad, Sr.", "expense", 'Dinner at "Mysore Palace Rd", the "fancy" one', "1250.00", 'Food & "Dining"', "lifestyle"],
@@ -191,7 +193,7 @@ const expectedFields = [
 if (JSON.stringify(parsed) !== JSON.stringify(expectedFields)) {
   fail(`round-trip mismatch.\n  expected: ${JSON.stringify(expectedFields)}\n  got:      ${JSON.stringify(parsed)}`);
 }
-ok("round-trip: 3 rows × 8 fields survive serialize → parse with field equality (comma, quote, newline, CRLF)");
+ok("round-trip: 3 rows × 8 fields survive formatCsvLine → parse with exact field equality (CRLF records)");
 
 console.log("✓ CSV quoting OK — RFC 4180 quoting round-trips through a real parser.");
 process.exitCode = 0;
