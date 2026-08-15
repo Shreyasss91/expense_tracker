@@ -75,3 +75,20 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 4. Run `npm run db:push && npm run db:seed` against the production database (or via a build step).
 
 The seed data itself is immutable — `seed_data/seed.csv` must not be edited, reordered, deduplicated, or given a trailing newline (§8.3).
+
+## CI (GitHub Actions)
+
+Two workflows guard the repo:
+
+| Workflow | When | What it runs |
+|---|---|---|
+| `CI` (`.github/workflows/ci.yml`) | every push to `main` + PRs | typecheck, lint, production build; plus the seed + rename round-trip tests **if** a `DATABASE_URL` secret exists |
+| `Prod smoke` (`.github/workflows/smoke.yml`) | every push to `main` | waits for the Vercel production deploy to report success, then runs `npm run smoke:prod` (boots, logs in, seeded totals, response-time budget) **if** a `MASTER_PASSWORD` secret exists |
+
+Secrets to add in **Settings → Secrets and variables → Actions**:
+
+- `DATABASE_URL` — a disposable Neon branch for the DB tests (the seed is idempotent and the rename test always reverts, so a persistent branch is fine).
+- `MASTER_PASSWORD` — the production login password (used by the smoke test; never logged).
+- `PROD_URL` — optional; defaults to `https://tokenscript.vercel.app`.
+
+The `checks` job needs *some* `DATABASE_URL` even without the secret (the build constructs the neon client at module load); it falls back to a placeholder automatically.

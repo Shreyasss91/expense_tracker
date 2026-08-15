@@ -1,0 +1,54 @@
+name: Prod smoke
+
+# Runs after every push to main (the same event that triggers the Vercel
+# deployment), waits for the Vercel production deploy to report success via
+# the GitHub deployments API, then smoke-tests the live app: boots, logs in,
+# renders the exact seeded totals, and stays within the response-time budget.
+#
+# Requires the MASTER_PASSWORD secret (the prod login password); PROD_URL
+# defaults to the app and can be overridden via secret.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  smoke:
+    name: Smoke test deployed app
+    runs-on: ubuntu-latest
+    if: ${{ secrets.MASTER_PASSWORD != '' }}
+    env:
+      PROD_URL: ${{ secrets.PROD_URL != '' && secrets.PROD_URL || 'https://tokenscript.vercel.app' }}
+      MASTER_PASSWORD: ${{ secrets.MASTER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Wait for Vercel production deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 60); do
+            id=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/deployments" \
+              --jq '.[] | select(.environment == "Production") | .id' 2>/dev/null | head -1 || true)
+            if [ -n "$id" ]; then
+              state=$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" \
+                --jq '.[0].state' 2>/dev/null || true)
+              if [ "$state" = "success" ]; then
+                echo "Vercel production deploy ready"
+                exit 0
+              fi
+              if [ "$state" = "error" ] || [ "$state" = "failure" ]; then
+                echo "Vercel production deploy failed"
+                exit 1
+              fi
+            fi
+            sleep 10
+          done
+          echo "Timed out waiting for the Vercel production deploy (is the repo linked to Vercel?)"
+          exit 1
+      - name: Smoke test
+        run: npm run smoke:prod

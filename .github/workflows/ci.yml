@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Typecheck, lint, build
+    runs-on: ubuntu-latest
+    env:
+      # src/db constructs the neon client at module load, so `next build`
+      # needs a non-empty DATABASE_URL even though every route is dynamic and
+      # never queries at build time. Falls back to a placeholder when no CI
+      # database secret is configured.
+      DATABASE_URL: ${{ secrets.DATABASE_URL != '' && secrets.DATABASE_URL || 'postgresql://ci:ci@localhost:5432/ci' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run build
+
+  # DB-backed invariants (seed round-trip + rename round-trip). Runs only when
+  # a CI database is configured — point DATABASE_URL at a disposable Neon
+  # branch. Both tests are self-healing: the seed is idempotent and the rename
+  # test always reverts.
+  db-tests:
+    name: DB round-trip tests
+    runs-on: ubuntu-latest
+    if: ${{ secrets.DATABASE_URL != '' }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply migrations
+        run: npm run db:migrate
+      - name: Seed
+        run: npm run db:seed
+      - name: Seed round-trip (export reproduces seed.csv)
+        run: npm run test:seed-roundtrip
+      - name: Rename round-trip (rename propagates to history, reverts)
+        run: npm run test:rename-roundtrip
