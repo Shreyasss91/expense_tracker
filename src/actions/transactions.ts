@@ -7,6 +7,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
 import { paiseToDbString } from "@/lib/money";
+import { todayInIST } from "@/lib/dates";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
 import { buildWhere, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
@@ -196,5 +197,6 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
   );
 
   const csv = [CSV_HEADER, ...lines].join("\n") + "\n";
-  return { ok: true, csv, filename: `family-ledger-export-${new Date().toISOString().slice(0, 10)}.csv` };
+  // §5.7 — the filename date is a calendar artifact derived in APP_TIMEZONE, never UTC.
+  return { ok: true, csv, filename: `family-ledger-export-${todayInIST()}.csv` };
 }
