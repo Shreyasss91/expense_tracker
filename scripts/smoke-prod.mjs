@@ -18,10 +18,30 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { performance } from "node:perf_hooks";
 import { login } from "./lib/live.mjs";
 
 const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
 const PASSWORD = process.env.MASTER_PASSWORD ?? process.env.FAMILY_MASTER_PASSWORD ?? "";
+// Per-request budget in ms. Generous on purpose: the first hit after idle is a
+// Vercel cold start (x-vercel-cache: MISS), which legitimately takes seconds.
+// Only a genuinely unhealthy site exceeds this.
+const BUDGET_MS = Number(process.env.SMOKE_MAX_MS ?? 8000);
+const timings = [];
+
+function record(label, ms, cache) {
+  timings.push({ label, ms });
+  const flag = ms > BUDGET_MS ? "  ✗ SLOW" : "";
+  console.log(`    ⏱ ${label}: ${Math.round(ms)}ms${cache ? ` (${cache})` : ""}${flag}`);
+}
+
+/** Run a request, record its duration + Vercel cache state, return the response. */
+async function timed(label, fn) {
+  const t0 = performance.now();
+  const res = await fn();
+  record(label, performance.now() - t0, res.headers.get("x-vercel-cache") ?? undefined);
+  return res;
+}
 
 let failures = 0;
 function check(cond, msg) {
@@ -56,26 +76,27 @@ async function main() {
   });
   const expectedEntriesStr = expectedEntries.toLocaleString("en-IN");
 
-  console.log(`Smoke: ${BASE} (expect ${expectedEntriesStr} entries, all-time expense ₹${expectedTotal})`);
+  console.log(`Smoke: ${BASE} (expect ${expectedEntriesStr} entries, all-time expense ₹${expectedTotal}, budget ${BUDGET_MS}ms/request)`);
 
   // 1. middleware redirect
-  const home = await fetch(`${BASE}/`, { redirect: "manual", signal: AbortSignal.timeout(60000) });
+  const home = await timed("GET / (redirect)", () => fetch(`${BASE}/`, { redirect: "manual", signal: AbortSignal.timeout(60000) }));
   check(home.status === 307, `GET / → ${home.status} (redirect)`);
   const loc = home.headers.get("location") ?? "";
   check(loc.includes("/login"), `redirect target is /login (${loc.slice(0, 60)})`);
 
   // 2. login page
-  const loginPage = await fetch(`${BASE}/login`, { signal: AbortSignal.timeout(60000) });
+  const loginPage = await timed("GET /login", () => fetch(`${BASE}/login`, { signal: AbortSignal.timeout(60000) }));
   const loginHtml = await loginPage.text();
   check(loginPage.status === 200, `GET /login → ${loginPage.status}`);
   check(/Family Ledger/i.test(loginHtml) && /password/i.test(loginHtml), "login page renders the form");
 
   // 3. credentials login
   const client = await login(BASE, PASSWORD);
+  const timedFetch = (path) => timed(`GET ${path}`, () => client.fetch(path));
   check(true, "credentials login succeeded (session cookie issued)");
 
   // 4. dashboard sections
-  const dash = await client.fetch("/");
+  const dash = await timedFetch("/");
   const dashText = stripReactComments(await dash.text());
   check(dash.status === 200, `GET / (authed) → ${dash.status}`);
   check(
@@ -84,20 +105,28 @@ async function main() {
   );
 
   // 5. ledger summary = seeded totals
-  const ledger = await client.fetch("/transactions");
+  const ledger = await timedFetch("/transactions");
   const ledgerText = stripReactComments(await ledger.text());
   check(ledger.status === 200, `GET /transactions → ${ledger.status}`);
   check(ledgerText.includes("All time"), "ledger summary shows all-time scope");
   check(ledgerText.includes(`${expectedEntriesStr} entries`), `summary shows ${expectedEntriesStr} entries`);
   check(ledgerText.includes(expectedTotal), `summary shows all-time expense ₹${expectedTotal}`);
 
+  // 6. uptime / response time — every request within budget
+  const slow = timings.filter((t) => t.ms > BUDGET_MS);
+  check(slow.length === 0, `all requests within ${BUDGET_MS}ms budget (slowest: ${slow.length ? slow[0].label : "—"})`);
+  const summary = timings.map((t) => `${t.label} ${Math.round(t.ms)}ms`).join(", ");
+
   if (failures > 0) {
     console.error(`✗ Smoke FAILED (${failures} check(s) failed)`);
+    console.error(`    timings: ${summary}`);
     process.exitCode = 1;
   } else {
     console.log(
-      `✓ Smoke OK — ${BASE} boots, logs in, and renders the seeded totals (${expectedEntriesStr} entries, ₹${expectedTotal}).`,
+      `✓ Smoke OK — ${BASE} boots, logs in, renders the seeded totals (${expectedEntriesStr} entries, ₹${expectedTotal}), ` +
+        `all requests within ${BUDGET_MS}ms.`,
     );
+    console.log(`    timings: ${summary}`);
   }
 }
 

@@ -55,7 +55,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run db:setup` | Push schema + seed |
 | `npm run test:seed-roundtrip` | Prove the CSV export reproduces `seed.csv` (header, 8 columns, HH:MM, 2-dp amounts, ordering) |
 | `npm run test:rename-roundtrip` | Prove a category rename propagates to every historical transaction and reverts cleanly |
-| `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, and renders the exact seeded totals (derived from `seed.csv`) |
+| `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, renders the exact seeded totals, and checks every request is within the response-time budget (default 8s; `SMOKE_MAX_MS` overrides) |
 | `npm run verify:export-live` | Call the deployed app's CSV export and prove it reproduces `seed.csv` |
 
 ## Architecture notes (spec highlights)
