@@ -7,7 +7,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
 import { paiseToDbString } from "@/lib/money";
-import { transactionSchema, type TransactionInput } from "@/lib/validations";
+import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
 import { buildWhere, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 
@@ -16,8 +16,9 @@ import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
  *  1. Parse its payload with Zod (including the type/tag discriminated union).
  *  2. Verify the member exists in `members` (§3.2.1 — data integrity, not auth).
  *  3. Convert amounts at the paise boundary (§5.8).
- *  The member_id is read from the active_member_id cookie (§6.2 step 5) and
- *  validated against the members table — never trusted from the client.
+ *  The member is read from the active_member_id cookie (§6.2 step 5) — the
+ *  SOLE source, with no client-supplied fallback. The cookie value is
+ *  validated as a UUID and the member verified to exist (§3.2.1).
  */
 export async function createTransaction(raw: TransactionInput) {
   const parsed = transactionSchema.safeParse(raw);
@@ -25,9 +26,16 @@ export async function createTransaction(raw: TransactionInput) {
 
   const data = parsed.data;
 
+  // §3.2 / §6.2 step 5 — active_member_id is the sole source of the creating
+  // member. No `activeMemberId ?? data.memberId` fallback. A missing or
+  // malformed cookie is a clear, explicit error.
   const cookieStore = await cookies();
   const activeMemberId = cookieStore.get("active_member_id")?.value;
-  const memberId = activeMemberId ?? data.memberId;
+  const memberIdCheck = idSchema.safeParse(activeMemberId);
+  if (!memberIdCheck.success) {
+    return { ok: false as const, error: "No active member selected — pick a member in the header" };
+  }
+  const memberId = memberIdCheck.data;
 
   const memberExists = await db.query.members.findFirst({ where: eq(members.id, memberId) });
   if (!memberExists) return { ok: false as const, error: "Unknown member" };
@@ -60,6 +68,10 @@ export async function createTransaction(raw: TransactionInput) {
 }
 
 export async function updateTransaction(id: string, raw: TransactionInput) {
+  // §7.1 — the mutation id is validated at the action boundary, before any DB access.
+  const idCheck = idSchema.safeParse(id);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
+
   const parsed = transactionSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid transaction data" };
   const data = parsed.data;
@@ -81,7 +93,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
       date: data.date,
       time: `${data.time}:00`,
     })
-    .where(eq(transactions.id, id))
+    .where(eq(transactions.id, idCheck.data))
     .returning();
 
   revalidatePath("/");
@@ -93,7 +105,11 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
 
 /** §6.4.1 hard delete — no soft delete, no tombstones. */
 export async function deleteTransaction(id: string) {
-  await db.delete(transactions).where(eq(transactions.id, id));
+  // §7.1 — the mutation id is validated at the action boundary, before any DB access.
+  const idCheck = idSchema.safeParse(id);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
+
+  await db.delete(transactions).where(eq(transactions.id, idCheck.data));
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidateTag("transactions");

@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { TRANSACTION_TAGS } from "./constants";
 
+/**
+ * Single shared UUID schema for mutation ids (§7.1) and the active-member
+ * cookie (§3.2). One definition — never duplicated validation logic.
+ */
+export const idSchema = z.string().uuid();
+
 export const transactionBaseSchema = z.object({
   memberId: z.string().uuid(),
   categoryId: z.string().uuid(),
