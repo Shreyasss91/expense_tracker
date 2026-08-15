@@ -26,14 +26,13 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-  # DB-backed invariants (seed round-trip + rename round-trip). Runs only when
-  # a CI database is configured — point DATABASE_URL at a disposable Neon
-  # branch. Both tests are self-healing: the seed is idempotent and the rename
-  # test always reverts.
+  # DB-backed invariants (seed round-trip + rename round-trip). Gated at the
+  # step level because `secrets` is not available in job-level `if:`. Point
+  # DATABASE_URL at a disposable Neon branch; both tests are self-healing
+  # (the seed is idempotent and the rename test always reverts).
   db-tests:
     name: DB round-trip tests
     runs-on: ubuntu-latest
-    if: ${{ secrets.DATABASE_URL != '' }}
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
     steps:
@@ -43,11 +42,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: No CI database secret — skipping DB tests
+        if: ${{ secrets.DATABASE_URL == '' }}
+        run: echo "::notice title=skipped::Set the DATABASE_URL secret (a disposable Neon branch) to enable the DB round-trip tests."
       - name: Apply migrations
+        if: ${{ secrets.DATABASE_URL != '' }}
         run: npm run db:migrate
       - name: Seed
+        if: ${{ secrets.DATABASE_URL != '' }}
         run: npm run db:seed
       - name: Seed round-trip (export reproduces seed.csv)
+        if: ${{ secrets.DATABASE_URL != '' }}
         run: npm run test:seed-roundtrip
       - name: Rename round-trip (rename propagates to history, reverts)
+        if: ${{ secrets.DATABASE_URL != '' }}
         run: npm run test:rename-roundtrip
