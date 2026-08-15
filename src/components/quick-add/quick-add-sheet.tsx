@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Delete, ChevronLeft, Check } from "lucide-react";
+import { format } from "date-fns";
+import { Delete, ChevronLeft, Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
+import { updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
 import { formatINR, paiseToDbString } from "@/lib/money";
 import { formatInTimeZone } from "date-fns-tz";
@@ -45,6 +48,18 @@ export function QuickAddSheet({
   const [time, setTime] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
+  const [cats, setCats] = useState(categories);
+  const router = useRouter();
+
+  // Keep the local category copy in sync with server-provided data when not mid-edit,
+  // so renames done elsewhere (Settings) also land in this picker.
+  useEffect(() => {
+    if (!editMode && !renamingId) setCats(categories);
+  }, [categories, editMode, renamingId]);
 
   const paise = useMemo(() => Math.round(parseFloat(buf || "0") * 100) || 0, [buf]);
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
@@ -57,6 +72,9 @@ export function QuickAddSheet({
     setNote("");
     setDate(formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
+    setEditMode(false);
+    setRenamingId(null);
+    setRenameValue("");
   }
 
   function handleKey(k: string) {
@@ -76,7 +94,7 @@ export function QuickAddSheet({
   async function submit(catId: string) {
     if (paise <= 0 || saving) return;
     const member = members.find((m) => m.id === activeMemberId) ?? members[0];
-    const category = categories.find((c) => c.id === catId);
+    const category = cats.find((c) => c.id === catId);
     if (!member || !category) return;
 
     // §6.2 step 5 — fully optimistic: build the row locally and apply it to the
@@ -134,6 +152,43 @@ export function QuickAddSheet({
     }
   }
 
+  function startRename(c: CategoryOption) {
+    setRenamingId(c.id);
+    setRenameValue(c.name);
+  }
+
+  function cancelRename() {
+    setRenamingId(null);
+    setRenameValue("");
+  }
+
+  async function saveRename(c: CategoryOption) {
+    const name = renameValue.trim();
+    if (!name || name === c.name || renaming) {
+      cancelRename();
+      return;
+    }
+    const prev = cats;
+    // optimistic — the ledger already joins names fresh, so a refetch shows it everywhere
+    setCats((list) => list.map((x) => (x.id === c.id ? { ...x, name } : x)));
+    setRenaming(true);
+    const res = await updateCategory({ id: c.id, name, emoji: c.emoji, sortOrder: c.sortOrder });
+    setRenaming(false);
+    if (res.ok) {
+      toast.success(`Renamed to “${name}”`);
+      emitLedgerMutation({ kind: "refetch" });
+      router.refresh();
+      setEditMode(false);
+      setRenamingId(null);
+      setRenameValue("");
+    } else {
+      setCats(prev);
+      setRenamingId(null);
+      setRenameValue("");
+      toast.error(res.error ?? "Could not rename");
+    }
+  }
+
   const stepTitle = step === "amount" ? "How much?" : step === "category" ? "What was it?" : "Details";
 
   return (
@@ -142,7 +197,7 @@ export function QuickAddSheet({
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-2 flex items-center gap-2">
           {step !== "amount" && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setStep(step === "category" ? "details" : "amount")} aria-label="Back">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditMode(false); setRenamingId(null); setStep(step === "category" ? "details" : "amount"); }} aria-label="Back">
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
@@ -183,26 +238,107 @@ export function QuickAddSheet({
 
         {step === "category" && (
           <div className="flex flex-col">
-            {/* confirm bar — category is the final step, tapping one saves immediately */}
-            <div className="mb-3 flex items-center justify-between rounded-xl bg-muted px-3 py-2">
-              <span className="text-base font-semibold tabular-nums">{formatINR(paise)}</span>
-              <span className="text-xs text-muted-foreground">
-                {type === "income" ? "Income" : "Expense"} · tap a category to save
-              </span>
+            {/* confirm bar — category is the final step, so it previews the full entry */}
+            <div className="mb-3 rounded-xl bg-muted px-3 py-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-xl font-bold leading-tight tabular-nums">{formatINR(paise)}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1">
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white ${type === "income" ? "bg-emerald-600" : "bg-destructive"}`}
+                    >
+                      {type === "income" ? "Income" : "Expense"}
+                    </span>
+                    {type === "expense" && (
+                      <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {TRANSACTION_TAG_LABELS[tag]}
+                      </span>
+                    )}
+                    {activeMember && (
+                      <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {activeMember.emoji} {activeMember.name}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+                    {format(new Date(`${date}T00:00:00`), "d MMM yyyy")} · {time}
+                  </div>
+                  {note ? (
+                    <div className="mt-0.5 max-w-[15rem] truncate text-[11px] text-muted-foreground">“{note}”</div>
+                  ) : null}
+                </div>
+                <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2.5 text-xs" onClick={() => setStep("details")}>
+                  <Pencil className="h-3.5 w-3.5" /> Edit
+                </Button>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t border-muted-foreground/10 pt-1.5">
+                <span className="text-[11px] text-muted-foreground">
+                  {editMode ? "Tap a category to rename" : "Tap a category to save"}
+                </span>
+                {editMode ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                    onClick={() => { setEditMode(false); setRenamingId(null); }}
+                  >
+                    <Check className="h-3 w-3" /> Done
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                    onClick={() => setEditMode(true)}
+                  >
+                    <Pencil className="h-3 w-3" /> Rename categories
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-2 overflow-y-auto">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => void submit(c.id)}
-                  className="flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95"
-                  style={{ borderColor: c.color }}
-                >
-                  <span className="text-2xl">{c.emoji}</span>
-                  <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
-                </button>
-              ))}
+              {cats.map((c) =>
+                renamingId === c.id ? (
+                  <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
+                    <Input
+                      autoFocus
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void saveRename(c);
+                        if (e.key === "Escape") cancelRename();
+                      }}
+                      className="h-8 text-center text-xs"
+                      aria-label={`Rename ${c.name}`}
+                    />
+                    <div className="flex justify-center gap-1">
+                      <Button size="icon" className="h-6 w-6" disabled={renaming} onClick={() => void saveRename(c)} aria-label="Save name">
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={cancelRename} aria-label="Cancel rename">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    key={c.id}
+                    type="button"
+                    disabled={renaming}
+                    onClick={() => void (editMode ? startRename(c) : submit(c.id))}
+                    className="relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95 disabled:opacity-60"
+                    style={{ borderColor: c.color }}
+                  >
+                    {editMode && (
+                      <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground" aria-hidden>
+                        <Pencil className="h-2.5 w-2.5" />
+                      </span>
+                    )}
+                    <span className="text-2xl">{c.emoji}</span>
+                    <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
+                  </button>
+                )
+              )}
             </div>
           </div>
         )}
