@@ -39,7 +39,6 @@ export function QuickAddSheet({
 }) {
   const [step, setStep] = useState<Step>("amount");
   const [buf, setBuf] = useState("");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [type, setType] = useState<TxnType>("expense");
   const [tag, setTag] = useState<Tag>("lifestyle");
   const [date, setDate] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
@@ -48,13 +47,11 @@ export function QuickAddSheet({
   const [saving, setSaving] = useState(false);
 
   const paise = useMemo(() => Math.round(parseFloat(buf || "0") * 100) || 0, [buf]);
-  const selectedCategory = categories.find((c) => c.id === categoryId);
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
 
   function reset() {
     setStep("amount");
     setBuf("");
-    setCategoryId(null);
     setType("expense");
     setTag("lifestyle");
     setNote("");
@@ -76,10 +73,10 @@ export function QuickAddSheet({
     });
   }
 
-  async function submit() {
-    if (!categoryId || paise <= 0) return;
+  async function submit(catId: string) {
+    if (paise <= 0 || saving) return;
     const member = members.find((m) => m.id === activeMemberId) ?? members[0];
-    const category = categories.find((c) => c.id === categoryId);
+    const category = categories.find((c) => c.id === catId);
     if (!member || !category) return;
 
     // §6.2 step 5 — fully optimistic: build the row locally and apply it to the
@@ -106,7 +103,7 @@ export function QuickAddSheet({
     // §5.2 discriminated union: expense carries a tag, income forbids one
     const base = {
       memberId: activeMemberId, // server reads the cookie anyway (§6.2)
-      categoryId,
+      categoryId: catId,
       amount: paise,
       date,
       time,
@@ -145,7 +142,7 @@ export function QuickAddSheet({
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-2 flex items-center gap-2">
           {step !== "amount" && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setStep(step === "details" ? "category" : "amount")} aria-label="Back">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setStep(step === "category" ? "details" : "amount")} aria-label="Back">
               <ChevronLeft className="h-5 w-5" />
             </Button>
           )}
@@ -178,26 +175,35 @@ export function QuickAddSheet({
                 </button>
               ))}
             </div>
-            <Button className="mt-4 h-12 text-base" disabled={paise <= 0} onClick={() => setStep("category")}>
+            <Button className="mt-4 h-12 text-base" disabled={paise <= 0} onClick={() => setStep("details")}>
               Next
             </Button>
           </div>
         )}
 
         {step === "category" && (
-          <div className="grid grid-cols-3 gap-2 overflow-y-auto">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => { setCategoryId(c.id); setStep("details"); }}
-                className="flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95"
-                style={{ borderColor: c.color }}
-              >
-                <span className="text-2xl">{c.emoji}</span>
-                <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
-              </button>
-            ))}
+          <div className="flex flex-col">
+            {/* confirm bar — category is the final step, tapping one saves immediately */}
+            <div className="mb-3 flex items-center justify-between rounded-xl bg-muted px-3 py-2">
+              <span className="text-base font-semibold tabular-nums">{formatINR(paise)}</span>
+              <span className="text-xs text-muted-foreground">
+                {type === "income" ? "Income" : "Expense"} · tap a category to save
+              </span>
+            </div>
+            <div className="grid grid-cols-3 gap-2 overflow-y-auto">
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => void submit(c.id)}
+                  className="flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95"
+                  style={{ borderColor: c.color }}
+                >
+                  <span className="text-2xl">{c.emoji}</span>
+                  <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -254,11 +260,11 @@ export function QuickAddSheet({
 
             <div className="space-y-1.5">
               <Label htmlFor="qa-note" className="text-xs text-muted-foreground">Note (optional)</Label>
-              <Textarea id="qa-note" rows={2} placeholder={selectedCategory?.name ?? "What was it for?"} value={note} onChange={(e) => setNote(e.target.value)} />
+              <Textarea id="qa-note" rows={2} placeholder="What was it for?" value={note} onChange={(e) => setNote(e.target.value)} />
             </div>
 
-            <Button className="h-12 w-full text-base" disabled={!categoryId || paise <= 0 || saving} onClick={submit}>
-              {saving ? "Saving…" : `Save ${formatINR(paise)}`}
+            <Button className="h-12 w-full text-base" disabled={paise <= 0} onClick={() => setStep("category")}>
+              Next
             </Button>
           </div>
         )}

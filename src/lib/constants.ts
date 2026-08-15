@@ -74,7 +74,7 @@ export const SEED_CATEGORIES = [
 ] as const;
 
 export const TRANSACTION_TYPES = ["expense", "income"] as const;
-export const TRANSACTION_TAGS = ["one_time", "recurring", "lifestyle"] as const;
+export const TRANSACTION_TAGS = ["lifestyle", "recurring", "one_time"] as const;
 export const TRANSACTION_TAG_LABELS: Record<(typeof TRANSACTION_TAGS)[number], string> = {
   one_time: "One-time",
   recurring: "Recurring",

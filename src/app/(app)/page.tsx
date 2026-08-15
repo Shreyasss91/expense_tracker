@@ -82,8 +82,8 @@ const getDashboardData = unstable_cache(
     const netPaise = incomePaise - expensePaise;
 
     const tags = [
-      { key: "recurring", label: "Bills", paise: rupeesToPaise(totals.recurring), color: "#8b5cf6" },
       { key: "lifestyle", label: "Lifestyle", paise: rupeesToPaise(totals.lifestyle), color: "#0ea5e9" },
+      { key: "recurring", label: "Bills", paise: rupeesToPaise(totals.recurring), color: "#8b5cf6" },
       { key: "one_time", label: "One-time buys", paise: rupeesToPaise(totals.oneTime), color: "#f59e0b" },
     ] as const;
 
