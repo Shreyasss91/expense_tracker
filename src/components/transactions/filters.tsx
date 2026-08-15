@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, X } from "lucide-react";
+import { toast } from "sonner";
+import { Search, X, Pencil, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -12,6 +14,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
+import { updateCategory } from "@/actions/settings";
+import { emitLedgerMutation } from "@/lib/events";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
 
@@ -53,10 +57,20 @@ export function FiltersBar({
 }) {
   const router = useRouter();
   const [q, setQ] = useState(filters.q ?? "");
+  const [renaming, setRenaming] = useState(false);
+  const [renameName, setRenameName] = useState("");
+  const [renameEmoji, setRenameEmoji] = useState("");
+
+  const selectedCat = categories.find((c) => c.id === filters.categoryId);
 
   useEffect(() => {
     setQ(filters.q ?? "");
   }, [filters.q]);
+
+  // changing the filtered category mid-rename would target the wrong row
+  useEffect(() => {
+    setRenaming(false);
+  }, [filters.categoryId]);
 
   function push(next: LedgerFilters) {
     router.push(buildLedgerUrl(next));
@@ -70,6 +84,45 @@ export function FiltersBar({
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
+
+  function startRename() {
+    if (!selectedCat) return;
+    setRenameEmoji(selectedCat.emoji);
+    setRenameName(selectedCat.name);
+    setRenaming(true);
+  }
+
+  function cancelRename() {
+    setRenaming(false);
+    setRenameName("");
+    setRenameEmoji("");
+  }
+
+  async function saveRename() {
+    if (!selectedCat || renaming) return;
+    const name = renameName.trim();
+    const emoji = renameEmoji.trim();
+    if ((!name || name === selectedCat.name) && emoji === selectedCat.emoji) {
+      cancelRename();
+      return;
+    }
+    setRenaming(true);
+    const res = await updateCategory({
+      id: selectedCat.id,
+      name: name || selectedCat.name,
+      emoji: emoji || selectedCat.emoji,
+      sortOrder: selectedCat.sortOrder,
+    });
+    setRenaming(false);
+    if (res.ok) {
+      toast.success("Category updated");
+      emitLedgerMutation({ kind: "refetch" });
+      router.refresh();
+      cancelRename();
+    } else {
+      toast.error(res.error ?? "Could not update");
+    }
+  }
 
   const hasFilters = !!(filters.memberId || filters.categoryId || filters.tag || filters.month || filters.q);
 
@@ -139,12 +192,47 @@ export function FiltersBar({
             ))}
           </SelectContent>
         </Select>
+        {selectedCat && !renaming && (
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={startRename} aria-label={`Rename ${selectedCat.name}`}>
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
         {hasFilters && (
           <button type="button" className={pill(false)} onClick={() => push({})}>
             Clear
           </button>
         )}
       </div>
+
+      {renaming && selectedCat && (
+        <div className="flex items-center gap-1.5 rounded-lg border border-muted-foreground/20 bg-muted p-1.5">
+          <Input
+            aria-label="Category emoji"
+            className="h-8 w-11 shrink-0 text-center text-base"
+            value={renameEmoji}
+            onChange={(e) => setRenameEmoji(e.target.value)}
+            maxLength={4}
+          />
+          <Input
+            aria-label="Category name"
+            autoFocus
+            className="h-8 min-w-0 flex-1"
+            value={renameName}
+            onChange={(e) => setRenameName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void saveRename();
+              if (e.key === "Escape") cancelRename();
+            }}
+            maxLength={50}
+          />
+          <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => void saveRename()} aria-label="Save rename">
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={cancelRename} aria-label="Cancel rename">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

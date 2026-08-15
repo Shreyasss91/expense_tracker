@@ -51,6 +51,7 @@ export function QuickAddSheet({
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [renameEmoji, setRenameEmoji] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [cats, setCats] = useState(categories);
   const router = useRouter();
@@ -75,6 +76,7 @@ export function QuickAddSheet({
     setEditMode(false);
     setRenamingId(null);
     setRenameValue("");
+    setRenameEmoji("");
   }
 
   function handleKey(k: string) {
@@ -155,37 +157,45 @@ export function QuickAddSheet({
   function startRename(c: CategoryOption) {
     setRenamingId(c.id);
     setRenameValue(c.name);
+    setRenameEmoji(c.emoji);
   }
 
   function cancelRename() {
     setRenamingId(null);
     setRenameValue("");
+    setRenameEmoji("");
   }
 
   async function saveRename(c: CategoryOption) {
+    if (renaming) return;
     const name = renameValue.trim();
-    if (!name || name === c.name || renaming) {
+    const emoji = renameEmoji.trim();
+    if ((!name || name === c.name) && emoji === c.emoji) {
       cancelRename();
       return;
     }
+    const nextName = name || c.name;
+    const nextEmoji = emoji || c.emoji;
     const prev = cats;
     // optimistic — the ledger already joins names fresh, so a refetch shows it everywhere
-    setCats((list) => list.map((x) => (x.id === c.id ? { ...x, name } : x)));
+    setCats((list) => list.map((x) => (x.id === c.id ? { ...x, name: nextName, emoji: nextEmoji } : x)));
     setRenaming(true);
-    const res = await updateCategory({ id: c.id, name, emoji: c.emoji, sortOrder: c.sortOrder });
+    const res = await updateCategory({ id: c.id, name: nextName, emoji: nextEmoji, sortOrder: c.sortOrder });
     setRenaming(false);
     if (res.ok) {
-      toast.success(`Renamed to “${name}”`);
+      toast.success("Category updated");
       emitLedgerMutation({ kind: "refetch" });
       router.refresh();
       setEditMode(false);
       setRenamingId(null);
       setRenameValue("");
+      setRenameEmoji("");
     } else {
       setCats(prev);
       setRenamingId(null);
       setRenameValue("");
-      toast.error(res.error ?? "Could not rename");
+      setRenameEmoji("");
+      toast.error(res.error ?? "Could not update");
     }
   }
 
@@ -237,7 +247,7 @@ export function QuickAddSheet({
         )}
 
         {step === "category" && (
-          <div className="flex flex-col">
+          <div className="flex max-h-[min(72vh,32rem)] flex-col">
             {/* confirm bar — category is the final step, so it previews the full entry */}
             <div className="mb-3 rounded-xl bg-muted px-3 py-2.5">
               <div className="flex items-start justify-between gap-2">
@@ -296,23 +306,34 @@ export function QuickAddSheet({
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 overflow-y-auto">
+            {/* grid scrolls internally; the confirm bar stays pinned above it */}
+            <div className="grid min-h-0 flex-1 grid-cols-3 gap-2 overflow-y-auto">
               {cats.map((c) =>
                 renamingId === c.id ? (
                   <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
-                    <Input
-                      autoFocus
-                      value={renameValue}
-                      onChange={(e) => setRenameValue(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") void saveRename(c);
-                        if (e.key === "Escape") cancelRename();
-                      }}
-                      className="h-8 text-center text-xs"
-                      aria-label={`Rename ${c.name}`}
-                    />
+                    <div className="flex gap-1">
+                      <Input
+                        value={renameEmoji}
+                        onChange={(e) => setRenameEmoji(e.target.value)}
+                        className="h-8 w-10 shrink-0 px-1 text-center text-base"
+                        aria-label="Category emoji"
+                        maxLength={4}
+                      />
+                      <Input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void saveRename(c);
+                          if (e.key === "Escape") cancelRename();
+                        }}
+                        className="h-8 min-w-0 flex-1 text-center text-xs"
+                        aria-label="Category name"
+                        maxLength={50}
+                      />
+                    </div>
                     <div className="flex justify-center gap-1">
-                      <Button size="icon" className="h-6 w-6" disabled={renaming} onClick={() => void saveRename(c)} aria-label="Save name">
+                      <Button size="icon" className="h-6 w-6" disabled={renaming} onClick={() => void saveRename(c)} aria-label="Save name and emoji">
                         <Check className="h-3.5 w-3.5" />
                       </Button>
                       <Button size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={cancelRename} aria-label="Cancel rename">

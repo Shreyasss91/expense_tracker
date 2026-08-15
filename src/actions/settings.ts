@@ -3,6 +3,7 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
+import { renameCategory } from "@/db/category-mutations";
 import { categories, members } from "@/db/schema";
 import { updateCategorySchema, updateMemberSchema } from "@/lib/validations";
 import { z } from "zod";
@@ -14,10 +15,7 @@ import { z } from "zod";
 export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) {
   const parsed = updateCategorySchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid category data" };
-  await db
-    .update(categories)
-    .set({ name: parsed.data.name, emoji: parsed.data.emoji, sortOrder: parsed.data.sortOrder })
-    .where(eq(categories.id, parsed.data.id));
+  await renameCategory(db, parsed.data);
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidatePath("/settings");

@@ -54,10 +54,11 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run db:seed` | Seed members, categories and the 1,157 transactions (idempotent) |
 | `npm run db:setup` | Push schema + seed |
 | `npm run test:seed-roundtrip` | Prove the CSV export reproduces `seed.csv` (header, 8 columns, HH:MM, 2-dp amounts, ordering) |
+| `npm run test:rename-roundtrip` | Prove a category rename propagates to every historical transaction and reverts cleanly |
 
 ## Architecture notes (spec highlights)
 
-- **Quick Add** (§6.2): FAB → numpad amount → category grid → details. Amounts are integer paise (§5.8); times normalize `HH:MM` → `HH:MM:00` (§5.6); the active member comes from the `active_member_id` cookie and is validated against the `members` table (§3.2).
+- **Quick Add** (§6.2): FAB → numpad amount → details → category grid (tap to save). The final step previews the full entry and supports inline category rename/emoji edit. Amounts are integer paise (§5.8); times normalize `HH:MM` → `HH:MM:00` (§5.6); the active member comes from the `active_member_id` cookie and is validated against the `members` table (§3.2).
 - **Member switcher** (§3.2): a plain client-readable cookie — a UI convenience, never a security boundary.
 - **Seed identity** (§8.1): seeded transaction IDs are UUIDv5 of the verbatim `seed.csv` line + occurrence ordinal, so re-seeding is a no-op and the two intentional duplicate pairs stay distinct.
 - **Dashboard** (§7.2): all analytics are SQL aggregates; zero-state safe per §6.3.1 (no `NaN%`, `—` for zero denominators, `Son` always renders ₹0.00).
