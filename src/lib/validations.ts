@@ -86,3 +86,8 @@ export const setTotalBudgetSchema = z.object({
   month: z.string().regex(/^\d{4}-\d{2}$/),
   totalPaise: z.number().int().min(0).nullable(),
 });
+
+/** §6.7 — global "exclude bills (recurring) from the total budget" toggle. */
+export const setExcludeBillsSchema = z.object({
+  enabled: z.boolean(),
+});

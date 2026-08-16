@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { budgets, categories, transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
 import type { BudgetAlert } from "@/lib/budget-alert";
@@ -51,28 +52,41 @@ export function budgetsForMonth(monthKey: string) {
 /**
  * §6.7 — spent-vs-budget for a month's total, for the ledger month strip: the
  * month's total expense against the effective total budget (exact month wins,
- * else the every-month default). Returns null when no total budget is set for
- * the month — the strip then shows no bar.
+ * else the every-month default). When the global "exclude bills" setting is
+ * on, the month's recurring spend is subtracted from the spent side (bills are
+ * committed costs, not discretionary budget). Returns null when no total
+ * budget is set for the month — the strip then shows no bar.
  */
 export async function getMonthBudgetStatus(
   monthKey: string,
-): Promise<{ spentPaise: number; budgetPaise: number } | null> {
-  const budgetRows = await budgetsForMonth(monthKey);
-  const totalBudget = resolveEffectiveBudget(budgetRows, monthKey, null);
-  if (!totalBudget) return null;
-
+): Promise<{ spentPaise: number; budgetPaise: number; billsPaise: number; excludeBills: boolean } | null> {
   const start = `${monthKey}-01`;
   const [y, m] = monthKey.split("-").map(Number);
   const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
 
-  const rows = await db
-    .select({
-      expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
-    })
-    .from(transactions)
-    .where(and(gte(transactions.date, start), lte(transactions.date, end)));
+  const [budgetRows, excludeBills, rows] = await Promise.all([
+    budgetsForMonth(monthKey),
+    getExcludeBillsEnabled(db),
+    db
+      .select({
+        expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
+        recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
+      })
+      .from(transactions)
+      .where(and(gte(transactions.date, start), lte(transactions.date, end))),
+  ]);
 
-  return { spentPaise: rupeesToPaise(rows[0].expense), budgetPaise: rupeesToPaise(totalBudget.amount) };
+  const totalBudget = resolveEffectiveBudget(budgetRows, monthKey, null);
+  if (!totalBudget) return null;
+
+  const billsPaise = rupeesToPaise(rows[0].recurring);
+  const expensePaise = rupeesToPaise(rows[0].expense);
+  return {
+    spentPaise: excludeBills ? expensePaise - billsPaise : expensePaise,
+    budgetPaise: rupeesToPaise(totalBudget.amount),
+    billsPaise,
+    excludeBills,
+  };
 }
 
 /**
@@ -87,11 +101,13 @@ export async function getBudgetAlert(monthKey: string, categoryId: string): Prom
   const [y, m] = monthKey.split("-").map(Number);
   const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
 
-  const [budgetRows, totals] = await Promise.all([
+  const [budgetRows, excludeBills, totals] = await Promise.all([
     budgetsForMonth(monthKey),
+    getExcludeBillsEnabled(db),
     db
       .select({
         total: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
+        recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
         category: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.categoryId} = ${categoryId}), 0)`,
       })
       .from(transactions)
@@ -99,7 +115,9 @@ export async function getBudgetAlert(monthKey: string, categoryId: string): Prom
   ]);
 
   const totalBudget = resolveEffectiveBudget(budgetRows, monthKey, null);
-  const totalPaise = rupeesToPaise(totals[0].total);
+  // §6.7 — when exclude-bills is on, the total comparison ignores recurring spend;
+  // the category comparison below always counts everything (owner decision).
+  const totalPaise = rupeesToPaise(totals[0].total) - (excludeBills ? rupeesToPaise(totals[0].recurring) : 0);
   if (totalBudget && totalPaise > rupeesToPaise(totalBudget.amount)) {
     return {
       kind: "total" as const,

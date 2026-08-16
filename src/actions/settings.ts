@@ -3,12 +3,13 @@
 import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { setAppSetting, EXCLUDE_BILLS_KEY } from "@/db/app-settings-mutations";
 import { renameCategory } from "@/db/category-mutations";
 import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations";
 import { categories, members, transactions } from "@/db/schema";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { rupeesToPaise } from "@/lib/money";
-import { saveBudgetsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
+import { saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
 import { z } from "zod";
 
 /**
@@ -109,6 +110,25 @@ export async function setTotalBudget(raw: z.infer<typeof setTotalBudgetSchema>) 
   revalidatePath("/");
   revalidatePath("/settings");
   revalidateTag("transactions");
+  return { ok: true as const };
+}
+
+/**
+ * §6.7 — global "exclude bills (recurring) from the total budget" toggle.
+ * When enabled, every total-budget comparison (dashboard Budget card, ledger
+ * month strip, over-budget toast) subtracts the month's recurring spend;
+ * per-category budgets are unaffected (owner decision).
+ */
+export async function setExcludeBills(raw: z.infer<typeof setExcludeBillsSchema>) {
+  const parsed = setExcludeBillsSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false as const, error: "Invalid setting" };
+
+  await setAppSetting(db, EXCLUDE_BILLS_KEY, parsed.data.enabled ? "1" : "0");
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings");
+  revalidateTag("transactions"); // dashboard aggregates + the strip are cached under this tag
   return { ok: true as const };
 }
 
