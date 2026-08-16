@@ -25,10 +25,15 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
+      - name: CSV quoting (DB-free serializer regression)
+        run: npm run test:csv-quoting
+      - name: Ledger URL composition (DB-free filter regression)
+        run: npm run test:ledger-url
 
-  # DB-backed invariants (seed round-trip + rename round-trip). Point
-  # DATABASE_URL at a disposable Neon branch; both tests are self-healing
-  # (the seed is idempotent and the rename test always reverts). The steps
+  # DB-backed invariants (seed, rename, budget round-trip + semantics). Point
+  # DATABASE_URL at a disposable Neon branch; the tests are self-healing
+  # (the seed is idempotent, the rename test always reverts, and the budget
+  # tests write to throwaway months and snapshot-restore real data). The steps
   # are gated on HAS_CI_DB because `secrets` is not valid in `if:` — only in
   # `env:`, so the presence check happens there.
   db-tests:
@@ -59,3 +64,9 @@ jobs:
       - name: Rename round-trip (rename propagates to history, reverts)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:rename-roundtrip
+      - name: Budget round-trip (scope replace + inline edit/clear persist)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:budget-roundtrip
+      - name: Budget semantics (exclude-bills math, precedence, bill chain)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:budget-semantics
