@@ -14,32 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
+import { buildLedgerUrl, type LedgerFilters } from "@/lib/ledger-url";
 import { updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
-
-export interface LedgerFilters {
-  memberId?: string;
-  categoryId?: string;
-  tag?: "one_time" | "recurring" | "lifestyle";
-  month?: string;
-  type?: "income" | "expense";
-  q?: string;
-}
-
-/** Serialize the filter state into the ledger URL — shared by the filter bar and the month strip. */
-export function buildLedgerUrl(filters: LedgerFilters): string {
-  const params = new URLSearchParams();
-  if (filters.memberId) params.set("member", filters.memberId);
-  if (filters.categoryId) params.set("category", filters.categoryId);
-  if (filters.tag) params.set("tag", filters.tag);
-  if (filters.month) params.set("month", filters.month);
-  if (filters.type) params.set("type", filters.type);
-  if (filters.q?.trim()) params.set("q", filters.q.trim());
-  const qs = params.toString();
-  return qs ? `/transactions?${qs}` : "/transactions";
-}
 
 function pill(active: boolean) {
   return cn(

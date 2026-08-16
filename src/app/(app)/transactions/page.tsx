@@ -2,24 +2,20 @@ import { addMonths, format, parse } from "date-fns";
 import { db } from "@/db";
 import { getTransactionsPage } from "@/actions/transactions";
 import { getCategories, getMembers } from "@/lib/meta";
-import { FiltersBar, type LedgerFilters } from "@/components/transactions/filters";
+import { FiltersBar } from "@/components/transactions/filters";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { ExportButton } from "@/components/transactions/export-button";
 import { MonthStrip } from "@/components/transactions/month-strip";
 import { LedgerSummaryHeader } from "@/components/transactions/ledger-summary";
-import { TRANSACTION_TAGS } from "@/lib/constants";
 import { monthKeyInIST } from "@/lib/dates";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
-import { getLedgerSummary, type TransactionListFilters } from "@/lib/query";
+import { getLedgerSummary } from "@/lib/query";
+import { parseLedgerSearchParams } from "@/lib/ledger-url";
 import { getMonthBudgetStatus } from "@/lib/budgets";
 import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
 import { formatINR } from "@/lib/money";
-import { z } from "zod";
 
 export const metadata = { title: "Ledger — Family Ledger" };
-
-const uuid = z.string().uuid();
-const monthRe = /^\d{4}-\d{2}$/;
 
 export default async function TransactionsPage({
   searchParams,
@@ -27,30 +23,9 @@ export default async function TransactionsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const sp = await searchParams;
-  const read = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
-
-  const rawTag = read(sp.tag);
-  const filters: TransactionListFilters = {
-    memberId: (() => {
-      const v = read(sp.member);
-      return v && uuid.safeParse(v).success ? v : undefined;
-    })(),
-    categoryId: (() => {
-      const v = read(sp.category);
-      return v && uuid.safeParse(v).success ? v : undefined;
-    })(),
-    tag: rawTag && (TRANSACTION_TAGS as readonly string[]).includes(rawTag) ? (rawTag as TransactionListFilters["tag"]) : undefined,
-    type: (() => {
-      const v = read(sp.type);
-      return v === "income" || v === "expense" ? v : undefined;
-    })(),
-    month: (() => {
-      const v = read(sp.month);
-      return v && monthRe.test(v) ? v : undefined;
-    })(),
-    search: read(sp.q)?.slice(0, 100),
-  };
-  const ledgerFilters: LedgerFilters = { ...filters, q: filters.search };
+  // §6.4 — the authoritative parse; the same filter objects drive the list
+  // query, the summary query and the URL-building controls.
+  const { filters, ledgerFilters } = parseLedgerSearchParams(sp);
 
   // §5.7: the strip window is derived from the current IST month and covers the
   // whole seeded history (36 months); "All" reaches anything older.

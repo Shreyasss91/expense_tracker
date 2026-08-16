@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { format, parse } from "date-fns";
 import { cn } from "@/lib/utils";
-import { buildLedgerUrl, type LedgerFilters } from "@/components/transactions/filters";
+import { buildLedgerUrl, type LedgerFilters } from "@/lib/ledger-url";
 
 function chip(active: boolean) {
   return cn(
