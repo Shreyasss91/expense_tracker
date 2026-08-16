@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { addMonths, format, parse } from "date-fns";
-import { and, asc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
 import { formatINR, rupeesToPaise } from "@/lib/money";
@@ -28,11 +28,10 @@ const getDashboardData = unstable_cache(
     const end = monthEndInIST(baseDate);
     const range = and(gte(transactions.date, start), lte(transactions.date, end));
 
-    const [totalsTags, catRows, memberRows, trendRows, memberList] = await Promise.all([
-      // income + expense + all three expense tags in a single pass over the month
+    const [totalsTags, catRows, memberRows, trendRows, memberList, largestRows] = await Promise.all([
+      // expense + all three expense tags in a single pass over the month
       db
         .select({
-          income: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'income'), 0)`,
           expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
           recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
           lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'lifestyle'), 0)`,
@@ -74,12 +73,30 @@ const getDashboardData = unstable_cache(
         .where(gte(transactions.date, `${format(addMonths(baseDate, -5), "yyyy-MM")}-01`))
         .groupBy(sql`substring(${transactions.date}::text from 1 for 7)`),
       db.select().from(members).orderBy(asc(members.sortOrder)),
+      // Largest single expense this month — for the summary card
+      db
+        .select({
+          amount: transactions.amount,
+          note: transactions.note,
+          categoryName: categories.name,
+          categoryEmoji: categories.emoji,
+          categoryColor: categories.color,
+        })
+        .from(transactions)
+        .innerJoin(categories, eq(transactions.categoryId, categories.id))
+        .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lte(transactions.date, end)))
+        .orderBy(desc(transactions.amount))
+        .limit(1),
     ]);
 
     const totals = totalsTags[0];
-    const incomePaise = rupeesToPaise(totals.income);
     const expensePaise = rupeesToPaise(totals.expense);
-    const netPaise = incomePaise - expensePaise;
+
+    const topCategory = catRows.reduce<typeof catRows[number] | null>(
+      (best, r) => (best === null || rupeesToPaise(r.total) > rupeesToPaise(best.total) ? r : best),
+      null,
+    );
+    const largest = largestRows[0];
 
     const tags = [
       { key: "lifestyle", label: "Lifestyle", paise: rupeesToPaise(totals.lifestyle), color: "#0ea5e9" },
@@ -107,7 +124,20 @@ const getDashboardData = unstable_cache(
       };
     });
 
-    return { incomePaise, expensePaise, netPaise, tags, catRows, memberSlices, trend };
+    return {
+      expensePaise,
+      lifestylePaise: rupeesToPaise(totals.lifestyle),
+      topCategory: topCategory
+        ? { name: topCategory.name, emoji: topCategory.emoji, color: topCategory.color, paise: rupeesToPaise(topCategory.total) }
+        : null,
+      largestSpend: largest
+        ? { amountPaise: rupeesToPaise(largest.amount), note: largest.note, categoryName: largest.categoryName, categoryEmoji: largest.categoryEmoji }
+        : null,
+      tags,
+      catRows,
+      memberSlices,
+      trend,
+    };
   },
   ["family-ledger", "dashboard"],
   { tags: ["transactions"], revalidate: 60 },
@@ -141,13 +171,7 @@ export default async function DashboardPage({
       </div>
 
       {/* Summary cards (§6.3) */}
-      <div className="grid grid-cols-3 gap-2">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Income</p>
-            <p className="mt-1 truncate text-base font-semibold tabular-nums text-emerald-600 sm:text-lg">{formatINR(data.incomePaise)}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-2">
         <Card>
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Expense</p>
@@ -156,9 +180,38 @@ export default async function DashboardPage({
         </Card>
         <Card>
           <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Net savings</p>
-            {/* §6.3.1: with zero income, show the negative expense total in red — never a % */}
-            <p className={`mt-1 truncate text-base font-semibold tabular-nums sm:text-lg ${data.netPaise < 0 ? "text-red-600" : "text-emerald-600"}`}>{formatINR(data.netPaise)}</p>
+            <p className="text-xs text-muted-foreground">Top category</p>
+            {data.topCategory ? (
+              <>
+                <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">
+                  {data.topCategory.emoji} {formatINR(data.topCategory.paise)}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">{data.topCategory.name}</p>
+              </>
+            ) : (
+              <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Lifestyle spend</p>
+            <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">{formatINR(data.lifestylePaise)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Largest spend</p>
+            {data.largestSpend ? (
+              <>
+                <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.largestSpend.amountPaise)}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {data.largestSpend.categoryEmoji} {data.largestSpend.note || data.largestSpend.categoryName}
+                </p>
+              </>
+            ) : (
+              <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
+            )}
           </CardContent>
         </Card>
       </div>
