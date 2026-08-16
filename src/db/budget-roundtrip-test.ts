@@ -19,8 +19,15 @@ config({ path: ".env.local" });
 import { eq, sql } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
+import {
+  EXCLUDE_BILLS_KEY,
+  excludeBillsEnabled,
+  getAppSetting,
+  getExcludeBillsEnabled,
+  setAppSetting,
+} from "./app-settings-mutations";
 import { replaceBudgetScope, replaceTotalBudgetRow } from "./budget-mutations";
-import { budgets, categories } from "./schema";
+import { appSettings, budgets, categories } from "./schema";
 import { saveBudgetsSchema, setTotalBudgetSchema } from "../lib/validations";
 import { rupeesToPaise } from "../lib/money";
 
@@ -46,8 +53,10 @@ async function main() {
   const catId = cat.id;
   const otherCat = (await db.select().from(categories).limit(2))[1] ?? cat;
 
-  // Snapshot the real every-month default scope so we can restore it exactly.
+  // Snapshot the real every-month default scope and the exclude-bills setting
+  // so we can restore them exactly.
   const beforeDefault = await db.select().from(budgets).where(sql`${budgets.month} IS NULL`);
+  const beforeExcludeBills = await getAppSetting(db, EXCLUDE_BILLS_KEY);
 
   try {
     // 1. saveBudgets for a concrete month: total + one category limit; the
@@ -110,6 +119,17 @@ async function main() {
       defaults.some((r) => r.categoryId === null && rupeesToPaise(r.amount) === 8_000_000),
       "default scope (month NULL) total persisted at ₹80,000",
     );
+
+    // 6. App-settings round-trip — the global exclude-bills toggle persists and
+    //    flips (the same neon-http class of bug as budgets: no transaction,
+    //    plain upsert).
+    await setAppSetting(db, EXCLUDE_BILLS_KEY, "1");
+    check(await getExcludeBillsEnabled(db), "exclude-bills on persists and reads back enabled");
+    check(excludeBillsEnabled(await getAppSetting(db, EXCLUDE_BILLS_KEY)), "raw value round-trips as '1'");
+    await setAppSetting(db, EXCLUDE_BILLS_KEY, "0");
+    check(!(await getExcludeBillsEnabled(db)), "exclude-bills off persists and reads back disabled");
+    check(!excludeBillsEnabled(await getAppSetting(db, EXCLUDE_BILLS_KEY)), "raw value round-trips as '0'");
+    check(!excludeBillsEnabled(null), "missing setting parses as disabled (off by default)");
   } finally {
     // Cleanup — always run, even when an assertion above failed.
     await db.delete(budgets).where(eq(budgets.month, month));
@@ -123,6 +143,14 @@ async function main() {
     } else {
       failures += 1;
       console.error("  ✗ REVERT FAILED — the default budget may be changed; re-check Settings");
+    }
+    // Restore the real exclude-bills setting exactly as it was.
+    if (beforeExcludeBills === null) {
+      await db.delete(appSettings).where(eq(appSettings.key, EXCLUDE_BILLS_KEY));
+      console.log("  ✓ exclude-bills setting restored (had no prior value)");
+    } else {
+      await setAppSetting(db, EXCLUDE_BILLS_KEY, beforeExcludeBills);
+      console.log("  ✓ exclude-bills setting restored to its prior value");
     }
   }
 
