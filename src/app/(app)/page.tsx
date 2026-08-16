@@ -81,6 +81,7 @@ const getDashboardData = unstable_cache(
         .select({
           amount: transactions.amount,
           note: transactions.note,
+          categoryId: categories.id,
           categoryName: categories.name,
           categoryEmoji: categories.emoji,
           categoryColor: categories.color,
@@ -155,10 +156,10 @@ const getDashboardData = unstable_cache(
       expensePaise,
       lifestylePaise: rupeesToPaise(totals.lifestyle),
       topCategory: topCategory
-        ? { name: topCategory.name, emoji: topCategory.emoji, color: topCategory.color, paise: rupeesToPaise(topCategory.total) }
+        ? { id: topCategory.id, name: topCategory.name, emoji: topCategory.emoji, color: topCategory.color, paise: rupeesToPaise(topCategory.total) }
         : null,
       largestSpend: largest
-        ? { amountPaise: rupeesToPaise(largest.amount), note: largest.note, categoryName: largest.categoryName, categoryEmoji: largest.categoryEmoji }
+        ? { amountPaise: rupeesToPaise(largest.amount), note: largest.note, categoryId: largest.categoryId, categoryName: largest.categoryName, categoryEmoji: largest.categoryEmoji }
         : null,
       budget: {
         totalPaise: totalBudget ? rupeesToPaise(totalBudget.amount) : null,
@@ -203,50 +204,68 @@ export default async function DashboardPage({
         <MonthPicker month={monthKey} />
       </div>
 
-      {/* Summary cards (§6.3) */}
+      {/* Summary cards (§6.3) — each links to the ledger filtered to its transactions */}
       <div className="grid grid-cols-2 gap-2">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Expense</p>
-            <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.expensePaise)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Top category</p>
-            {data.topCategory ? (
-              <>
-                <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">
-                  {data.topCategory.emoji} {formatINR(data.topCategory.paise)}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">{data.topCategory.name}</p>
-              </>
-            ) : (
-              <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Lifestyle spend</p>
-            <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">{formatINR(data.lifestylePaise)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-xs text-muted-foreground">Largest spend</p>
-            {data.largestSpend ? (
-              <>
-                <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.largestSpend.amountPaise)}</p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {data.largestSpend.categoryEmoji} {data.largestSpend.note || data.largestSpend.categoryName}
-                </p>
-              </>
-            ) : (
-              <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
-            )}
-          </CardContent>
-        </Card>
+        <Link href={`/transactions?month=${monthKey}&type=expense`} className="block active:scale-[0.98] transition-transform">
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">Expense</p>
+              <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.expensePaise)}</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link
+          href={data.topCategory ? `/transactions?month=${monthKey}&category=${data.topCategory.id}` : `/transactions?month=${monthKey}&type=expense`}
+          className="block active:scale-[0.98] transition-transform"
+        >
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">Top category</p>
+              {data.topCategory ? (
+                <>
+                  <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">
+                    {data.topCategory.emoji} {formatINR(data.topCategory.paise)}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">{data.topCategory.name}</p>
+                </>
+              ) : (
+                <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/transactions?month=${monthKey}&tag=lifestyle`} className="block active:scale-[0.98] transition-transform">
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">Lifestyle spend</p>
+              <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">{formatINR(data.lifestylePaise)}</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link
+          href={
+            data.largestSpend
+              ? `/transactions?month=${monthKey}&category=${data.largestSpend.categoryId}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`
+              : `/transactions?month=${monthKey}&type=expense`
+          }
+          className="block active:scale-[0.98] transition-transform"
+        >
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">Largest spend</p>
+              {data.largestSpend ? (
+                <>
+                  <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.largestSpend.amountPaise)}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {data.largestSpend.categoryEmoji} {data.largestSpend.note || data.largestSpend.categoryName}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Budget card (§6.7) — total spent vs the effective budget, with inline edit/clear */}
