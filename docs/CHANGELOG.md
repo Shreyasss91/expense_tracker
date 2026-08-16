@@ -63,7 +63,7 @@ state; this entry reconciles the frozen spec with it.
 
 ---
 
-## v1.2 Amendment — 16 August 2026 (owner decision: budgets)
+## v1.2 Amendment — 16 August 2026 (owner decisions: budgets; ledger reconciliation)
 
 ### Amendment 4 — Monthly budgets (total + per-category) added (§4.2, §6.5, §6.7, §11)
 
@@ -117,6 +117,30 @@ state; this entry reconciles the frozen spec with it.
   budgets are fully in scope, and a client-side, in-app over-budget **toast** on expense
   create/edit is included; over-budget alerts as a *notification* feature (email/telegram
   digest) remain out of scope.
+
+### Amendment 5 — Ledger page reconciliation (§6.3, §6.4, §6.7)
+
+- **Decision:** on 16 Aug 2026 the owner asked that the specification be brought in line
+  with the implemented ledger/dashboard features ("include all the features i asked you
+  to include"). This entry records the resulting spec reconciliation; the features were
+  already implemented and committed.
+- **§6.4 Transactions List View** now documents the **month strip** (last 36 months in
+  IST + "All", URL-driven `?month=yyyy-MM`, preserves other filters), the
+  **expense-focused summary header** (Expense · Lifestyle spend · Largest spend + entry
+  count over exactly the filtered set, computed by one SQL pass sharing the list's
+  `WHERE`), and the **`type=income|expense` URL filter** alongside member/category/tag/
+  month/search.
+- **§6.7** cross-reference corrected: the spent-vs-budget bar under the month strip is
+  now referenced as "Ledger month strip (§6.4)" — it previously pointed at §7.3
+  (pagination).
+- **§6.3** reconciled: the "Income vs Expense: Net savings visualization" bullet now
+  states that the standalone income/net cards were **removed** (16 Aug expense-focused
+  iteration) and income vs expense is visible as the gap between the 6-month trend's
+  expense and income lines; §6.3.1's Total Income / Net Savings rows are annotated
+  accordingly and retained for the record.
+- **Supersedes:** nothing frozen — this entry documents implemented behaviour, it does
+  not remove any exclusion. The v1 §11 exclusion list stands apart from the budget
+  bullet already amended.
 
 ---
 

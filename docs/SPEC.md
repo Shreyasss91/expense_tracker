@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) and 16 August 2026 (budgets; see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) and 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -19,8 +19,11 @@
 >
 > **16 August 2026 — budgets authorized by the owner** (§6.7, §4.2, §11): monthly budgets
 > (total + per-category, per-month or as an every-month default) are a new v1.2 feature
-> with a `budgets` table, Settings card, and dashboard Budget card. Recorded in
-> `CHANGELOG.md`.
+> with a `budgets` table, Settings card, and dashboard Budget card. The same day's owner
+> iterations added: an expense-focused dashboard summary strip and ledger header, a
+> spent-vs-budget bar under the ledger month strip, a global "exclude bills" toggle
+> (`app_settings`), a Bills summary card, and a one-tap "It's a bill" Quick Add
+> shortcut (§6.2–§6.7). All recorded in `CHANGELOG.md`.
 
 ---
 
@@ -108,7 +111,8 @@ The seed script maps the CSV `member` string through **this table as a literal l
 
 ## 4. Database Schema (Drizzle ORM)
 
-4 core tables. All IDs are UUIDs.
+6 tables — 4 core (`members`, `categories`, `transactions`) plus `budgets` (§6.7) and
+`app_settings` (§6.7). All IDs are UUIDs.
 
 ### 4.1 Enums
 ```typescript
@@ -361,8 +365,11 @@ One-handed mobile use, < 5 seconds:
 - **Tag Breakdown row:** "₹X in bills · ₹Y in lifestyle · ₹Z in one-time buys" — 3 progress bars with %.
 - **Category Pie Chart:** Recharts PieChart of expense distribution.
 - **Member Split:** Horizontal bar chart (Dad vs Mom vs Son).
-- **6-Month Trend:** Line chart comparing monthly totals.
-- **Income vs Expense:** Net savings visualization.
+- **6-Month Trend:** Line chart comparing monthly totals — the expense line (red) and
+  income line (green) plotted together, so income vs expense is visible as the gap
+  between them. (The standalone **Income / Net savings cards were removed** in the
+  expense-focused iteration, 16 Aug 2026 — the summary strip is now Expense · Top
+  category · Lifestyle spend · Bills · Largest spend.)
 
 All figures come from SQL aggregates (§7.2), never from client-side reduction over a fetched table.
 
@@ -384,11 +391,35 @@ The seeded history contains **no income rows and no `Son` rows**, so these state
 
 **Note:** the tag-breakdown denominator is *total expense*, never income. With no income rows this is the difference between a working dashboard and three broken bars.
 
+**Note on the removed cards (16 Aug 2026):** the **Total Income** and **Net Savings** rows
+above governed the income/net summary cards, which the expense-focused owner iteration
+removed from the dashboard (§6.3). Income survives only as the 6-month trend's income
+line, which follows the trend row below (plots `0` for income-less months — never a gap).
+The rows above are retained for the record and for any future income-driven surface.
+
 ### 6.4 Transactions List View
+- **Month strip:** a horizontally scrollable strip of the last **36 months** (IST, §5.7)
+  plus **All** — quick month navigation. The `month` filter is URL-driven
+  (`?month=yyyy-MM`); tapping a month **preserves every other active filter**, and
+  **All** clears it (also reaching anything outside the window).
+- **Summary header:** directly under the strip, one card summarizing **exactly the
+  filtered set** — month + member + category + tag + type + search — showing **Expense ·
+  Lifestyle spend · Largest spend** and the entry count. Expense-focused by owner
+  iteration (16 Aug 2026): income and net-savings were dropped, replaced by lifestyle
+  and the largest single spend, mirroring the dashboard's summary cards (§6.3). With no
+  month selected it reports the all-time totals. Computed by a single SQL pass
+  (`getLedgerSummary`) over the **same `WHERE` clause as the list**, so the numbers
+  describe exactly what the filters describe — never just the visible page.
 - **Grouping:** By date ("Today", "Yesterday", "12 Aug 2026") — all three resolved in `Asia/Kolkata` (§5.7).
 - **List Item:** Emoji · Category · Note (truncated) · Member avatar · **₹Amount** (red=expense, green=income).
 - **Interactions:** Swipe-left delete (§6.4.1), tap to edit.
-- **Filters:** Pill toggles for Member, Category, Tag, Month + search. **Filtering, sorting and paging all execute in SQL** (§7.3) — never in the browser over a fully-fetched table.
+- **Filters:** URL-driven pill toggles for Member, Category, Tag, **Type** (`income` /
+  `expense`) and Month, plus search — every filter (and the month strip) writes to the
+  URL (`?member=…&category=…&tag=…&type=…&month=…&q=…`), so filtered views are shareable
+  and server-rendered. **Filtering, sorting and paging all execute in SQL** (§7.3) —
+  never in the browser over a fully-fetched table.
+- **Budget bar:** when a month is selected, a spent-vs-budget bar renders directly under
+  the strip (§6.7) — month-scoped, ignoring the list's other filters.
 - **Paging:** Keyset pagination on the strict total order `date DESC, time DESC, created_at DESC, id DESC`, infinite scroll (§7.3). The same ordering is used by the list query and the cursor comparison.
 - **CSV Export button** (§6.6).
 
@@ -482,7 +513,7 @@ never overflowing its container) — not just a colour flip. A small **tick mark
 point** (the budget limit): the bar's right edge under budget, the band/overflow boundary
 when over.
 
-**Ledger month strip (§7.3):** when a month is selected, the ledger shows a spent-vs-budget
+**Ledger month strip (§6.4):** when a month is selected, the ledger shows a spent-vs-budget
 bar directly under the strip — the month's total expense against the effective total
 budget, with "₹X left / ₹X over" (green/red), computed server-side via
 `getMonthBudgetStatus`. No total budget for the month → no bar. The bar is month-scoped
