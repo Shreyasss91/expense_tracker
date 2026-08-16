@@ -85,7 +85,9 @@ state; this entry reconciles the frozen spec with it.
   card; an **over-budget toast** on create/edit when the post-write month or category total
   exceeds the effective budget (client-side, in-app only — no email/telegram alerts); an
   **inline edit/clear shortcut** on the dashboard Budget card (`setTotalBudget` — total row
-  for the exact month only); **remaining-per-category hints** on the Quick Add category grid
+  for the exact month only); a **spent-vs-budget bar** under the ledger's month strip when a
+  month is selected (`getMonthBudgetStatus` — month total vs effective total budget,
+  month-scoped, hidden when no total budget is set); **remaining-per-category hints** on the Quick Add category grid
   (`getCategoryBudgetStatus`, resolved against the chosen date's month); and the
   `saveBudgets` Server Action (Zod-validated, delete-then-insert in a transaction,
   `revalidatePath('/')` + `revalidateTag('transactions')`).

@@ -449,6 +449,13 @@ Per-category budget bars live inside the **Spending by category** card, next to 
 they constrain. No budget set → a "Set one in Settings" link. Zero-denominator safety per
 §6.3.1: a zero budget renders an empty bar, never a division by zero.
 
+**Ledger month strip (§7.3):** when a month is selected, the ledger shows a spent-vs-budget
+bar directly under the strip — the month's total expense against the effective total
+budget, with "₹X left / ₹X over" (green/red), computed server-side via
+`getMonthBudgetStatus`. No total budget for the month → no bar. The bar is month-scoped
+and ignores the ledger's other filters (member/category/tag/search), since budgets are
+per-month.
+
 **Quick Add hints (§6.2/§6.7):** on the category grid (the committing step), each category
 that has a budget for the transaction's month shows its **remaining** amount underneath
 („₹X left" in green, „₹X over" in red). Computed client-side via the

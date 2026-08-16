@@ -10,6 +10,8 @@ import { TRANSACTION_TAGS } from "@/lib/constants";
 import { monthKeyInIST } from "@/lib/dates";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { getLedgerSummary, type TransactionListFilters } from "@/lib/query";
+import { getMonthBudgetStatus } from "@/lib/budgets";
+import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
 import { z } from "zod";
 
 export const metadata = { title: "Ledger — Family Ledger" };
@@ -53,11 +55,13 @@ export default async function TransactionsPage({
   const stripBase = parse(`${monthKeyInIST()}-01`, "yyyy-MM-dd", new Date());
   const stripMonths = Array.from({ length: 36 }, (_, i) => format(addMonths(stripBase, i - 35), "yyyy-MM"));
 
-  const [firstPage, summary, memberRows, categoryRows] = await Promise.all([
+  const [firstPage, summary, memberRows, categoryRows, monthBudget] = await Promise.all([
     getTransactionsPage({ cursor: null, filters }),
     getLedgerSummary(filters),
     getMembers(),
     getCategories(),
+    // §6.7 — spent-vs-budget for the strip's selected month; null when no total budget
+    filters.month ? getMonthBudgetStatus(filters.month) : Promise.resolve(null),
   ]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
@@ -84,6 +88,18 @@ export default async function TransactionsPage({
         <ExportButton />
       </div>
       <MonthStrip months={stripMonths} selected={filters.month} filters={ledgerFilters} />
+      {/* §6.7 — spent-vs-budget bar for the selected month; shown only when a total budget is set */}
+      {filters.month && monthBudget && (
+        <div className="space-y-1.5 px-0.5">
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="font-medium text-muted-foreground">
+              {format(parse(`${filters.month}-01`, "yyyy-MM-dd", new Date()), "MMMM")} budget
+            </span>
+            <BudgetRemaining spent={monthBudget.spentPaise} budget={monthBudget.budgetPaise} />
+          </div>
+          <BudgetBar spent={monthBudget.spentPaise} budget={monthBudget.budgetPaise} />
+        </div>
+      )}
       <LedgerSummaryHeader monthKey={filters.month} summary={summary} />
       <FiltersBar members={memberOptions} categories={categoryOptions} filters={ledgerFilters} />
       {/* remount on filter change so client state resets to the new server page */}

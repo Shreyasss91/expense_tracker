@@ -49,6 +49,33 @@ export function budgetsForMonth(monthKey: string) {
 }
 
 /**
+ * §6.7 — spent-vs-budget for a month's total, for the ledger month strip: the
+ * month's total expense against the effective total budget (exact month wins,
+ * else the every-month default). Returns null when no total budget is set for
+ * the month — the strip then shows no bar.
+ */
+export async function getMonthBudgetStatus(
+  monthKey: string,
+): Promise<{ spentPaise: number; budgetPaise: number } | null> {
+  const budgetRows = await budgetsForMonth(monthKey);
+  const totalBudget = resolveEffectiveBudget(budgetRows, monthKey, null);
+  if (!totalBudget) return null;
+
+  const start = `${monthKey}-01`;
+  const [y, m] = monthKey.split("-").map(Number);
+  const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+
+  const rows = await db
+    .select({
+      expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
+    })
+    .from(transactions)
+    .where(and(gte(transactions.date, start), lte(transactions.date, end)));
+
+  return { spentPaise: rupeesToPaise(rows[0].expense), budgetPaise: rupeesToPaise(totalBudget.amount) };
+}
+
+/**
  * §6.7 over-budget check, run by the create/update Server Actions after an
  * expense write. Compares the month total and the affected category's total
  * (both post-write, so the new row is included) against the effective budgets.
