@@ -36,6 +36,10 @@ export default async function TransactionsPage({
       return v && uuid.safeParse(v).success ? v : undefined;
     })(),
     tag: rawTag && (TRANSACTION_TAGS as readonly string[]).includes(rawTag) ? (rawTag as TransactionListFilters["tag"]) : undefined,
+    type: (() => {
+      const v = read(sp.type);
+      return v === "income" || v === "expense" ? v : undefined;
+    })(),
     month: (() => {
       const v = read(sp.month);
       return v && monthRe.test(v) ? v : undefined;

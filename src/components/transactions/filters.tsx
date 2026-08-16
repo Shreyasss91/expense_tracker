@@ -24,6 +24,7 @@ export interface LedgerFilters {
   categoryId?: string;
   tag?: "one_time" | "recurring" | "lifestyle";
   month?: string;
+  type?: "income" | "expense";
   q?: string;
 }
 
@@ -34,6 +35,7 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
   if (filters.categoryId) params.set("category", filters.categoryId);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.month) params.set("month", filters.month);
+  if (filters.type) params.set("type", filters.type);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   const qs = params.toString();
   return qs ? `/transactions?${qs}` : "/transactions";
@@ -124,7 +126,7 @@ export function FiltersBar({
     }
   }
 
-  const hasFilters = !!(filters.memberId || filters.categoryId || filters.tag || filters.month || filters.q);
+  const hasFilters = !!(filters.memberId || filters.categoryId || filters.tag || filters.month || filters.type || filters.q);
 
   return (
     <div className="space-y-2">
