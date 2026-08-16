@@ -177,7 +177,18 @@ export const budgets = pgTable('budgets', {
   scopeUnique: uniqueIndex('budgets_scope_unique')
     .on(sql`COALESCE(${t.month}, '')`, sql`COALESCE(${t.categoryId}::text, '')`),
 }));
+
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),            // plain string; '1'/'0' for booleans (§6.7)
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 ```
+
+**`app_settings`** is a tiny key-value store for global application settings. It currently
+holds exactly one key: `exclude_bills_from_budget` (`'1'`/`'0'` — the global "exclude
+bills from the total budget" toggle, §6.7). Read/written via `src/db/app-settings-mutations.ts`
+(plain statements; upsert on conflict). No row for a key = off.
 
 **Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`, the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3), and `budgets_scope_unique` (§6.7).
 
@@ -392,7 +403,7 @@ Swipe-left delete on a device that gets handed between family members makes acci
 - Manage categories: **rename, emoji, reorder only**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3).
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized.
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
-- **Budgets (owner amendment, 16 Aug 2026):** a Budgets card edits monthly limits — total and/or per-category, scoped to one month or to "Every month" as the default (§6.7).
+- **Budgets (owner amendment, 16 Aug 2026):** a Budgets card edits monthly limits — total and/or per-category, scoped to one month or to "Every month" as the default (§6.7). The card also carries the global **"Exclude bills from budgets"** switch — recurring-tagged spend is then ignored by the total monthly limit (§6.7).
 
 ### 6.6 Canonical CSV Export — Normative
 
@@ -442,6 +453,16 @@ month — with a total limit input and per-category limit inputs. Empty inputs m
 Saving replaces the whole scope by delete-then-insert — plain sequential statements, since the
 app's neon-http driver has no transaction support — so `budgets_scope_unique` can never be
 violated by the app.
+
+**Exclude bills (global toggle, owner decision):** a single app-wide switch (stored as
+`exclude_bills_from_budget` in `app_settings`, §4.2) makes **every total-budget comparison
+ignore the month's recurring-tagged spend** — the dashboard Budget card, the ledger month
+strip, and the over-budget toast all compare *discretionary spend* (total expense −
+recurring) against the total limit, and show a small "excluding ₹X in bills" note when the
+toggle is on. **Per-category budgets always count everything** — the exclusion applies to
+the total budget only (owner decision). The recurring tag itself (§5.2) and the "₹X in
+bills" tag-breakdown row (§6.3) already identify bills; this toggle decides whether they
+count against the limit.
 
 **Dashboard (§6.3):** a Budget card shows spent vs the effective total budget with a progress
 bar, "₹X left / ₹X over" (green/red), plus an **inline edit/clear shortcut** (pencil → set

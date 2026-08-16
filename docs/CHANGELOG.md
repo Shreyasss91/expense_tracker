@@ -96,6 +96,14 @@ state; this entry reconciles the frozen spec with it.
   via `replaceBudgetScope`/`replaceTotalBudgetRow` in `src/db/budget-mutations.ts`,
   `revalidatePath('/')` + `revalidateTag('transactions')`).
 - **§6.5 Settings** gains the Budgets card bullet.
+- **§6.7 exclude-bills toggle (owner decision):** a **global** "Exclude bills from budgets"
+  switch in the Settings Budgets card (stored in a new `app_settings` key-value table,
+  migration `0002`, key `exclude_bills_from_budget` as `'1'`/`'0'`). When on, **total**
+  budget comparisons — dashboard Budget card, ledger month strip, over-budget toast —
+  subtract the month's recurring-tagged spend and show an "excluding ₹X in bills" note.
+  **Per-category budgets are unaffected** (owner decision): the exclusion applies to the
+  total budget only. The recurring tag (§5.2) and the tag-breakdown "Bills" row already
+  identified bills; this toggle decides whether they count against the total limit.
 - **Supersedes:** the v1 §11 exclusion of budget limits/over-budget alerts. Scope note:
   budgets are fully in scope, and a client-side, in-app over-budget **toast** on expense
   create/edit is included; over-budget alerts as a *notification* feature (email/telegram
