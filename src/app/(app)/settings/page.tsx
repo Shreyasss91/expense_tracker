@@ -1,13 +1,29 @@
+import { addMonths, format, parse } from "date-fns";
+import { db } from "@/db";
+import { budgets } from "@/db/schema";
 import { getCategories, getMembers } from "@/lib/meta";
+import { monthKeyInIST } from "@/lib/dates";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { MembersManager } from "@/components/settings/members-manager";
+import { BudgetManager } from "@/components/settings/budget-manager";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows] = await Promise.all([getMembers(), getCategories()]);
+  const [memberRows, categoryRows, budgetRows] = await Promise.all([
+    getMembers(),
+    getCategories(),
+    db.select().from(budgets),
+  ]);
+
+  // Scope options for the budget manager — same 36-month window as the ledger strip, newest first.
+  const stripBase = parse(`${monthKeyInIST()}-01`, "yyyy-MM-dd", new Date());
+  const months = Array.from({ length: 36 }, (_, i) => {
+    const key = format(addMonths(stripBase, i - 35), "yyyy-MM");
+    return { key, label: format(parse(`${key}-01`, "yyyy-MM-dd", new Date()), "MMM yyyy") };
+  }).reverse();
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,
@@ -51,6 +67,19 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <CategoriesManager categories={categoryOptions} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Budgets</CardTitle>
+          <CardDescription className="text-xs">
+            Set a monthly spending limit — a total for the whole month and/or per category. Each month
+            can have its own budget; the &ldquo;Every month&rdquo; default is used for months without their own.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} />
         </CardContent>
       </Card>
 
