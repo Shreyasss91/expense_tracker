@@ -15,6 +15,13 @@
       "when": 1786877549981,
       "tag": "0001_peaceful_vector",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786889389022,
+      "tag": "0002_familiar_dust",
+      "breakpoints": true
     }
   ]
 }

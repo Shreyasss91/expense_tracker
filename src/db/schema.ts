@@ -109,8 +109,21 @@ export const budgets = pgTable(
   }),
 );
 
+/**
+ * Key-value app settings (§6.7). One row per key; values are plain strings.
+ * Currently holds `exclude_bills_from_budget` ('1'/'0') — the global
+ * "exclude bills from the total budget" toggle. Read/written via
+ * src/db/app-settings-mutations.ts (plain statements).
+ */
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export type Member = typeof members.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
 export type Budget = typeof budgets.$inferSelect;
+export type AppSetting = typeof appSettings.$inferSelect;
