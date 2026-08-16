@@ -107,6 +107,12 @@ state; this entry reconciles the frozen spec with it.
 - **§6.2 one-tap bill shortcut:** the Quick Add amount step gains an **"It's a bill"**
   toggle that pre-selects the `recurring` tag in one tap (recharges, EMIs, rent — no trip
   through Details); the Details tag selector can still change it.
+- **§6.3 Bills summary card:** the Overview summary strip gains a **Bills** card — the
+  month's `recurring`-tagged total in purple with its entry count, linking to the Ledger
+  filtered to `tag=recurring`. The same correction updates §6.3's stale "Total Income ·
+  Total Expense · Net Savings" summary-card wording to the implemented expense-focused
+  set (Expense · Top category · Lifestyle spend · Bills · Largest spend, all drilling into
+  the filtered Ledger).
 - **Supersedes:** the v1 §11 exclusion of budget limits/over-budget alerts. Scope note:
   budgets are fully in scope, and a client-side, in-app over-budget **toast** on expense
   create/edit is included; over-budget alerts as a *notification* feature (email/telegram

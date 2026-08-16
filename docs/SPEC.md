@@ -352,7 +352,12 @@ One-handed mobile use, < 5 seconds:
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
-- **Summary Cards:** Total Income · Total Expense · Net Savings (green/red).
+- **Summary Cards (expense-focused, owner iteration 16 Aug 2026):** Expense · Top category ·
+  Lifestyle spend · **Bills** · Largest spend. Bills is the month's `recurring`-tagged total
+  with its entry count (§5.2, §6.7 — the same figure the budget can exclude). Every card
+  links to the Ledger pre-filtered to the transactions it describes: `type=expense`,
+  `category=<topCategoryId>`, `tag=lifestyle`, `tag=recurring`, or `category=<id>&q=<note>`
+  for the largest single spend.
 - **Tag Breakdown row:** "₹X in bills · ₹Y in lifestyle · ₹Z in one-time buys" — 3 progress bars with %.
 - **Category Pie Chart:** Recharts PieChart of expense distribution.
 - **Member Split:** Horizontal bar chart (Dad vs Mom vs Son).

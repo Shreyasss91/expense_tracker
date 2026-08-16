@@ -38,6 +38,7 @@ const getDashboardData = unstable_cache(
         .select({
           expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
           recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
+          recurringCount: sql<number>`COUNT(*) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring')::int`,
           lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'lifestyle'), 0)`,
           oneTime: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'one_time'), 0)`,
         })
@@ -156,6 +157,7 @@ const getDashboardData = unstable_cache(
     return {
       expensePaise,
       billsPaise: rupeesToPaise(totals.recurring),
+      billsCount: Number(totals.recurringCount),
       lifestylePaise: rupeesToPaise(totals.lifestyle),
       topCategory: topCategory
         ? { id: topCategory.id, name: topCategory.name, emoji: topCategory.emoji, color: topCategory.color, paise: rupeesToPaise(topCategory.total) }
@@ -243,6 +245,17 @@ export default async function DashboardPage({
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">Lifestyle spend</p>
               <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">{formatINR(data.lifestylePaise)}</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={`/transactions?month=${monthKey}&tag=recurring`} className="block active:scale-[0.98] transition-transform">
+          <Card>
+            <CardContent className="p-3">
+              <p className="text-xs text-muted-foreground">Bills</p>
+              <p className="mt-1 truncate text-base font-semibold tabular-nums text-[#8b5cf6] sm:text-lg">{formatINR(data.billsPaise)}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {data.billsCount > 0 ? `${data.billsCount} recurring ${data.billsCount === 1 ? "entry" : "entries"}` : "No recurring entries"}
+              </p>
             </CardContent>
           </Card>
         </Link>
