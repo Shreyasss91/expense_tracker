@@ -104,6 +104,10 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
     .where(eq(transactions.id, idCheck.data))
     .returning();
 
+  // §7.1 — a valid UUID that matches no transaction is still a failed update:
+  // the UPDATE affected zero rows, so the caller must not see `ok: true`.
+  if (!row) return { ok: false as const, error: "Transaction not found" };
+
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidateTag("transactions");
@@ -112,7 +116,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   const alert: BudgetAlert | null =
     data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
 
-  return { ok: true as const, id: row?.id, alert };
+  return { ok: true as const, id: row.id, alert };
 }
 
 /** §6.4.1 hard delete — no soft delete, no tombstones. */
