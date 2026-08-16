@@ -134,9 +134,9 @@ export const listOrderBy = [
 ];
 
 export interface LedgerSummary {
-  incomePaise: number;
   expensePaise: number;
-  netPaise: number;
+  lifestylePaise: number;
+  largestPaise: number | null;
   count: number;
 }
 
@@ -144,19 +144,25 @@ export interface LedgerSummary {
  * One-pass aggregate for the ledger's summary header. Uses the same
  * buildWhere() as the list, so the numbers describe exactly the filtered set
  * (month + member + category + tag + search) — never just the visible page.
+ * Mirrors the dashboard's expense-focused cards: total, lifestyle and the
+ * largest single spend in the filtered set.
  */
 export async function getLedgerSummary(filters: TransactionListFilters): Promise<LedgerSummary> {
   const where = buildWhere(filters, null);
   const rows = await db
     .select({
-      income: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'income'), 0)`,
       expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
+      lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'lifestyle'), 0)`,
+      largest: sql<string | null>`MAX(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense')`,
       count: sql<number>`COUNT(*)::int`,
     })
     .from(transactions)
     .where(where);
   const r = rows[0];
-  const incomePaise = rupeesToPaise(r.income);
-  const expensePaise = rupeesToPaise(r.expense);
-  return { incomePaise, expensePaise, netPaise: incomePaise - expensePaise, count: Number(r.count) };
+  return {
+    expensePaise: rupeesToPaise(r.expense),
+    lifestylePaise: rupeesToPaise(r.lifestyle),
+    largestPaise: r.largest === null ? null : rupeesToPaise(r.largest),
+    count: Number(r.count),
+  };
 }
