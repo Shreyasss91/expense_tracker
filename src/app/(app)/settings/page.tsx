@@ -1,5 +1,6 @@
 import { addMonths, format, parse } from "date-fns";
 import { db } from "@/db";
+import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { budgets } from "@/db/schema";
 import { getCategories, getMembers } from "@/lib/meta";
 import { monthKeyInIST } from "@/lib/dates";
@@ -12,10 +13,11 @@ import type { CategoryOption, MemberOption } from "@/components/quick-add/types"
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows, budgetRows] = await Promise.all([
+  const [memberRows, categoryRows, budgetRows, excludeBills] = await Promise.all([
     getMembers(),
     getCategories(),
     db.select().from(budgets),
+    getExcludeBillsEnabled(db),
   ]);
 
   // Scope options for the budget manager — same 36-month window as the ledger strip, newest first.
@@ -79,7 +81,7 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} />
+          <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} excludeBills={excludeBills} />
         </CardContent>
       </Card>
 

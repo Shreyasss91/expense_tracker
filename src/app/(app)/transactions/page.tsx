@@ -12,6 +12,7 @@ import type { CategoryOption, MemberOption } from "@/components/quick-add/types"
 import { getLedgerSummary, type TransactionListFilters } from "@/lib/query";
 import { getMonthBudgetStatus } from "@/lib/budgets";
 import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
+import { formatINR } from "@/lib/money";
 import { z } from "zod";
 
 export const metadata = { title: "Ledger — Family Ledger" };
@@ -98,6 +99,9 @@ export default async function TransactionsPage({
             <BudgetRemaining spent={monthBudget.spentPaise} budget={monthBudget.budgetPaise} />
           </div>
           <BudgetBar spent={monthBudget.spentPaise} budget={monthBudget.budgetPaise} />
+          {monthBudget.excludeBills && monthBudget.billsPaise > 0 && (
+            <p className="text-[11px] text-muted-foreground">excluding {formatINR(monthBudget.billsPaise)} in bills</p>
+          )}
         </div>
       )}
       <LedgerSummaryHeader monthKey={filters.month} summary={summary} />

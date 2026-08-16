@@ -21,17 +21,25 @@ export function BudgetCard({
   monthKey,
   totalPaise,
   expensePaise,
+  billsPaise,
+  excludeBills,
   hasCategoryBudgets,
 }: {
   monthKey: string;
   totalPaise: number | null;
   expensePaise: number;
+  /** Recurring-tagged spend this month — the "bills" the budget can exclude (§6.7). */
+  billsPaise: number;
+  /** Global setting: subtract recurring spend from the total-budget comparison. */
+  excludeBills: boolean;
   hasCategoryBudgets: boolean;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(totalPaise !== null ? String(totalPaise / 100) : "");
   const [saving, setSaving] = useState(false);
+  // §6.7 — with exclude-bills on, the bar compares discretionary spend (total − bills)
+  const spentPaise = excludeBills ? Math.max(0, expensePaise - billsPaise) : expensePaise;
 
   function startEdit() {
     setValue(totalPaise !== null ? String(totalPaise / 100) : "");
@@ -72,11 +80,14 @@ export function BudgetCard({
     ) : (
       <div className="space-y-1">
         <div className="flex items-baseline justify-between text-sm">
-          <span className="font-semibold tabular-nums">{formatINR(expensePaise)}</span>
+          <span className="font-semibold tabular-nums">{formatINR(spentPaise)}</span>
           <span className="text-xs text-muted-foreground">of {formatINR(totalPaise)}</span>
         </div>
-        <BudgetBar spent={expensePaise} budget={totalPaise} />
-        <BudgetRemaining spent={expensePaise} budget={totalPaise} />
+        <BudgetBar spent={spentPaise} budget={totalPaise} />
+        <BudgetRemaining spent={spentPaise} budget={totalPaise} />
+        {excludeBills && billsPaise > 0 && (
+          <p className="text-[11px] text-muted-foreground">excluding {formatINR(billsPaise)} in bills</p>
+        )}
       </div>
     );
 

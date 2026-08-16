@@ -7,6 +7,7 @@ import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveBudgets } from "@/actions/settings";
+import { saveBudgets, setExcludeBills } from "@/actions/settings";
 import type { CategoryOption } from "@/components/quick-add/types";
 
 interface BudgetRow {
@@ -29,6 +30,8 @@ interface BudgetManagerProps {
   months: { key: string; label: string }[];
   /** Every budget row, so the client can switch scope without a refetch */
   initialBudgets: BudgetRow[];
+  /** Global "exclude bills (recurring) from the total budget" setting (§6.7). */
+  excludeBills: boolean;
 }
 
 /** §5.8 — rupees string (as typed) → integer paise; empty/invalid → 0. */
@@ -53,8 +56,10 @@ const DEFAULT_SCOPE = "__every_month__";
  * and optional per-category limits; empty inputs mean "no limit". Saving
  * replaces the whole scope in one transaction.
  */
-export function BudgetManager({ categories, months, initialBudgets }: BudgetManagerProps) {
+export function BudgetManager({ categories, months, initialBudgets, excludeBills }: BudgetManagerProps) {
   const router = useRouter();
+  const [excludeBillsOn, setExcludeBillsOn] = useState(excludeBills);
+  const [togglingBills, setTogglingBills] = useState(false);
 
   // Effective value for a category in a given scope (explicitly passed, never
   // the state — so switchScope can resolve the NEW scope before it's applied):
@@ -97,8 +102,45 @@ export function BudgetManager({ categories, months, initialBudgets }: BudgetMana
     }
   }
 
+  // §6.7 — global toggle, applied immediately (not part of the scope save).
+  async function toggleExcludeBills(next: boolean) {
+    if (togglingBills) return;
+    setTogglingBills(true);
+    const res = await setExcludeBills({ enabled: next });
+    setTogglingBills(false);
+    if (res.ok) {
+      toast.success(next ? "Bills excluded from budgets" : "Bills count toward budgets");
+      router.refresh();
+    } else {
+      setExcludeBillsOn(!next); // revert the optimistic flip on failure
+      toast.error(res.error ?? "Could not save setting");
+    }
+  }
+
   return (
     <div className="space-y-4">
+      {/* §6.7 — global exclude-bills toggle; affects every scope's total budget */}
+      <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+        <div className="space-y-0.5">
+          <Label htmlFor="budget-exclude-bills" className="text-sm font-medium">
+            Exclude bills from budgets
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Recurring-tagged expenses (rent, EMIs, recharges…) won&apos;t count against the total
+            monthly limit. Category limits still count everything.
+          </p>
+        </div>
+        <Switch
+          id="budget-exclude-bills"
+          checked={excludeBillsOn}
+          disabled={togglingBills}
+          onCheckedChange={(next) => {
+            setExcludeBillsOn(next);
+            void toggleExcludeBills(next);
+          }}
+        />
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <Label htmlFor="budget-scope" className="text-xs text-muted-foreground">
           Applies to

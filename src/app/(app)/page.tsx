@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { addMonths, format, parse } from "date-fns";
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { categories, members, transactions } from "@/db/schema";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthEndInIST, monthKeyInIST } from "@/lib/dates";
@@ -154,6 +155,7 @@ const getDashboardData = unstable_cache(
 
     return {
       expensePaise,
+      billsPaise: rupeesToPaise(totals.recurring),
       lifestylePaise: rupeesToPaise(totals.lifestyle),
       topCategory: topCategory
         ? { id: topCategory.id, name: topCategory.name, emoji: topCategory.emoji, color: topCategory.color, paise: rupeesToPaise(topCategory.total) }
@@ -182,11 +184,13 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const monthKey = typeof sp.month === "string" && MONTH_RE.test(sp.month) ? sp.month : monthKeyInIST();
-  const [data, firstPage, memberRows, categoryRows] = await Promise.all([
+  const [data, firstPage, memberRows, categoryRows, excludeBills] = await Promise.all([
     getDashboardData(monthKey),
     getTransactionsPage({ cursor: null, filters: { month: monthKey } }),
     getMembers(),
     getCategories(),
+    // §6.7 — global toggle, read outside the cache so flipping it needs no cache key change
+    getExcludeBillsEnabled(db),
   ]);
   const memberOptions = memberRows.map((m) => ({
     id: m.id, slug: m.slug, name: m.name, emoji: m.emoji, color: m.color, sortOrder: m.sortOrder,
@@ -278,6 +282,8 @@ export default async function DashboardPage({
             monthKey={monthKey}
             totalPaise={data.budget.totalPaise}
             expensePaise={data.expensePaise}
+            billsPaise={data.billsPaise}
+            excludeBills={excludeBills}
             hasCategoryBudgets={data.budget.categories.length > 0}
           />
         </CardContent>
