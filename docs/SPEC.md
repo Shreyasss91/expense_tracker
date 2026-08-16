@@ -439,8 +439,9 @@ default applies. Applied identically to the total and to each category.
 
 **Settings (§6.5):** the Budgets card edits one scope at a time — "Every month" or a single
 month — with a total limit input and per-category limit inputs. Empty inputs mean no limit.
-Saving replaces the whole scope in one transaction (delete-then-insert), so `budgets_scope_unique`
-can never be violated by the app.
+Saving replaces the whole scope by delete-then-insert — plain sequential statements, since the
+app's neon-http driver has no transaction support — so `budgets_scope_unique` can never be
+violated by the app.
 
 **Dashboard (§6.3):** a Budget card shows spent vs the effective total budget with a progress
 bar, "₹X left / ₹X over" (green/red), plus an **inline edit/clear shortcut** (pencil → set
@@ -469,8 +470,9 @@ overPaise, limitPaise, ... }`) and the client shows a warning toast — "This mo
 budget — ₹X past the ₹Y limit" (or per-category). One alert per write, the total wins over
 the category. This is a client-side, in-app alert only — no email/telegram notifications.
 
-**Server action:** `saveBudgets(raw)` — Zod-validated (§7.1), replaces the scope in a
-transaction, `revalidatePath('/')` + `revalidateTag('transactions')`.
+**Server action:** `saveBudgets(raw)` — Zod-validated (§7.1), replaces the scope via
+`replaceBudgetScope` (delete-then-insert, `src/db/budget-mutations.ts`), `revalidatePath('/')`
++ `revalidateTag('transactions')`.
 
 ---
 

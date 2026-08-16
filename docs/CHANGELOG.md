@@ -79,7 +79,7 @@ state; this entry reconciles the frozen spec with it.
   `budgets_scope_unique` (a COALESCE index so NULLs don't defeat uniqueness).
 - **New §6.7 Budgets:** effective-budget resolution (exact month wins, else the default);
   the Settings Budgets card (one scope at a time, total + per-category inputs, empty = no
-  limit, save replaces the scope in one transaction); the dashboard Budget card (spent vs
+  limit, save replaces the scope by delete-then-insert as plain statements); the dashboard Budget card (spent vs
   budget bar, "₹X left / ₹X over", "Set one in Settings" empty state, §6.3.1
   zero-denominator safety); per-category budget bars inside the **Spending by category**
   card; an **over-budget toast** on create/edit when the post-write month or category total
@@ -89,7 +89,9 @@ state; this entry reconciles the frozen spec with it.
   month is selected (`getMonthBudgetStatus` — month total vs effective total budget,
   month-scoped, hidden when no total budget is set); **remaining-per-category hints** on the Quick Add category grid
   (`getCategoryBudgetStatus`, resolved against the chosen date's month); and the
-  `saveBudgets` Server Action (Zod-validated, delete-then-insert in a transaction,
+  `saveBudgets` Server Action (Zod-validated, delete-then-insert as plain statements — the
+  neon-http driver has no transaction support, so the scope is replaced by delete-then-insert
+  via `replaceBudgetScope`/`replaceTotalBudgetRow` in `src/db/budget-mutations.ts`,
   `revalidatePath('/')` + `revalidateTag('transactions')`).
 - **§6.5 Settings** gains the Budgets card bullet.
 - **Supersedes:** the v1 §11 exclusion of budget limits/over-budget alerts. Scope note:

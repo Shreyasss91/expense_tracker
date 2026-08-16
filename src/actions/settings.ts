@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath, revalidateTag } from "next/cache";
-import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { renameCategory } from "@/db/category-mutations";
-import { budgets, categories, members, transactions } from "@/db/schema";
+import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations";
+import { categories, members, transactions } from "@/db/schema";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
-import { paiseToDbString, rupeesToPaise } from "@/lib/money";
+import { rupeesToPaise } from "@/lib/money";
 import { saveBudgetsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
 import { z } from "zod";
 
@@ -29,11 +30,10 @@ export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) 
 export async function reorderCategories(ids: string[]) {
   const parsed = z.array(z.string().uuid()).safeParse(ids);
   if (!parsed.success) return { ok: false as const, error: "Invalid order" };
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < parsed.data.length; i++) {
-      await tx.update(categories).set({ sortOrder: i + 1 }).where(eq(categories.id, parsed.data[i]));
-    }
-  });
+  // Plain sequential updates — the neon-http driver has no transaction support.
+  for (let i = 0; i < parsed.data.length; i++) {
+    await db.update(categories).set({ sortOrder: i + 1 }).where(eq(categories.id, parsed.data[i]));
+  }
   revalidatePath("/transactions");
   revalidatePath("/settings");
   revalidateTag("categories");
@@ -62,11 +62,10 @@ export async function updateMember(raw: z.infer<typeof updateMemberSchema>) {
 export async function reorderMembers(ids: string[]) {
   const parsed = z.array(z.string().uuid()).safeParse(ids);
   if (!parsed.success) return { ok: false as const, error: "Invalid order" };
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < parsed.data.length; i++) {
-      await tx.update(members).set({ sortOrder: i + 1 }).where(eq(members.id, parsed.data[i]));
-    }
-  });
+  // Plain sequential updates — the neon-http driver has no transaction support.
+  for (let i = 0; i < parsed.data.length; i++) {
+    await db.update(members).set({ sortOrder: i + 1 }).where(eq(members.id, parsed.data[i]));
+  }
   revalidatePath("/");
   revalidatePath("/settings");
   revalidateTag("members");
@@ -74,29 +73,20 @@ export async function reorderMembers(ids: string[]) {
 }
 
 /**
- * §6.7 saveBudgets — replaces the entire budget scope for a month in one
- * transaction: delete-then-insert, so the (month, category) uniqueness is
- * guaranteed by construction. A paise of 0 means "no limit" and is not
- * stored. Category ids are validated as UUIDs; a scope with no stored rows
- * simply means no budget is set for that month.
+ * §6.7 saveBudgets — replaces the entire budget scope for a month:
+ * delete-then-insert via `replaceBudgetScope` (plain statements, since the
+ * neon-http driver has no transaction support), so the (month, category)
+ * uniqueness is guaranteed by construction. A paise of 0 means "no limit"
+ * and is not stored. Category ids are validated as UUIDs; a scope with no
+ * stored rows simply means no budget is set for that month.
  */
 export async function saveBudgets(raw: z.infer<typeof saveBudgetsSchema>) {
   const parsed = saveBudgetsSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid budget data" };
   const { month, totalPaise, categories: categoryLimits } = parsed.data;
 
-  await db.transaction(async (tx) => {
-    await tx.delete(budgets).where(month === null ? sql`${budgets.month} IS NULL` : eq(budgets.month, month));
-
-    const rows: (typeof budgets.$inferInsert)[] = [];
-    if (totalPaise && totalPaise > 0) {
-      rows.push({ month, categoryId: null, amount: paiseToDbString(totalPaise) });
-    }
-    for (const c of categoryLimits) {
-      if (c.paise > 0) rows.push({ month, categoryId: c.categoryId, amount: paiseToDbString(c.paise) });
-    }
-    if (rows.length > 0) await tx.insert(budgets).values(rows);
-  });
+  // null total means "no total limit" — replaceBudgetScope treats 0 the same.
+  await replaceBudgetScope(db, month, totalPaise ?? 0, categoryLimits);
 
   revalidatePath("/");
   revalidatePath("/settings");
@@ -114,12 +104,7 @@ export async function setTotalBudget(raw: z.infer<typeof setTotalBudgetSchema>) 
   if (!parsed.success) return { ok: false as const, error: "Invalid budget data" };
   const { month, totalPaise } = parsed.data;
 
-  await db.transaction(async (tx) => {
-    await tx.delete(budgets).where(and(eq(budgets.month, month), isNull(budgets.categoryId)));
-    if (totalPaise && totalPaise > 0) {
-      await tx.insert(budgets).values({ month, categoryId: null, amount: paiseToDbString(totalPaise) });
-    }
-  });
+  await replaceTotalBudgetRow(db, month, totalPaise);
 
   revalidatePath("/");
   revalidatePath("/settings");

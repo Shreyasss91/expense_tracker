@@ -42,6 +42,11 @@ function paiseToRupeesInput(paise: number): string {
   return paise > 0 ? String(paise / 100) : "";
 }
 
+// Radix Select treats an empty-string item value as "nothing selected" (the
+// trigger falls back to its placeholder), so the "Every month" scope uses a
+// non-empty sentinel value and maps it to null/'' at the action boundary.
+const DEFAULT_SCOPE = "__every_month__";
+
 /**
  * §6.7 Budget manager. One scope at a time: "Every month" (month = null,
  * the default) or a single 'yyyy-MM'. For each scope you set a total limit
@@ -50,12 +55,12 @@ function paiseToRupeesInput(paise: number): string {
  */
 export function BudgetManager({ categories, months, initialBudgets }: BudgetManagerProps) {
   const router = useRouter();
-  const [scope, setScope] = useState<string>("");
-  const [totalInput, setTotalInput] = useState("");
 
   // Effective value for a category in a given scope (explicitly passed, never
   // the state — so switchScope can resolve the NEW scope before it's applied):
-  // exact-month row wins, otherwise the every-month default row.
+  // exact-month row wins, otherwise the every-month default row. "" is the
+  // default scope's key; declared before the state hooks so the lazy
+  // initializers below can use it.
   const effectivePaise = (scopeKey: string, categoryId: string | null): number => {
     const exact = initialBudgets.find((b) => b.month === scopeKey && b.categoryId === categoryId);
     const fallback = initialBudgets.find((b) => b.month === null && b.categoryId === categoryId);
@@ -63,24 +68,29 @@ export function BudgetManager({ categories, months, initialBudgets }: BudgetMana
     return row ? Math.round(parseFloat(row.amount) * 100) : 0;
   };
 
+  const [scope, setScope] = useState<string>(DEFAULT_SCOPE);
+  // Pre-fill from the saved default scope — an empty initial value made a
+  // re-save silently wipe the existing budget (empty input = no limit).
+  const [totalInput, setTotalInput] = useState(() => paiseToRupeesInput(effectivePaise("", null)));
   const [catInputs, setCatInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(categories.map((c) => [c.id, paiseToRupeesInput(effectivePaise("", c.id))])),
   );
 
   function switchScope(next: string) {
+    const scopeKey = next === DEFAULT_SCOPE ? "" : next;
     setScope(next);
-    setTotalInput(paiseToRupeesInput(effectivePaise(next, null)));
-    setCatInputs(Object.fromEntries(categories.map((c) => [c.id, paiseToRupeesInput(effectivePaise(next, c.id))])));
+    setTotalInput(paiseToRupeesInput(effectivePaise(scopeKey, null)));
+    setCatInputs(Object.fromEntries(categories.map((c) => [c.id, paiseToRupeesInput(effectivePaise(scopeKey, c.id))])));
   }
 
   async function save() {
     const res = await saveBudgets({
-      month: scope === "" ? null : scope,
+      month: scope === DEFAULT_SCOPE ? null : scope,
       totalPaise: rupeesToPaiseInput(totalInput),
       categories: categories.map((c) => ({ categoryId: c.id, paise: rupeesToPaiseInput(catInputs[c.id] ?? "") })),
     });
     if (res.ok) {
-      toast.success(scope === "" ? "Default budget saved" : "Budget saved");
+      toast.success(scope === DEFAULT_SCOPE ? "Default budget saved" : "Budget saved");
       router.refresh();
     } else {
       toast.error(res.error ?? "Could not save budget");
@@ -98,7 +108,7 @@ export function BudgetManager({ categories, months, initialBudgets }: BudgetMana
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Every month</SelectItem>
+            <SelectItem value={DEFAULT_SCOPE}>Every month</SelectItem>
             {months.map((m) => (
               <SelectItem key={m.key} value={m.key}>
                 {m.label}
@@ -107,7 +117,7 @@ export function BudgetManager({ categories, months, initialBudgets }: BudgetMana
           </SelectContent>
         </Select>
         <span className="text-xs text-muted-foreground">
-          {scope === "" ? "Default limit — used for months without their own budget" : "Only this month"}
+          {scope === DEFAULT_SCOPE ? "Default limit — used for months without their own budget" : "Only this month"}
         </span>
       </div>
 
