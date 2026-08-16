@@ -16,6 +16,8 @@
     "test:seed-roundtrip": "tsx src/db/seed-roundtrip-test.ts",
     "test:rename-roundtrip": "tsx src/db/category-rename-test.ts",
     "test:budget-roundtrip": "tsx src/db/budget-roundtrip-test.ts",
+    "test:budget-semantics": "tsx src/db/budget-semantics-test.ts",
+    "test:ledger-url": "tsx src/lib/ledger-url-test.ts",
     "test:csv-quoting": "tsx src/lib/csv-quoting-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "verify:export-live": "node scripts/export-live-check.mjs"
