@@ -1,18 +1,55 @@
 import { formatINR } from "@/lib/money";
 
-/** §6.7 — spent-vs-budget progress bar; turns red when over budget. */
+/** §6.7 — spent-vs-budget bar. The fill's colour ramps deep green → deep red
+ * across the band (0% → 100% of the budget). When spent exceeds the budget the
+ * band shrinks to make room for a deep-red overflow segment, so the amount over
+ * is visible as bar length and the whole bar still fits its container. */
 export function BudgetBar({ spent, budget, className = "h-1.5" }: { spent: number; budget: number; className?: string }) {
   // §6.3.1: never divide by zero — a zero budget renders an empty bar.
-  const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0;
+  const pct = budget > 0 ? (spent / budget) * 100 : 0;
+  if (pct <= 0) return <div className={`relative w-full rounded-full bg-muted ${className}`} />;
+
+  const over = pct > 100;
+  // Width of the budget band as a share of the bar. Under budget the band is
+  // the whole bar and the fill grows into it; over budget the band shrinks so
+  // the overflow segment fits alongside it (fill + overflow = 100%).
+  const bandPct = over ? (100 / pct) * 100 : pct;
+
   return (
-    <div className={`w-full overflow-hidden rounded-full bg-muted ${className}`}>
+    <div className={`relative w-full rounded-full bg-muted ${className}`}>
+      {/* In-band portion: the gradient spans the band, so the colour at the
+          fill's right edge always reflects the spend level (0% = deep green,
+          100% = deep red). */}
       <div
-        className={`h-full rounded-full transition-all ${spent > budget ? "bg-red-500" : "bg-primary"}`}
-        style={{ width: `${pct}%` }}
-      />
+        className="absolute inset-y-0 left-0 overflow-hidden rounded-full transition-all"
+        style={{ width: `${bandPct}%` }}
+      >
+        <div
+          className="h-full"
+          style={{
+            // Under budget the gradient spans the whole bar (the fill's right
+            // edge lands mid-spectrum); over budget it spans exactly the band.
+            width: `${over ? 100 : (100 / pct) * 100}%`,
+            background: BUDGET_GRADIENT,
+          }}
+        />
+      </div>
+      {/* Overflow: the spend past 100% of budget, in the deepest red. */}
+      {over && (
+        <div
+          className="absolute inset-y-0 rounded-r-full transition-all"
+          style={{ left: `${bandPct}%`, width: `${100 - bandPct}%`, background: OVER_BUDGET_COLOR }}
+        />
+      )}
     </div>
   );
 }
+
+/** Deep green → deep red ramp for the in-band portion of the bar. */
+const BUDGET_GRADIENT = "linear-gradient(to right, #166534, #65a30d 30%, #facc15 55%, #f97316 78%, #b91c1c)";
+
+/** The overflow segment past 100% of budget — the deepest red. */
+const OVER_BUDGET_COLOR = "#991b1b";
 
 /** §6.7 — "₹X left" (green) or "₹X over" (red) under the total budget bar. */
 export function BudgetRemaining({ spent, budget }: { spent: number; budget: number }) {

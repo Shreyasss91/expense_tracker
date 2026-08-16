@@ -81,7 +81,8 @@ state; this entry reconciles the frozen spec with it.
   the Settings Budgets card (one scope at a time, total + per-category inputs, empty = no
   limit, save replaces the scope by delete-then-insert as plain statements); the dashboard Budget card (spent vs
   budget bar, "₹X left / ₹X over", "Set one in Settings" empty state, §6.3.1
-  zero-denominator safety); per-category budget bars inside the **Spending by category**
+  zero-denominator safety, and a deep green→deep red gradient fill whose band shrinks to fit
+  a deep-red overflow segment when over budget); per-category budget bars inside the **Spending by category**
   card; an **over-budget toast** on create/edit when the post-write month or category total
   exceeds the effective budget (client-side, in-app only — no email/telegram alerts); an
   **inline edit/clear shortcut** on the dashboard Budget card (`setTotalBudget` — total row

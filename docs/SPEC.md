@@ -448,7 +448,11 @@ bar, "₹X left / ₹X over" (green/red), plus an **inline edit/clear shortcut**
 a new total for that exact month or clear it, without touching category budgets).
 Per-category budget bars live inside the **Spending by category** card, next to the spend
 they constrain. No budget set → a "Set one in Settings" link. Zero-denominator safety per
-§6.3.1: a zero budget renders an empty bar, never a division by zero.
+§6.3.1: a zero budget renders an empty bar, never a division by zero. **Bar rendering:** the
+fill's colour ramps **deep green → deep red** across the band (0% → 100% of the budget);
+when spent exceeds the budget the **band shrinks** to make room for a **deep-red overflow
+segment**, so the amount over is visible as bar length (fill + overflow always fit the bar,
+never overflowing its container) — not just a colour flip.
 
 **Ledger month strip (§7.3):** when a month is selected, the ledger shows a spent-vs-budget
 bar directly under the strip — the month's total expense against the effective total
