@@ -3,7 +3,9 @@ import { formatINR } from "@/lib/money";
 /** §6.7 — spent-vs-budget bar. The fill's colour ramps deep green → deep red
  * across the band (0% → 100% of the budget). When spent exceeds the budget the
  * band shrinks to make room for a deep-red overflow segment, so the amount over
- * is visible as bar length and the whole bar still fits its container. */
+ * is visible as bar length and the whole bar still fits its container. A tick
+ * marks the 100% point — the budget limit — partitioning the band from the
+ * overflow. */
 export function BudgetBar({ spent, budget, className = "h-1.5" }: { spent: number; budget: number; className?: string }) {
   // §6.3.1: never divide by zero — a zero budget renders an empty bar.
   const pct = budget > 0 ? (spent / budget) * 100 : 0;
@@ -14,6 +16,9 @@ export function BudgetBar({ spent, budget, className = "h-1.5" }: { spent: numbe
   // the whole bar and the fill grows into it; over budget the band shrinks so
   // the overflow segment fits alongside it (fill + overflow = 100%).
   const bandPct = over ? (100 / pct) * 100 : pct;
+  // The 100%-of-budget point: the bar's right edge under budget, the boundary
+  // between the band and the overflow segment when over budget.
+  const limitPct = over ? bandPct : 100;
 
   return (
     <div className={`relative w-full rounded-full bg-muted ${className}`}>
@@ -41,6 +46,12 @@ export function BudgetBar({ spent, budget, className = "h-1.5" }: { spent: numbe
           style={{ left: `${bandPct}%`, width: `${100 - bandPct}%`, background: OVER_BUDGET_COLOR }}
         />
       )}
+      {/* 100% marker — the budget limit; ticks slightly above/below the bar so
+          it reads as a marker rather than a seam, even at the bar's edge. */}
+      <div
+        className="absolute -top-0.5 -bottom-0.5 w-[2px] rounded-full bg-foreground/80 transition-all"
+        style={{ left: `calc(${limitPct}% - 1px)` }}
+      />
     </div>
   );
 }

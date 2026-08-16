@@ -452,7 +452,9 @@ they constrain. No budget set → a "Set one in Settings" link. Zero-denominator
 fill's colour ramps **deep green → deep red** across the band (0% → 100% of the budget);
 when spent exceeds the budget the **band shrinks** to make room for a **deep-red overflow
 segment**, so the amount over is visible as bar length (fill + overflow always fit the bar,
-never overflowing its container) — not just a colour flip.
+never overflowing its container) — not just a colour flip. A small **tick marks the 100%
+point** (the budget limit): the bar's right edge under budget, the band/overflow boundary
+when over.
 
 **Ledger month strip (§7.3):** when a month is selected, the ledger shows a spent-vs-budget
 bar directly under the strip — the month's total expense against the effective total
