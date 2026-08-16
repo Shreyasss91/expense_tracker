@@ -10,6 +10,7 @@ import {
   text,
   time,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -81,7 +82,35 @@ export const transactions = pgTable(
   }),
 );
 
+/**
+ * Monthly budgets (§6.7). One row per (month, category) scope:
+ *  - month: 'yyyy-MM' for a single month, NULL for the default applying to every month.
+ *  - categoryId: NULL = total monthly limit; a category id = limit for that category.
+ * The effective budget for a month prefers the exact-month row over the default.
+ * Rows are written by replacing the whole scope in a transaction, so the
+ * uniqueness of the scope is guaranteed by construction (see saveBudgets).
+ */
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    month: text("month"),
+    categoryId: uuid("category_id").references(() => categories.id),
+    // Read as string; see §5.8
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    // one budget per (month, category) scope — NULLs collapsed via COALESCE
+    scopeUnique: uniqueIndex("budgets_scope_unique").on(
+      sql`COALESCE(${t.month}, '')`,
+      sql`COALESCE(${t.categoryId}::text, '')`,
+    ),
+  }),
+);
+
 export type Member = typeof members.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+export type Budget = typeof budgets.$inferSelect;
