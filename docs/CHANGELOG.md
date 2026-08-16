@@ -144,6 +144,52 @@ state; this entry reconciles the frozen spec with it.
 
 ---
 
+## v1.2 Amendment — 16 August 2026 (owner decision: Phase-2 remediation)
+
+### Amendment 6 — Phase-2 audit remediation (correctness, tests, CI, spec erratum)
+
+- **Decision:** on 16 Aug 2026 the owner asked that the issues found in the Phase-2
+  compliance re-audit be fixed. All owner-authorized, spec-affecting corrections are
+  recorded here; code/test/CI changes accompanied the decision.
+- **F2-07 (correctness):** `updateTransaction()` now rejects a **valid UUID that matches
+  no transaction** — the UPDATE affects zero rows, so the action returns
+  `{ ok: false, error: "Transaction not found" }` instead of reporting success. (§7.1
+  applies to nonexistent ids, not only malformed ones.)
+- **F2-08 (P3 cleanup):** the stale `changePasswordSchema` was removed from
+  `validations.ts` — Amendment 3 removed the in-app password-change facility, so the
+  schema was dead residue.
+- **F2-01 (spec erratum):** §4's table-count line corrected — the schema implements
+  **5 tables** (3 core + `budgets` + `app_settings`), not "6 tables / 4 core" as the
+  previous wording claimed. Owner-authorized correction of the frozen-spec wording.
+- **F2-02 (documented reliability characteristic):** §6.7 now states explicitly that
+  budget-scope replacement is **intentionally non-atomic** under the neon-http driver
+  (delete-then-insert; a failed insert leaves the scope empty, never half-written;
+  duplicates are impossible by index). Accepted, not redesigned — no architectural
+  change.
+- **F2-04 / F2-06 (tests):** new `test:budget-semantics` (`src/db/budget-semantics-test.ts`)
+  drives the production helpers against a real DB — exclude-bills OFF/ON total math,
+  category budgets never excluding bills, exact-month-over-default precedence and its
+  fallback, total-alert-over-category precedence, and the "It's a bill" chain
+  (schema → recurring row → over-budget classification → dashboard Bills aggregate).
+- **F2-05 (tests):** new `test:ledger-url` (`src/lib/ledger-url-test.ts`) covers the
+  normative §6.4 URL-filter composition — changing one filter preserves the rest,
+  clearing the month preserves the rest, clearing all yields `/transactions`, invalid
+  values are dropped, and parse ∘ build round-trips. The pure `buildLedgerUrl` /
+  `parseLedgerSearchParams` logic was extracted to `src/lib/ledger-url.ts` (shared by
+  the filter bar, month strip and server page) to make it testable; the budgets
+  helpers (`getMonthBudgetStatus`, `getBudgetAlert`, `budgetsForMonth`) were made
+  db-first-argument to allow the same real-connection testing.
+- **F2-03 (CI):** the DB job now runs `test:budget-roundtrip` and
+  `test:budget-semantics` when a `DATABASE_URL` secret is present; the DB-free
+  `test:csv-quoting` and `test:ledger-url` run unconditionally in the checks job.
+- **F2-10 (owner action, not a repo change):** the CI database job is gated on a
+  `DATABASE_URL` secret (a disposable Neon branch) that only the owner can configure in
+  GitHub settings — the workflow is ready; the secret is not.
+- **Supersedes:** nothing frozen. The §4 wording corrected above is the only
+  frozen-document change, and it is owner-authorized as an erratum correction.
+
+---
+
 ## v1.2 — 12 August 2026
 
 Corrects a factual error introduced by the v1.1 audit, then hardens the specification with

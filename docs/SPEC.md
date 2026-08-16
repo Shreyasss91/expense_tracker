@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) and 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation; see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) and 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -111,7 +111,7 @@ The seed script maps the CSV `member` string through **this table as a literal l
 
 ## 4. Database Schema (Drizzle ORM)
 
-6 tables — 4 core (`members`, `categories`, `transactions`) plus `budgets` (§6.7) and
+5 tables — 3 core (`members`, `categories`, `transactions`) plus `budgets` (§6.7) and
 `app_settings` (§6.7). All IDs are UUIDs.
 
 ### 4.1 Enums
@@ -488,7 +488,11 @@ default applies. Applied identically to the total and to each category.
 month — with a total limit input and per-category limit inputs. Empty inputs mean no limit.
 Saving replaces the whole scope by delete-then-insert — plain sequential statements, since the
 app's neon-http driver has no transaction support — so `budgets_scope_unique` can never be
-violated by the app.
+violated by the app. Replacement is **intentionally non-atomic**, a documented reliability
+characteristic of the chosen driver: if the insert fails after the delete, the scope is left
+empty (no budget for that month) rather than half-written — and the uniqueness index means a
+partial write can never produce duplicate rows. This is an accepted, owner-approved
+characteristic (Phase-2 audit F2-02), not a defect to be redesigned.
 
 **Exclude bills (global toggle, owner decision):** a single app-wide switch (stored as
 `exclude_bills_from_budget` in `app_settings`, §4.2) makes **every total-budget comparison
