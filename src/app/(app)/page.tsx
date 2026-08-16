@@ -94,7 +94,7 @@ const getDashboardData = unstable_cache(
         .orderBy(desc(transactions.amount))
         .limit(1),
       // §6.7 budgets — exact-month rows plus the every-month defaults, resolved below
-      budgetsForMonth(monthKey),
+      budgetsForMonth(db, monthKey),
     ]);
 
     const totals = totalsTags[0];

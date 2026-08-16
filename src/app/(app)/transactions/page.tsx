@@ -1,4 +1,5 @@
 import { addMonths, format, parse } from "date-fns";
+import { db } from "@/db";
 import { getTransactionsPage } from "@/actions/transactions";
 import { getCategories, getMembers } from "@/lib/meta";
 import { FiltersBar, type LedgerFilters } from "@/components/transactions/filters";
@@ -62,7 +63,7 @@ export default async function TransactionsPage({
     getMembers(),
     getCategories(),
     // §6.7 — spent-vs-budget for the strip's selected month; null when no total budget
-    filters.month ? getMonthBudgetStatus(filters.month) : Promise.resolve(null),
+    filters.month ? getMonthBudgetStatus(db, filters.month) : Promise.resolve(null),
   ]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({

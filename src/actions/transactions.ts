@@ -70,7 +70,7 @@ export async function createTransaction(raw: TransactionInput) {
   // §6.7 — after an expense lands, check whether it left the month or its
   // category over budget; the client surfaces this as a toast.
   const alert: BudgetAlert | null =
-    data.type === "expense" ? await getBudgetAlert(data.date.slice(0, 7), data.categoryId) : null;
+    data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
 
   return { ok: true as const, id: row.id, alert };
 }
@@ -110,7 +110,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
 
   // §6.7 — same over-budget check after an edit.
   const alert: BudgetAlert | null =
-    data.type === "expense" ? await getBudgetAlert(data.date.slice(0, 7), data.categoryId) : null;
+    data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
 
   return { ok: true as const, id: row?.id, alert };
 }

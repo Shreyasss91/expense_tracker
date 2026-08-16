@@ -1,11 +1,17 @@
-import "server-only";
+// No `server-only` guard here by design: every helper takes the db connection
+// as its first argument (same convention as src/db/*-mutations.ts), so the
+// DB-backed regression tests can drive the exact production queries against
+// their own connection. The app imports this module only from server code.
 
 import { and, eq, gte, isNull, lte, or, sql } from "drizzle-orm";
-import { db } from "@/db";
+import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { budgets, categories, transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
 import type { BudgetAlert } from "@/lib/budget-alert";
+
+/** The app's real connection — passed explicitly by callers; tests pass their own. */
+type BudgetDb = NeonHttpDatabase<Record<string, unknown>>;
 
 /** A budgets row as fetched for a month — the subset the app reasons with. */
 export interface BudgetRow {
@@ -34,7 +40,7 @@ export function resolveEffectiveBudget(
 }
 
 /** The budgets relevant to one month: exact-month rows plus the defaults. */
-export function budgetsForMonth(monthKey: string) {
+export function budgetsForMonth(db: BudgetDb, monthKey: string) {
   return db
     .select({
       month: budgets.month,
@@ -58,6 +64,7 @@ export function budgetsForMonth(monthKey: string) {
  * budget is set for the month — the strip then shows no bar.
  */
 export async function getMonthBudgetStatus(
+  db: BudgetDb,
   monthKey: string,
 ): Promise<{ spentPaise: number; budgetPaise: number; billsPaise: number; excludeBills: boolean } | null> {
   const start = `${monthKey}-01`;
@@ -65,7 +72,7 @@ export async function getMonthBudgetStatus(
   const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
 
   const [budgetRows, excludeBills, rows] = await Promise.all([
-    budgetsForMonth(monthKey),
+    budgetsForMonth(db, monthKey),
     getExcludeBillsEnabled(db),
     db
       .select({
@@ -96,13 +103,13 @@ export async function getMonthBudgetStatus(
  * Returns the total alert if the month is over, else the category alert, else
  * null — one warning per write, the more important scope wins.
  */
-export async function getBudgetAlert(monthKey: string, categoryId: string): Promise<BudgetAlert | null> {
+export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId: string): Promise<BudgetAlert | null> {
   const start = `${monthKey}-01`;
   const [y, m] = monthKey.split("-").map(Number);
   const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
 
   const [budgetRows, excludeBills, totals] = await Promise.all([
-    budgetsForMonth(monthKey),
+    budgetsForMonth(db, monthKey),
     getExcludeBillsEnabled(db),
     db
       .select({

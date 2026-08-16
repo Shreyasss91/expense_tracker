@@ -144,7 +144,7 @@ export async function getCategoryBudgetStatus(monthKey: string) {
   const key = month.data;
 
   const [budgetRows, spentRows] = await Promise.all([
-    budgetsForMonth(key),
+    budgetsForMonth(db, key),
     db
       .select({
         categoryId: transactions.categoryId,
