@@ -343,7 +343,7 @@ One representation, end to end. Mixing representations is the defect this sectio
 ### 6.2 The "Quick Add" Flow (Critical Path — optimize ruthlessly)
 One-handed mobile use, < 5 seconds:
 1. **Trigger:** Large Floating Action Button with `+`.
-2. **Step 1 (Amount):** Full-screen numpad, large ₹ display.
+2. **Step 1 (Amount):** Full-screen numpad, large ₹ display, plus a one-tap **"It's a bill"** shortcut that pre-selects the `recurring` tag — recharges, EMIs and rent are flagged in one tap without visiting Details. The Details tag selector still lets the user change it.
 3. **Step 2 (Details, optional):** Expense/Income toggle, Tag selector (defaults `lifestyle`; hidden **and cleared to `NULL`** for income — §5.2), Date/Time picker (defaults to *now* **in `Asia/Kolkata`** — §5.7), Note input.
 4. **Step 3 (Category):** Grid of 19 categories (emoji + name) — the **final step**: single-tapping a category commits the entry (see Step 5).
 5. **Submit:** the category tap triggers the Server Action → optimistic UI update → toast confirmation. The amount is captured as integer paise (§5.8); the time is normalized `HH:MM` → `HH:MM:00` (§5.6); the `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).

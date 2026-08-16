@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Delete, ChevronLeft, Check, Pencil, X } from "lucide-react";
+import { Delete, ChevronLeft, Check, Pencil, X, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -249,6 +249,20 @@ export function QuickAddSheet({
                 {formatINR(paise)}
               </div>
               <div className="mt-1 text-xs text-muted-foreground">Enter amount</div>
+            </div>
+            {/* §6.2 — one-tap bill shortcut: pre-selects the recurring tag so
+                recharges, EMIs and rent don't need a trip through Details */}
+            <div className="mb-3 flex justify-center">
+              <button
+                type="button"
+                onClick={() => setTag(tag === "recurring" ? "lifestyle" : "recurring")}
+                className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-medium transition-colors ${
+                  tag === "recurring" ? "bg-[#8b5cf6] text-white" : "bg-muted text-muted-foreground"
+                }`}
+              >
+                <Zap className="h-3.5 w-3.5" />
+                {tag === "recurring" ? "Bill — recurring" : "It's a bill"}
+              </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {NUM_KEYS.map((k) => (

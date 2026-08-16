@@ -104,6 +104,9 @@ state; this entry reconciles the frozen spec with it.
   **Per-category budgets are unaffected** (owner decision): the exclusion applies to the
   total budget only. The recurring tag (§5.2) and the tag-breakdown "Bills" row already
   identified bills; this toggle decides whether they count against the total limit.
+- **§6.2 one-tap bill shortcut:** the Quick Add amount step gains an **"It's a bill"**
+  toggle that pre-selects the `recurring` tag in one tap (recharges, EMIs, rent — no trip
+  through Details); the Details tag selector can still change it.
 - **Supersedes:** the v1 §11 exclusion of budget limits/over-budget alerts. Scope note:
   budgets are fully in scope, and a client-side, in-app over-budget **toast** on expense
   create/edit is included; over-budget alerts as a *notification* feature (email/telegram
