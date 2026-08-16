@@ -8,7 +8,10 @@ import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthEndInIST, monthKeyInIST } from "@/lib/dates";
 import { getCategories, getMembers } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
+import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { MonthPicker } from "@/components/dashboard/month-picker";
+import { BudgetCard } from "@/components/dashboard/budget-card";
+import { BudgetBar } from "@/components/dashboard/budget-bar";
 import { CategoryPie, MemberSplit, TagBar, TrendChart } from "@/components/dashboard/charts";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +31,7 @@ const getDashboardData = unstable_cache(
     const end = monthEndInIST(baseDate);
     const range = and(gte(transactions.date, start), lte(transactions.date, end));
 
-    const [totalsTags, catRows, memberRows, trendRows, memberList, largestRows] = await Promise.all([
+    const [totalsTags, catRows, memberRows, trendRows, memberList, largestRows, budgetRows] = await Promise.all([
       // expense + all three expense tags in a single pass over the month
       db
         .select({
@@ -87,10 +90,34 @@ const getDashboardData = unstable_cache(
         .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lte(transactions.date, end)))
         .orderBy(desc(transactions.amount))
         .limit(1),
+      // §6.7 budgets — exact-month rows plus the every-month defaults, resolved below
+      budgetsForMonth(monthKey),
     ]);
 
     const totals = totalsTags[0];
     const expensePaise = rupeesToPaise(totals.expense);
+
+    // §6.7 — effective budget for the month: exact-month row wins, else the default.
+    const effectiveBudget = (categoryId: string | null) => resolveEffectiveBudget(budgetRows, monthKey, categoryId);
+    const totalBudget = effectiveBudget(null);
+    // One entry per category with a limit — resolve the effective paise per
+    // category, deduplicated (the exact-month and default rows share the id).
+    const categoryBudgetRows = Array.from(
+      new Map(
+        budgetRows
+          .filter((b) => b.categoryId !== null)
+          .map((b) => [
+            b.categoryId!,
+            {
+              categoryId: b.categoryId!,
+              name: b.categoryName ?? "",
+              emoji: b.categoryEmoji ?? "",
+              color: b.categoryColor ?? "",
+              paise: rupeesToPaise(effectiveBudget(b.categoryId)?.amount ?? "0"),
+            },
+          ]),
+      ).values(),
+    ).filter((b) => b.paise > 0);
 
     const topCategory = catRows.reduce<typeof catRows[number] | null>(
       (best, r) => (best === null || rupeesToPaise(r.total) > rupeesToPaise(best.total) ? r : best),
@@ -133,6 +160,10 @@ const getDashboardData = unstable_cache(
       largestSpend: largest
         ? { amountPaise: rupeesToPaise(largest.amount), note: largest.note, categoryName: largest.categoryName, categoryEmoji: largest.categoryEmoji }
         : null,
+      budget: {
+        totalPaise: totalBudget ? rupeesToPaise(totalBudget.amount) : null,
+        categories: categoryBudgetRows,
+      },
       tags,
       catRows,
       memberSlices,
@@ -162,6 +193,8 @@ export default async function DashboardPage({
   const categoryOptions = categoryRows.map((c) => ({
     id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder,
   }));
+  // Per-category spend for the budget card's category rows (§6.7)
+  const catSpentPaise = new Map(data.catRows.map((r) => [r.id, rupeesToPaise(r.total)]));
 
   return (
     <div className="space-y-4">
@@ -216,6 +249,21 @@ export default async function DashboardPage({
         </Card>
       </div>
 
+      {/* Budget card (§6.7) — total spent vs the effective budget, with inline edit/clear */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Budget</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BudgetCard
+            monthKey={monthKey}
+            totalPaise={data.budget.totalPaise}
+            expensePaise={data.expensePaise}
+            hasCategoryBudgets={data.budget.categories.length > 0}
+          />
+        </CardContent>
+      </Card>
+
       {/* Tag breakdown (§6.3) — denominator is total EXPENSE, never income */}
       <Card>
         <CardHeader className="pb-2">
@@ -232,7 +280,7 @@ export default async function DashboardPage({
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Spending by category</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <CategoryPie
             slices={data.catRows.map((r) => ({
               name: r.name,
@@ -241,6 +289,27 @@ export default async function DashboardPage({
               paise: rupeesToPaise(r.total),
             }))}
           />
+          {/* §6.7 — per-category budget bars live with the category spend */}
+          {data.budget.categories.length > 0 && (
+            <ul className="space-y-2 border-t pt-2">
+              {data.budget.categories.map((cb) => {
+                const spent = catSpentPaise.get(cb.categoryId) ?? 0;
+                return (
+                  <li key={cb.categoryId} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="truncate">
+                        {cb.emoji} {cb.name}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {formatINR(spent)} / {formatINR(cb.paise)}
+                      </span>
+                    </div>
+                    <BudgetBar spent={spent} budget={cb.paise} className="h-1" />
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </CardContent>
       </Card>
 
@@ -284,3 +353,5 @@ export default async function DashboardPage({
     </div>
   );
 }
+
+

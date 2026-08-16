@@ -16,6 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
 import { formatINR, paiseToDbString, rupeesToPaise } from "@/lib/money";
+import { budgetAlertMessage } from "@/lib/budget-alert";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
 import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
@@ -114,6 +115,8 @@ export function TransactionEditDialog({
     }
     if (res.ok) {
       toast.success("Transaction updated");
+      // §6.7 — warn when the edited expense left the month or its category over budget
+      if (res.alert) toast.warning(budgetAlertMessage(res.alert));
     } else {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
       toast.error(res.error ?? "Could not save");

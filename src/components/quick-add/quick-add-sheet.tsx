@@ -11,9 +11,10 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
-import { updateCategory } from "@/actions/settings";
+import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
 import { formatINR, paiseToDbString } from "@/lib/money";
+import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS, TRANSACTION_TAG_LABELS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
@@ -54,6 +55,8 @@ export function QuickAddSheet({
   const [renameEmoji, setRenameEmoji] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [cats, setCats] = useState(categories);
+  // §6.7 — remaining budget per category for the current date's month (expense only)
+  const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   const router = useRouter();
 
   // Keep the local category copy in sync with server-provided data when not mid-edit,
@@ -64,6 +67,23 @@ export function QuickAddSheet({
 
   const paise = useMemo(() => Math.round(parseFloat(buf || "0") * 100) || 0, [buf]);
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
+
+  // §6.7 — fetch remaining budget per category for the transaction's month; only
+  // meaningful for expenses, and only once the amount is set (the category step).
+  useEffect(() => {
+    if (type !== "expense" || paise <= 0 || step !== "category") {
+      setBudgetRemaining(null);
+      return;
+    }
+    let cancelled = false;
+    void getCategoryBudgetStatus(date.slice(0, 7)).then((res) => {
+      if (cancelled) return;
+      setBudgetRemaining(res.ok ? new Map(res.categories.map((c) => [c.categoryId, c.remainingPaise])) : null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [type, paise, date, step]);
 
   function reset() {
     setStep("amount");
@@ -146,6 +166,8 @@ export function QuickAddSheet({
     if (res.ok) {
       emitLedgerMutation({ kind: "create-confirm", tempId, id: res.id });
       toast.success("Transaction added");
+      // §6.7 — warn when this expense pushed the month or its category over budget
+      if (res.alert) toast.warning(budgetAlertMessage(res.alert));
       reset();
       onClose();
     } else {
@@ -357,6 +379,16 @@ export function QuickAddSheet({
                     )}
                     <span className="text-2xl">{c.emoji}</span>
                     <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
+                    {/* §6.7 — remaining budget hint, when this category has one for the month */}
+                    {!editMode && budgetRemaining?.get(c.id) !== undefined && (
+                      <span
+                        className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
+                      >
+                        {(budgetRemaining.get(c.id) ?? 0) < 0
+                          ? `${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
+                          : `${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
+                      </span>
+                    )}
                   </button>
                 )
               )}
