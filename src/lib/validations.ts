@@ -62,3 +62,27 @@ export const changePasswordSchema = z.object({
   currentPassword: z.string(),
   newPassword: z.string().min(8).max(200),
 });
+
+/** One category budget row: the category id + its limit in paise (0 = no limit). */
+export const categoryBudgetSchema = z.object({
+  categoryId: z.string().uuid(),
+  paise: z.number().int().min(0),
+});
+
+/**
+ * §6.7 saveBudgets payload. `month` is 'yyyy-MM' for a single month or null
+ * for the default that applies to every month. `totalPaise` is the total
+ * monthly limit (null/0 = no total limit); `categories` carries per-category
+ * limits — any with paise 0 are simply not stored.
+ */
+export const saveBudgetsSchema = z.object({
+  month: z.union([z.null(), z.string().regex(/^\d{4}-\d{2}$/)]),
+  totalPaise: z.number().int().min(0).nullable(),
+  categories: z.array(categoryBudgetSchema).max(60),
+});
+
+/** §6.7 — inline total-budget edit/clear from the dashboard Budget card. */
+export const setTotalBudgetSchema = z.object({
+  month: z.string().regex(/^\d{4}-\d{2}$/),
+  totalPaise: z.number().int().min(0).nullable(),
+});

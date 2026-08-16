@@ -11,6 +11,8 @@ import { todayInIST } from "@/lib/dates";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
 import { buildWhere, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
+import { getBudgetAlert } from "@/lib/budgets";
+import type { BudgetAlert } from "@/lib/budget-alert";
 
 /**
  * §7.1 createTransaction — every mutating action must, before any write:
@@ -65,7 +67,12 @@ export async function createTransaction(raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  return { ok: true as const, id: row.id };
+  // §6.7 — after an expense lands, check whether it left the month or its
+  // category over budget; the client surfaces this as a toast.
+  const alert: BudgetAlert | null =
+    data.type === "expense" ? await getBudgetAlert(data.date.slice(0, 7), data.categoryId) : null;
+
+  return { ok: true as const, id: row.id, alert };
 }
 
 export async function updateTransaction(id: string, raw: TransactionInput) {
@@ -101,7 +108,11 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  return { ok: true as const, id: row?.id };
+  // §6.7 — same over-budget check after an edit.
+  const alert: BudgetAlert | null =
+    data.type === "expense" ? await getBudgetAlert(data.date.slice(0, 7), data.categoryId) : null;
+
+  return { ok: true as const, id: row?.id, alert };
 }
 
 /** §6.4.1 hard delete — no soft delete, no tombstones. */
