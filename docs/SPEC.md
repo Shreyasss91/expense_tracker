@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) and 16 August 2026 (budgets; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -16,6 +16,11 @@
 > is Amount → Details → Category** (§6.2); (3) the **family password is environment-managed**
 > with no in-app change facility (§6.5, §9). Each is recorded in `CHANGELOG.md`. No
 > implementation, schema, migration, or `seed.csv` change accompanied these amendments.
+>
+> **16 August 2026 — budgets authorized by the owner** (§6.7, §4.2, §11): monthly budgets
+> (total + per-category, per-month or as an every-month default) are a new v1.2 feature
+> with a `budgets` table, Settings card, and dashboard Budget card. Recorded in
+> `CHANGELOG.md`.
 
 ---
 
@@ -103,7 +108,7 @@ The seed script maps the CSV `member` string through **this table as a literal l
 
 ## 4. Database Schema (Drizzle ORM)
 
-3 core tables. All IDs are UUIDs.
+4 core tables. All IDs are UUIDs.
 
 ### 4.1 Enums
 ```typescript
@@ -160,7 +165,21 @@ export const transactions = pgTable('transactions', {
 
 **Note on `transactions.id`:** `defaultRandom()` is deliberately **removed**. Every insert supplies its own UUID — a random v4 from Quick Add, a deterministic v5 from the seed script. A database-generated random default would make seeding non-idempotent (§8.1).
 
-**Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`, and the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3).
+```typescript
+export const budgets = pgTable('budgets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  month: text('month'),            // 'yyyy-MM' for one month; NULL = the every-month default (§6.7)
+  categoryId: uuid('category_id').references(() => categories.id),  // NULL = total monthly budget (§6.7)
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),  // Read as string; see §5.8
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (t) => ({
+  // one budget per (month, category) scope — NULLs collapsed via COALESCE
+  scopeUnique: uniqueIndex('budgets_scope_unique')
+    .on(sql`COALESCE(${t.month}, '')`, sql`COALESCE(${t.categoryId}::text, '')`),
+}));
+```
+
+**Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`, the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3), and `budgets_scope_unique` (§6.7).
 
 ---
 
@@ -373,8 +392,10 @@ Swipe-left delete on a device that gets handed between family members makes acci
 - Manage categories: **rename, emoji, reorder only**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3).
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized.
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
+- **Budgets (owner amendment, 16 Aug 2026):** a Budgets card edits monthly limits — total and/or per-category, scoped to one month or to "Every month" as the default (§6.7).
 
 ### 6.6 Canonical CSV Export — Normative
+
 The export uses the **same 8 columns, in the same order, as `seed.csv`**:
 
 ```
@@ -397,6 +418,52 @@ date,time,member,type,item,amount,category,tag
 **Scope of the symmetry — read carefully:** the export is *structurally compatible* with `seed.csv`, which makes it a genuine backup format and a valid input shape. It is **not** a claim that an export may be fed back through `npm run db:seed`. Seeding remains an explicit, controlled, developer-initiated operation against the canonical `seed.csv` (§8) — never an automatic round-trip, and never a synchronization mechanism.
 
 **Note on the `member`/`category` columns:** they export *current display names*, which may since have been renamed (§3.2.2, §5.3, §6.5). This is correct for a human-readable backup. It also means an export is not guaranteed to re-import against the literal slug maps in §3.2.2 and §5.3 if members or categories have been renamed — another reason the round trip is not automatic.
+
+### 6.7 Budgets — owner amendment 16 Aug 2026 (§4.2, §6.5, §11)
+
+> **Budget limits + over-budget alerts was in the §11 v1 exclusion list.** The owner
+> explicitly authorized budgets as a v1.2 feature on 16 Aug 2026; this section is the
+> resulting specification (recorded in `CHANGELOG.md`). All other §11 exclusions stand.
+
+**Model:** one `budgets` row per **(month, category)** scope (§4.2):
+
+- `month` is `'yyyy-MM'` for a single month, or `NULL` for the **default that applies to
+  every month**.
+- `categoryId` is `NULL` for the **total monthly budget**, or a category id for a
+  **per-category limit**.
+- `amount` follows the §5.8 paise representation (`NUMERIC(12,2)` storage, integer-paise
+  arithmetic at the boundary).
+
+**Effective budget for a month:** the exact-month row wins; otherwise the `NULL`-month
+default applies. Applied identically to the total and to each category.
+
+**Settings (§6.5):** the Budgets card edits one scope at a time — "Every month" or a single
+month — with a total limit input and per-category limit inputs. Empty inputs mean no limit.
+Saving replaces the whole scope in one transaction (delete-then-insert), so `budgets_scope_unique`
+can never be violated by the app.
+
+**Dashboard (§6.3):** a Budget card shows spent vs the effective total budget with a progress
+bar, "₹X left / ₹X over" (green/red), plus an **inline edit/clear shortcut** (pencil → set
+a new total for that exact month or clear it, without touching category budgets).
+Per-category budget bars live inside the **Spending by category** card, next to the spend
+they constrain. No budget set → a "Set one in Settings" link. Zero-denominator safety per
+§6.3.1: a zero budget renders an empty bar, never a division by zero.
+
+**Quick Add hints (§6.2/§6.7):** on the category grid (the committing step), each category
+that has a budget for the transaction's month shows its **remaining** amount underneath
+(„₹X left" in green, „₹X over" in red). Computed client-side via the
+`getCategoryBudgetStatus` Server Action against the chosen date's month, so it stays
+correct when the user backdates.
+
+**Over-budget toast (§6.7):** after an expense is created or edited, the Server Action
+checks the post-write month total and the affected category's total against the effective
+budgets. If either is over, the action returns an alert (`{ kind: 'total' | 'category',
+overPaise, limitPaise, ... }`) and the client shows a warning toast — "This month is over
+budget — ₹X past the ₹Y limit" (or per-category). One alert per write, the total wins over
+the category. This is a client-side, in-app alert only — no email/telegram notifications.
+
+**Server action:** `saveBudgets(raw)` — Zod-validated (§7.1), replaces the scope in a
+transaction, `revalidatePath('/')` + `revalidateTag('transactions')`.
 
 ---
 
@@ -666,14 +733,15 @@ If a secret is ever observed in conversation, in a terminal, or in a file, it mu
 - PWA / offline-first (service workers, IndexedDB sync)
 - Receipt photo attachments
 - Multi-currency support
-- Budget limits + over-budget alerts
+- ~~Budget limits + over-budget alerts~~ *(removed from the exclusion list by owner amendment on 16 Aug 2026 — budgets are a permitted v1.2 feature, §6.7)*
 - Telegram/email monthly digest
 - Merchant auto-categorization
 - Voice input
 
 > *"Dark mode" was **removed from this exclusion list** by owner amendment on 15 August
-> 2026 — dark mode is a permitted v1.2 feature (§6.1). All other items above remain
-> excluded. See `CHANGELOG.md`.*
+> 2026 — dark mode is a permitted v1.2 feature (§6.1). "Budget limits + over-budget alerts"
+> was **removed** by owner amendment on 16 August 2026 — budgets are a permitted v1.2
+> feature (§6.7). All other items above remain excluded. See `CHANGELOG.md`.*
 
 ---
 

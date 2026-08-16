@@ -63,6 +63,40 @@ state; this entry reconciles the frozen spec with it.
 
 ---
 
+## v1.2 Amendment — 16 August 2026 (owner decision: budgets)
+
+### Amendment 4 — Monthly budgets (total + per-category) added (§4.2, §6.5, §6.7, §11)
+
+- **Decision:** the owner explicitly requested a **Budget feature** on 16 Aug 2026 — monthly
+  spending limits, both **per-month** and **per-category**, with a "remaining vs budget"
+  view on the Overview. This entry records the specification amendment; implementation
+  accompanied the decision (schema migration `0001`, Settings card, dashboard Budget card).
+- **§11** exclusion list: the *"Budget limits + over-budget alerts"* bullet is **removed**
+  and annotated in place. All other §11 exclusions stand.
+- **New §4.2 table `budgets`:** one row per **(month, category)** scope — `month`
+  (`'yyyy-MM'`, or `NULL` = every-month default), `categoryId` (`NULL` = total budget,
+  else a per-category limit), `amount` (`NUMERIC(12,2)` per §5.8), enforced unique by
+  `budgets_scope_unique` (a COALESCE index so NULLs don't defeat uniqueness).
+- **New §6.7 Budgets:** effective-budget resolution (exact month wins, else the default);
+  the Settings Budgets card (one scope at a time, total + per-category inputs, empty = no
+  limit, save replaces the scope in one transaction); the dashboard Budget card (spent vs
+  budget bar, "₹X left / ₹X over", "Set one in Settings" empty state, §6.3.1
+  zero-denominator safety); per-category budget bars inside the **Spending by category**
+  card; an **over-budget toast** on create/edit when the post-write month or category total
+  exceeds the effective budget (client-side, in-app only — no email/telegram alerts); an
+  **inline edit/clear shortcut** on the dashboard Budget card (`setTotalBudget` — total row
+  for the exact month only); **remaining-per-category hints** on the Quick Add category grid
+  (`getCategoryBudgetStatus`, resolved against the chosen date's month); and the
+  `saveBudgets` Server Action (Zod-validated, delete-then-insert in a transaction,
+  `revalidatePath('/')` + `revalidateTag('transactions')`).
+- **§6.5 Settings** gains the Budgets card bullet.
+- **Supersedes:** the v1 §11 exclusion of budget limits/over-budget alerts. Scope note:
+  budgets are fully in scope, and a client-side, in-app over-budget **toast** on expense
+  create/edit is included; over-budget alerts as a *notification* feature (email/telegram
+  digest) remain out of scope.
+
+---
+
 ## v1.2 — 12 August 2026
 
 Corrects a factual error introduced by the v1.1 audit, then hardens the specification with
@@ -336,16 +370,18 @@ are not reproduced in this changelog.
 
 ### Unchanged
 
-> ⚠️ **PARTIALLY SUPERSEDED 15 Aug 2026.** The clauses below stating that *"Quick Add
-> flow"* is unchanged and that *"dark mode … stays out of scope"* are superseded by the
-> **v1.2 Amendment — 15 August 2026** entry above (dark mode permitted; Quick Add sequence
-> amended to Amount → Details → Category). All other clauses in this section remain valid.
+> ⚠️ **PARTIALLY SUPERSEDED 15 Aug 2026 (amended 16 Aug 2026).** The clauses below stating
+> that *"Quick Add flow"* is unchanged and that *"dark mode … stays out of scope"* are
+> superseded by the **v1.2 Amendment — 15 August 2026** entry above (dark mode permitted;
+> Quick Add sequence amended to Amount → Details → Category), and the *"budgets … stay out
+> of scope"* clause is superseded by the **v1.2 Amendment — 16 August 2026** entry above
+> (budgets added). All other clauses in this section remain valid.
 
 - **The v1 exclusion list is untouched and remains frozen** — budgets, automated recurring
   generation, PWA/offline, receipt attachments, multi-currency, budget alerts, digests,
   merchant auto-categorization, voice input and dark mode all stay out of scope.
-  *(Superseded 15 Aug 2026 with respect to **dark mode only** — see the v1.2 Amendment
-  entry above.)*
+  *(Superseded 15 Aug 2026 with respect to **dark mode only**, and 16 Aug 2026 with
+  respect to **budgets** — see the amendment entries above.)*
 - All v1.1 decisions not explicitly amended above carry forward, including §5.6 time
   handling (CSV stays `HH:MM`, column stays Postgres `TIME`) and the 19 category names.
 - Auth pattern, tag triad definitions, Quick Add flow, build milestones and environment
