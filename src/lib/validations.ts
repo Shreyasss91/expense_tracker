@@ -58,11 +58,6 @@ export const updateMemberSchema = z.object({
   sortOrder: z.number().int(),
 });
 
-export const changePasswordSchema = z.object({
-  currentPassword: z.string(),
-  newPassword: z.string().min(8).max(200),
-});
-
 /** One category budget row: the category id + its limit in paise (0 = no limit). */
 export const categoryBudgetSchema = z.object({
   categoryId: z.string().uuid(),
