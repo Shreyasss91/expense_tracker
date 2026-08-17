@@ -23,11 +23,56 @@ import { login } from "./lib/live.mjs";
 
 const BASE = process.env.PROD_URL ?? "https://kharchubook.vercel.app";
 const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
-// Per-request budget in ms. Generous on purpose: the first hit after idle is a
-// Vercel cold start (x-vercel-cache: MISS), which legitimately takes seconds.
-// Only a genuinely unhealthy site exceeds this.
 const BUDGET_MS = Number(process.env.SMOKE_MAX_MS ?? 8000);
 const timings = [];
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i += 1;
+        }
+      } else {
+        field += ch;
+        i += 1;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+      i += 1;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+      i += 1;
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i += 1;
+    } else if (ch === "\r") {
+      i += 1;
+    } else {
+      field += ch;
+      i += 1;
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
 
 function record(label, ms, cache) {
   timings.push({ label, ms });
@@ -35,7 +80,6 @@ function record(label, ms, cache) {
   console.log(`    ⏱ ${label}: ${Math.round(ms)}ms${cache ? ` (${cache})` : ""}${flag}`);
 }
 
-/** Run a request, record its duration + Vercel cache state, return the response. */
 async function timed(label, fn) {
   const t0 = performance.now();
   const res = await fn();
@@ -52,8 +96,6 @@ function check(cond, msg) {
   }
 }
 
-// React server-rendered HTML is littered with <!-- --> comment markers; strip
-// them so text assertions like "1,157 entries" match contiguously.
 function stripReactComments(html) {
   return html.replace(/<!--[\s\S]*?-->/g, "");
 }
@@ -63,13 +105,13 @@ async function main() {
     throw new Error("no family master password — set FAMILY_MASTER_PASSWORD");
   }
 
-  // Expected baseline derived from the canonical seed.csv (§8).
-  const lines = readFileSync(join(process.cwd(), "seed_data", "seed.csv"), "utf8")
-    .split("\n")
-    .slice(1)
-    .filter((l) => l.length > 0);
-  const expectedEntries = lines.length;
-  const expectedPaise = lines.reduce((s, l) => s + Math.round(Number(l.split(",")[5]) * 100), 0);
+  const seedCsv = readFileSync(join(process.cwd(), "seed_data", "seed.csv"), "utf8");
+  const seedRows = parseCsv(seedCsv).slice(1);
+  const expectedEntries = seedRows.length;
+  const expectedPaise = seedRows.reduce((s, fields) => {
+    if (fields.length !== 8) throw new Error(`seed row has ${fields.length} fields`);
+    return s + Math.round(Number(fields[5]) * 100);
+  }, 0);
   const expectedTotal = (expectedPaise / 100).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -78,7 +120,6 @@ async function main() {
 
   console.log(`Smoke: ${BASE} (expect ${expectedEntriesStr} entries, all-time expense ₹${expectedTotal}, budget ${BUDGET_MS}ms/request)`);
 
-  // 1. middleware redirect
   const home = await timed("GET / (redirect)", () => fetch(`${BASE}/`, { redirect: "manual", signal: AbortSignal.timeout(60000) }));
   check(home.status === 307, `GET / → ${home.status} (redirect)`);
   const loc = home.headers.get("location") ?? "";
@@ -94,18 +135,15 @@ async function main() {
     `redirect target is same-origin /login (${loc.slice(0, 120)})`,
   );
 
-  // 2. login page
   const loginPage = await timed("GET /login", () => fetch(`${BASE}/login`, { signal: AbortSignal.timeout(60000) }));
   const loginHtml = await loginPage.text();
   check(loginPage.status === 200, `GET /login → ${loginPage.status}`);
   check(/Family Ledger/i.test(loginHtml) && /password/i.test(loginHtml), "login page renders the form");
 
-  // 3. credentials login
   const client = await login(BASE, PASSWORD);
   const timedFetch = (path) => timed(`GET ${path}`, () => client.fetch(path));
   check(true, "credentials login succeeded (session cookie issued)");
 
-  // 4. dashboard sections
   const dash = await timedFetch("/");
   const dashText = stripReactComments(await dash.text());
   check(dash.status === 200, `GET / (authed) → ${dash.status}`);
@@ -114,7 +152,6 @@ async function main() {
     "dashboard renders all sections",
   );
 
-  // 5. ledger summary = seeded totals
   const ledger = await timedFetch("/transactions");
   const ledgerText = stripReactComments(await ledger.text());
   check(ledger.status === 200, `GET /transactions → ${ledger.status}`);
@@ -122,7 +159,6 @@ async function main() {
   check(ledgerText.includes(`${expectedEntriesStr} entries`), `summary shows ${expectedEntriesStr} entries`);
   check(ledgerText.includes(expectedTotal), `summary shows all-time expense ₹${expectedTotal}`);
 
-  // 6. uptime / response time — every request within budget
   const slow = timings.filter((t) => t.ms > BUDGET_MS);
   check(slow.length === 0, `all requests within ${BUDGET_MS}ms budget (slowest: ${slow.length ? slow[0].label : "—"})`);
   const summary = timings.map((t) => `${t.label} ${Math.round(t.ms)}ms`).join(", ");
