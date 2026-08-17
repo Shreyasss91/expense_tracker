@@ -1,9 +1,9 @@
 name: Prod smoke
 
 # Runs after every push to main (the same event that triggers the Vercel
-# deployment), waits for the Vercel production deploy to report success via
-# the GitHub deployments API, then smoke-tests the live app: boots, logs in,
-# renders the exact seeded totals, and stays within the response-time budget.
+# deployment), waits for Vercel's status on the exact commit to report success,
+# then smoke-tests the live app: boots, logs in, renders the exact seeded
+# totals, and stays within the response-time budget.
 #
 # Steps are gated on HAS_PASSWORD because `secrets` is not valid in `if:` —
 # only in `env:`, so the presence check happens there. Requires the canonical
@@ -32,29 +32,25 @@ jobs:
       - name: No FAMILY_MASTER_PASSWORD secret — skipping smoke
         if: ${{ env.HAS_PASSWORD != 'true' }}
         run: echo "::notice title=skipped::Set the FAMILY_MASTER_PASSWORD secret to enable the prod smoke test."
-      - name: Wait for Vercel production deploy
+      - name: Wait for Vercel commit status
         if: ${{ env.HAS_PASSWORD == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           for i in $(seq 1 60); do
-            id=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/deployments" \
-              --jq '.[] | select(.environment == "Production") | .id' 2>/dev/null | head -1 || true)
-            if [ -n "$id" ]; then
-              state=$(gh api "repos/${{ github.repository }}/deployments/$id/statuses" \
-                --jq '.[0].state' 2>/dev/null || true)
-              if [ "$state" = "success" ]; then
-                echo "Vercel production deploy ready"
-                exit 0
-              fi
-              if [ "$state" = "error" ] || [ "$state" = "failure" ]; then
-                echo "Vercel production deploy failed"
-                exit 1
-              fi
+            state=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/statuses" \
+              --jq '[.[] | select(.context == "Vercel")] | first | .state // ""' 2>/dev/null || true)
+            if [ "$state" = "success" ]; then
+              echo "Vercel commit status is successful"
+              exit 0
+            fi
+            if [ "$state" = "error" ] || [ "$state" = "failure" ]; then
+              echo "Vercel commit status reported $state"
+              exit 1
             fi
             sleep 10
           done
-          echo "Timed out waiting for the Vercel production deploy (is the repo linked to Vercel?)"
+          echo "Timed out waiting for Vercel commit status for ${{ github.sha }}"
           exit 1
       - name: Smoke test
         if: ${{ env.HAS_PASSWORD == 'true' }}
