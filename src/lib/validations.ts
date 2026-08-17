@@ -7,6 +7,23 @@ import { TRANSACTION_TAGS } from "./constants";
  */
 export const idSchema = z.string().uuid();
 
+/** Validate a real calendar date, not merely its YYYY-MM-DD shape. */
+export const dateSchema = z.string().refine((value) => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}, "Invalid calendar date; expected YYYY-MM-DD");
+
+/** Validate a real 24-hour clock time in HH:MM form. */
+export const timeSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time; expected HH:MM");
+
+/** Validate a real calendar month in YYYY-MM form. */
+export const monthKeySchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Invalid month; expected YYYY-MM");
+
 export const transactionBaseSchema = z.object({
   memberId: z.string().uuid(),
   categoryId: z.string().uuid(),
@@ -20,9 +37,9 @@ export const transactionBaseSchema = z.object({
     .nullable()
     .transform((v) => (v === "" ? null : v)),
   /** YYYY-MM-DD, IST calendar date (§5.7). */
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  date: dateSchema,
   /** HH:MM; the server appends :00 (§5.6). */
-  time: z.string().regex(/^\d{2}:\d{2}$/),
+  time: timeSchema,
 });
 
 /**
@@ -71,14 +88,14 @@ export const categoryBudgetSchema = z.object({
  * limits — any with paise 0 are simply not stored.
  */
 export const saveBudgetsSchema = z.object({
-  month: z.union([z.null(), z.string().regex(/^\d{4}-\d{2}$/)]),
+  month: z.union([z.null(), monthKeySchema]),
   totalPaise: z.number().int().min(0).nullable(),
   categories: z.array(categoryBudgetSchema).max(60),
 });
 
 /** §6.7 — inline total-budget edit/clear from the dashboard Budget card. */
 export const setTotalBudgetSchema = z.object({
-  month: z.string().regex(/^\d{4}-\d{2}$/),
+  month: monthKeySchema,
   totalPaise: z.number().int().min(0).nullable(),
 });
 
