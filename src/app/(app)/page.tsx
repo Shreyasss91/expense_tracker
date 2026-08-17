@@ -36,11 +36,11 @@ const getDashboardData = unstable_cache(
       // expense + all three expense tags in a single pass over the month
       db
         .select({
-          expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
-          recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
-          recurringCount: sql<number>`COUNT(*) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring')::int`,
-          lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'lifestyle'), 0)`,
-          oneTime: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'one_time'), 0)`,
+          expense: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+          recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'recurring'), 0)`,
+          recurringCount: sql<number>`COUNT(*) FILTER (WHERE ${transactions.tag} = 'recurring')::int`,
+          lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'lifestyle'), 0)`,
+          oneTime: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'one_time'), 0)`,
         })
         .from(transactions)
         .where(range),
@@ -54,7 +54,7 @@ const getDashboardData = unstable_cache(
         })
         .from(transactions)
         .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lte(transactions.date, end)))
+        .where(and(gte(transactions.date, start), lte(transactions.date, end)))
         .groupBy(categories.id, categories.name, categories.emoji, categories.color),
       db
         .select({
@@ -66,13 +66,12 @@ const getDashboardData = unstable_cache(
         })
         .from(transactions)
         .innerJoin(members, eq(transactions.memberId, members.id))
-        .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lte(transactions.date, end)))
+        .where(and(gte(transactions.date, start), lte(transactions.date, end)))
         .groupBy(members.id, members.name, members.emoji, members.color),
       db
         .select({
           month: sql<string>`substring(${transactions.date}::text from 1 for 7)`,
-          expense: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'expense' THEN ${transactions.amount} ELSE 0 END), 0)`,
-          income: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.type} = 'income' THEN ${transactions.amount} ELSE 0 END), 0)`,
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
         })
         .from(transactions)
         .where(gte(transactions.date, `${format(addMonths(baseDate, -5), "yyyy-MM")}-01`))
@@ -90,7 +89,7 @@ const getDashboardData = unstable_cache(
         })
         .from(transactions)
         .innerJoin(categories, eq(transactions.categoryId, categories.id))
-        .where(and(eq(transactions.type, "expense"), gte(transactions.date, start), lte(transactions.date, end)))
+        .where(and(gte(transactions.date, start), lte(transactions.date, end)))
         .orderBy(desc(transactions.amount))
         .limit(1),
       // §6.7 budgets — exact-month rows plus the every-month defaults, resolved below
@@ -149,8 +148,7 @@ const getDashboardData = unstable_cache(
       const r = trendMap.get(k);
       return {
         label: format(parse(`${k}-01`, "yyyy-MM-dd", new Date()), "MMM"),
-        expensePaise: r ? rupeesToPaise(r.expense) : 0,
-        incomePaise: r ? rupeesToPaise(r.income) : 0,
+        expensePaise: r ? rupeesToPaise(r.total) : 0,
       };
     });
 
@@ -212,7 +210,7 @@ export default async function DashboardPage({
 
       {/* Summary cards (§6.3) — each links to the ledger filtered to its transactions */}
       <div className="grid grid-cols-2 gap-2">
-        <Link href={`/transactions?month=${monthKey}&type=expense`} className="block active:scale-[0.98] transition-transform">
+        <Link href={`/transactions?month=${monthKey}`} className="block active:scale-[0.98] transition-transform">
           <Card>
             <CardContent className="p-3">
               <p className="text-xs text-muted-foreground">Expense</p>
@@ -221,7 +219,7 @@ export default async function DashboardPage({
           </Card>
         </Link>
         <Link
-          href={data.topCategory ? `/transactions?month=${monthKey}&category=${data.topCategory.id}` : `/transactions?month=${monthKey}&type=expense`}
+          href={data.topCategory ? `/transactions?month=${monthKey}&category=${data.topCategory.id}` : `/transactions?month=${monthKey}`}
           className="block active:scale-[0.98] transition-transform"
         >
           <Card>
@@ -263,7 +261,7 @@ export default async function DashboardPage({
           href={
             data.largestSpend
               ? `/transactions?month=${monthKey}&category=${data.largestSpend.categoryId}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`
-              : `/transactions?month=${monthKey}&type=expense`
+              : `/transactions?month=${monthKey}`
           }
           className="block active:scale-[0.98] transition-transform"
         >
@@ -302,7 +300,7 @@ export default async function DashboardPage({
         </CardContent>
       </Card>
 
-      {/* Tag breakdown (§6.3) — denominator is total EXPENSE, never income */}
+      {/* Tag breakdown (§6.3) — denominator is total expense */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm">Tag breakdown</CardTitle>

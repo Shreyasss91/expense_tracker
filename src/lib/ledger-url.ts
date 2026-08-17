@@ -14,7 +14,6 @@ export interface LedgerFilters {
   categoryId?: string;
   tag?: "one_time" | "recurring" | "lifestyle";
   month?: string;
-  type?: "income" | "expense";
   q?: string;
 }
 
@@ -25,7 +24,6 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
   if (filters.categoryId) params.set("category", filters.categoryId);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.month) params.set("month", filters.month);
-  if (filters.type) params.set("type", filters.type);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   const qs = params.toString();
   return qs ? `/transactions?${qs}` : "/transactions";
@@ -35,7 +33,7 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
  * §6.4 — the single, authoritative parse of the ledger `searchParams` into the
  * filter objects. The server page feeds the same result to the list query AND
  * the summary query, so the summary always describes exactly the filtered set.
- * Invalid values (bad UUIDs, unknown tags/types/months) are dropped silently —
+ * Invalid values (bad UUIDs, unknown tags/months) are dropped silently —
  * an invalid filter is treated as "no filter", never as an error.
  */
 export function parseLedgerSearchParams(
@@ -55,10 +53,6 @@ export function parseLedgerSearchParams(
       return v && uuid.safeParse(v).success ? v : undefined;
     })(),
     tag: rawTag && (TRANSACTION_TAGS as readonly string[]).includes(rawTag) ? (rawTag as TransactionListFilters["tag"]) : undefined,
-    type: (() => {
-      const v = read(sp.type);
-      return v === "income" || v === "expense" ? v : undefined;
-    })(),
     month: (() => {
       const v = read(sp.month);
       return v && monthKeySchema.safeParse(v).success ? v : undefined;

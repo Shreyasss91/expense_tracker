@@ -38,7 +38,6 @@ export function TransactionEditDialog({
   onOpenChange: (o: boolean) => void;
   onRequestDelete: (row: TransactionListRow) => void;
 }) {
-  const [type, setType] = useState<"expense" | "income">("expense");
   const [tag, setTag] = useState<string>("lifestyle");
   const [categoryId, setCategoryId] = useState("");
   const [memberId, setMemberId] = useState("");
@@ -52,7 +51,6 @@ export function TransactionEditDialog({
   const [lastKey, setLastKey] = useState<string | null>(null);
   if (row && row.id !== lastKey) {
     setLastKey(row.id);
-    setType(row.type);
     setTag(row.tag ?? "lifestyle");
     setCategoryId(row.categoryId);
     setMemberId(row.memberId);
@@ -87,8 +85,7 @@ export function TransactionEditDialog({
         ...row,
         memberId,
         categoryId,
-        type,
-        tag: type === "expense" ? (tag as TransactionListRow["tag"]) : null,
+        tag: tag as TransactionListRow["tag"],
         amount: paiseToDbString(paise),
         note: note || null,
         date,
@@ -98,13 +95,8 @@ export function TransactionEditDialog({
       },
     });
     onOpenChange(false);
-
-    // §5.2 discriminated union: expense carries a tag, income forbids one
     const base = { memberId, categoryId, amount: paise, date, time, note: note || null };
-    const payload =
-      type === "expense"
-        ? { ...base, type: "expense" as const, tag: tag as "one_time" | "recurring" | "lifestyle" }
-        : { ...base, type: "income" as const, tag: undefined };
+    const payload = { ...base, tag: tag as "one_time" | "recurring" | "lifestyle" };
     let res: Awaited<ReturnType<typeof updateTransaction>>;
     try {
       res = await updateTransaction(originalRow.id, payload);
@@ -133,25 +125,7 @@ export function TransactionEditDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setType("expense")}
-              className={cn("h-9 rounded-lg text-sm font-medium", type === "expense" ? "bg-destructive text-white" : "bg-muted text-muted-foreground")}
-            >
-              Expense
-            </button>
-            <button
-              type="button"
-              onClick={() => setType("income")}
-              className={cn("h-9 rounded-lg text-sm font-medium", type === "income" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground")}
-            >
-              Income
-            </button>
-          </div>
-
-          {type === "expense" && (
-            <div>
+          <div>
               <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
               <div className="grid grid-cols-3 gap-2">
                 {TRANSACTION_TAGS.map((t) => (
@@ -168,8 +142,7 @@ export function TransactionEditDialog({
                   </button>
                 ))}
               </div>
-            </div>
-          )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

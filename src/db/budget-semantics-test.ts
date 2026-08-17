@@ -71,9 +71,9 @@ async function main() {
 
   const txnIds = [randomUUID(), randomUUID(), randomUUID()];
   const insertValues = [
-    { id: txnIds[0], memberId: member.id, categoryId: catId, type: "expense" as const, tag: "lifestyle" as const, amount: paiseToDbString(100_000), note: "Semantics A", date: `${month}-10`, time: "10:00:00" },
-    { id: txnIds[1], memberId: member.id, categoryId: catId, type: "expense" as const, tag: "recurring" as const, amount: paiseToDbString(200_000), note: "Semantics B — the bill", date: `${month}-12`, time: "10:00:00" },
-    { id: txnIds[2], memberId: member.id, categoryId: catId, type: "expense" as const, tag: "one_time" as const, amount: paiseToDbString(50_000), note: "Semantics C", date: `${emptyMonth}-05`, time: "10:00:00" },
+    { id: txnIds[0], memberId: member.id, categoryId: catId, tag: "lifestyle" as const, amount: paiseToDbString(100_000), note: "Semantics A", date: `${month}-10`, time: "10:00:00" },
+    { id: txnIds[1], memberId: member.id, categoryId: catId, tag: "recurring" as const, amount: paiseToDbString(200_000), note: "Semantics B — the bill", date: `${month}-12`, time: "10:00:00" },
+    { id: txnIds[2], memberId: member.id, categoryId: catId, tag: "one_time" as const, amount: paiseToDbString(50_000), note: "Semantics C", date: `${emptyMonth}-05`, time: "10:00:00" },
   ];
 
   try {
@@ -91,13 +91,10 @@ async function main() {
       note: "Semantics B",
       date: `${month}-12`,
       time: "10:00",
-      type: "expense" as const,
       tag: "recurring" as const,
     };
     const billParsed = transactionSchema.safeParse(billPayload);
     check(billParsed.success && billParsed.data.tag === "recurring", "bill-shortcut payload ('recurring') passes the transaction schema");
-    const incomeParsed = transactionSchema.safeParse({ ...billPayload, type: "income" as const, tag: undefined });
-    check(incomeParsed.success && incomeParsed.data.tag === undefined, "income payload with no tag still passes (tag invariant intact)");
 
     await db.insert(transactions).values(insertValues);
     const stored = await db.select().from(transactions).where(eq(transactions.id, txnIds[1]));
@@ -155,7 +152,7 @@ async function main() {
     // recurring row (same SQL the Overview bills card runs).
     const agg = await db
       .select({
-        bills: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
+        bills: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'recurring'), 0)`,
       })
       .from(transactions)
       .where(and(gte(transactions.date, `${month}-01`), lte(transactions.date, monthEnd(month))));

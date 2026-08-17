@@ -30,7 +30,7 @@ import { categories, members, transactions } from "./schema";
 const sql = neon(process.env.DATABASE_URL ?? "");
 const db = drizzle({ client: sql });
 
-const CSV_HEADER = "date,time,member,type,item,amount,category,tag";
+const CSV_HEADER = "date,time,member,item,amount,category,tag";
 
 async function main() {
   const csvPath = join(process.cwd(), "seed_data", "seed.csv");
@@ -74,13 +74,15 @@ async function main() {
     seen.set(raw, occurrence + 1);
 
     // §8.1: hash the PRESERVED raw line — never a re-serialized record.
-    const id = uuidv5(`${raw}\u001F#${occurrence}`, SEED_NAMESPACE);
+    const legacyRaw = raw.split(",");
+    legacyRaw.splice(3, 0, "expense");
+    const id = uuidv5(`${legacyRaw.join(",")}\u001F#${occurrence}`, SEED_NAMESPACE);
 
     const fields = raw.split(",");
-    if (fields.length !== 8) {
-      throw new Error(`Expected 8 fields, got ${fields.length}: ${raw.slice(0, 80)}`);
+    if (fields.length !== 7) {
+      throw new Error(`Expected 7 fields, got ${fields.length}: ${raw.slice(0, 80)}`);
     }
-    const [date, time, memberStr, type, item, amountStr, categoryStr, tagStr] = fields;
+    const [date, time, memberStr, item, amountStr, categoryStr, tagStr] = fields;
 
     const memberSlug = MEMBER_SLUG_MAP[memberStr];
     if (!memberSlug) throw new Error(`Unknown member string: ${memberStr}`);
@@ -92,8 +94,6 @@ async function main() {
     if (!memberId || !categoryId) {
       throw new Error(`Missing resolved id for member=${memberSlug} category=${categorySlug}`);
     }
-
-    if (type !== "expense") throw new Error(`Unexpected type ${type} on: ${raw.slice(0, 80)}`);
     const tag = tagStr as (typeof TRANSACTION_TAGS)[number];
     if (!TRANSACTION_TAGS.includes(tag)) {
       throw new Error(`Unexpected tag ${tagStr} on: ${raw.slice(0, 80)}`);
@@ -107,7 +107,6 @@ async function main() {
       id,
       memberId,
       categoryId,
-      type: "expense",
       tag,
       amount,
       note: item,

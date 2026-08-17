@@ -8,7 +8,7 @@
  * Flow: login to the deployed app, locate the `exportCsv` action id inside
  * the live client chunks, invoke it through React's own encodeReply wire
  * format, then compare the returned CSV against seed.csv in canonical form
- * (header, 8 columns, HH:MM times, 2-dp amounts, date-ASC ordering,
+ * (header, 7 columns, HH:MM times, 2-dp amounts, date-ASC ordering,
  * multiset equality). Fails loudly on any drift.
  *
  * Env:
@@ -80,7 +80,7 @@ async function main() {
   const parsedExport = parseCsv(csv);
   check(parsedExport.length > 0, "CSV contains at least a header row");
   check(
-    JSON.stringify(parsedExport[0]) === JSON.stringify(["date", "time", "member", "type", "item", "amount", "category", "tag"]),
+    JSON.stringify(parsedExport[0]) === JSON.stringify(["date", "time", "member", "item", "amount", "category", "tag"]),
     "CSV starts with the canonical header",
   );
 
@@ -92,14 +92,14 @@ async function main() {
   const exportRows = parsedExport.slice(1);
   check(exportRows.length === seedRows.length, `row count matches seed.csv (${exportRows.length})`);
 
-  const canonical = (f) => [...f.slice(0, 5), Number(f[5]).toFixed(2), ...f.slice(6)];
+  const canonical = (f) => [...f.slice(0, 4), Number(f[4]).toFixed(2), ...f.slice(5)];
   const key = (f) => canonical(f).join("\u001F");
   const seedSorted = seedRows.map((f) => {
-    if (f.length !== 8) throw new Error(`seed row has ${f.length} fields`);
+    if (f.length !== 7) throw new Error(`seed row has ${f.length} fields`);
     return key(f);
   }).sort();
   const exportSorted = exportRows.map((f) => {
-    if (f.length !== 8) throw new Error(`export row has ${f.length} fields`);
+    if (f.length !== 7) throw new Error(`export row has ${f.length} fields`);
     return key(f);
   }).sort();
   const same = JSON.stringify(seedSorted) === JSON.stringify(exportSorted);
@@ -116,10 +116,9 @@ async function main() {
   for (const f of exportRows) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f[0])) throw new Error(`bad date: ${f[0]}`);
     if (!/^\d{2}:\d{2}$/.test(f[1])) throw new Error(`bad time: ${f[1]}`);
-    if (!["income", "expense"].includes(f[3])) throw new Error(`bad type: ${f[3]}`);
-    if (!/^\d+(\.\d{2})?$/.test(f[5])) throw new Error(`bad amount: ${f[5]}`);
+    if (!/^\d+(\.\d{2})?$/.test(f[4])) throw new Error(`bad amount: ${f[4]}`);
   }
-  check(true, "format spot-checks pass (dates, HH:MM times, types, amounts)");
+  check(true, "format spot-checks pass (dates, HH:MM times, amounts)");
 
   const dates = exportRows.map((f) => f[0]);
   const sorted = dates.every((d, i) => i === 0 || dates[i - 1] <= d);

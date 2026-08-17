@@ -21,7 +21,6 @@ import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
 
 type Step = "amount" | "category" | "details";
-type TxnType = "expense" | "income";
 type Tag = (typeof TRANSACTION_TAGS)[number];
 
 const NUM_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"] as const;
@@ -43,7 +42,6 @@ export function QuickAddSheet({
 }) {
   const [step, setStep] = useState<Step>("amount");
   const [buf, setBuf] = useState("");
-  const [type, setType] = useState<TxnType>("expense");
   const [tag, setTag] = useState<Tag>("lifestyle");
   const [date, setDate] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
   const [time, setTime] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
@@ -71,7 +69,7 @@ export function QuickAddSheet({
   // §6.7 — fetch remaining budget per category for the transaction's month; only
   // meaningful for expenses, and only once the amount is set (the category step).
   useEffect(() => {
-    if (type !== "expense" || paise <= 0 || step !== "category") {
+    if (paise <= 0 || step !== "category") {
       setBudgetRemaining(null);
       return;
     }
@@ -83,12 +81,11 @@ export function QuickAddSheet({
     return () => {
       cancelled = true;
     };
-  }, [type, paise, date, step]);
+  }, [paise, date, step]);
 
   function reset() {
     setStep("amount");
     setBuf("");
-    setType("expense");
     setTag("lifestyle");
     setNote("");
     setDate(formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
@@ -127,8 +124,7 @@ export function QuickAddSheet({
       id: tempId,
       memberId: member.id,
       categoryId: category.id,
-      type,
-      tag: type === "expense" ? tag : null,
+      tag,
       amount: paiseToDbString(paise),
       note: note || null,
       date,
@@ -140,7 +136,6 @@ export function QuickAddSheet({
     emitLedgerMutation({ kind: "create", tempId, row: optimisticRow });
 
     setSaving(true);
-    // §5.2 discriminated union: expense carries a tag, income forbids one
     const base = {
       memberId: activeMemberId, // server reads the cookie anyway (§6.2)
       categoryId: catId,
@@ -149,10 +144,7 @@ export function QuickAddSheet({
       time,
       note: note || null,
     };
-    const payload =
-      type === "expense"
-        ? { ...base, type: "expense" as const, tag }
-        : { ...base, type: "income" as const, tag: undefined };
+    const payload = { ...base, tag };
     let res: Awaited<ReturnType<typeof createTransaction>>;
     try {
       res = await createTransaction(payload);
@@ -290,16 +282,9 @@ export function QuickAddSheet({
                 <div className="min-w-0">
                   <div className="text-xl font-bold leading-tight tabular-nums">{formatINR(paise)}</div>
                   <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white ${type === "income" ? "bg-emerald-600" : "bg-destructive"}`}
-                    >
-                      {type === "income" ? "Income" : "Expense"}
+                    <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {TRANSACTION_TAG_LABELS[tag]}
                     </span>
-                    {type === "expense" && (
-                      <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {TRANSACTION_TAG_LABELS[tag]}
-                      </span>
-                    )}
                     {activeMember && (
                       <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                         {activeMember.emoji} {activeMember.name}
@@ -412,27 +397,9 @@ export function QuickAddSheet({
 
         {step === "details" && (
           <div className="space-y-4">
-            {/* type toggle */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setType("expense")}
-                className={`h-10 rounded-lg text-sm font-medium ${type === "expense" ? "bg-destructive text-white" : "bg-muted text-muted-foreground"}`}
-              >
-                Expense
-              </button>
-              <button
-                type="button"
-                onClick={() => setType("income")}
-                className={`h-10 rounded-lg text-sm font-medium ${type === "income" ? "bg-emerald-600 text-white" : "bg-muted text-muted-foreground"}`}
-              >
-                Income
-              </button>
-            </div>
 
-            {/* tag selector — mandatory for expense, hidden and cleared for income (§5.2) */}
-            {type === "expense" ? (
-              <div>
+            {/* tag selector */}
+            <div>
                 <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
                 <div className="grid grid-cols-3 gap-2">
                   {TRANSACTION_TAGS.map((t) => (
@@ -448,7 +415,6 @@ export function QuickAddSheet({
                   ))}
                 </div>
               </div>
-            ) : null}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

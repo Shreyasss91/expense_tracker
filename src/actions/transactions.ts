@@ -41,8 +41,7 @@ export async function createTransaction(raw: TransactionInput) {
       id: randomUUID(),
       memberId,
       categoryId: data.categoryId,
-      type: data.type,
-      tag: data.type === "expense" ? data.tag : null,
+      tag: data.tag,
       amount: paiseToDbString(paise),
       note: data.note ?? null,
       date: data.date,
@@ -54,8 +53,7 @@ export async function createTransaction(raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  const alert: BudgetAlert | null =
-    data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
+  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId);
 
   return { ok: true as const, id: row.id, alert };
 }
@@ -78,8 +76,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
     .set({
       memberId: data.memberId,
       categoryId: data.categoryId,
-      type: data.type,
-      tag: data.type === "expense" ? data.tag : null,
+      tag: data.tag,
       amount: paiseToDbString(data.amount),
       note: data.note ?? null,
       date: data.date,
@@ -94,8 +91,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  const alert: BudgetAlert | null =
-    data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
+  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId);
 
   return { ok: true as const, id: row.id, alert };
 }
@@ -127,7 +123,6 @@ export async function getTransactionsPage(args: {
       id: transactions.id,
       memberId: transactions.memberId,
       categoryId: transactions.categoryId,
-      type: transactions.type,
       tag: transactions.tag,
       amount: transactions.amount,
       note: transactions.note,
@@ -166,7 +161,6 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
       date: transactions.date,
       time: transactions.time,
       member: members.name,
-      type: transactions.type,
       note: transactions.note,
       amount: transactions.amount,
       category: categories.name,
@@ -182,7 +176,6 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
       date: r.date,
       time: r.time,
       member: r.member,
-      type: r.type,
       note: r.note,
       amount: r.amount,
       category: r.category,

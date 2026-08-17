@@ -31,7 +31,6 @@ const full: LedgerFilters = {
   categoryId: UUID_B,
   tag: "lifestyle",
   month: "2026-08",
-  type: "expense",
   q: "  petrol  ",
 };
 
@@ -44,7 +43,6 @@ function main() {
   check(p.get("category") === UUID_B, "categoryId → ?category");
   check(p.get("tag") === "lifestyle", "tag → ?tag");
   check(p.get("month") === "2026-08", "month → ?month");
-  check(p.get("type") === "expense", "type → ?type");
   check(p.get("q") === "petrol", "search → ?q, trimmed");
 
   // --- Composition: changing ONE filter preserves every other.
@@ -55,22 +53,9 @@ function main() {
       np.get("member") === UUID_A &&
       np.get("category") === UUID_B &&
       np.get("tag") === "lifestyle" &&
-      np.get("type") === "expense" &&
       np.get("q") === "petrol",
-    "changing the month preserves member/category/tag/type/q",
+    "changing the month preserves member/category/tag/q",
   );
-  const nextType = buildLedgerUrl({ ...full, type: "income" });
-  const tp = paramsOf(nextType);
-  check(
-    tp.get("type") === "income" &&
-      tp.get("month") === "2026-08" &&
-      tp.get("member") === UUID_A &&
-      tp.get("category") === UUID_B &&
-      tp.get("tag") === "lifestyle" &&
-      tp.get("q") === "petrol",
-    "changing the type preserves month/member/category/tag/q",
-  );
-
   // --- Clearing the month (All) preserves the rest.
   const clearedMonth = buildLedgerUrl({ ...full, month: undefined });
   const cp = paramsOf(clearedMonth);
@@ -79,7 +64,6 @@ function main() {
       cp.get("member") === UUID_A &&
       cp.get("category") === UUID_B &&
       cp.get("tag") === "lifestyle" &&
-      cp.get("type") === "expense" &&
       cp.get("q") === "petrol",
     "clearing the month (All) preserves the other filters",
   );
@@ -94,12 +78,11 @@ function main() {
     category: UUID_B,
     tag: "recurring",
     month: "2026-08",
-    type: "expense",
     q: "internet",
   };
   const { filters, ledgerFilters } = parseLedgerSearchParams(sp);
   check(filters.memberId === UUID_A && filters.categoryId === UUID_B, "parse: member/category UUIDs decode");
-  check(filters.tag === "recurring" && filters.type === "expense" && filters.month === "2026-08", "parse: tag/type/month decode");
+  check(filters.tag === "recurring" && filters.month === "2026-08", "parse: tag/month decode");
   check(filters.search === "internet" && ledgerFilters.q === "internet", "parse: search maps to both search and q");
   check(
     ledgerFilters.memberId === filters.memberId && ledgerFilters.month === filters.month,
@@ -118,7 +101,6 @@ function main() {
   check(dirty.filters.memberId === undefined, "invalid member UUID dropped");
   check(dirty.filters.categoryId === undefined, "invalid category UUID dropped");
   check(dirty.filters.tag === undefined, "unknown tag dropped");
-  check(dirty.filters.type === undefined, "unknown type dropped");
   check(dirty.filters.month === undefined, "malformed month dropped");
   check(dirty.filters.search === "x", "search survives (free text)");
 
@@ -129,7 +111,6 @@ function main() {
       round.filters.categoryId === UUID_B &&
       round.filters.tag === "lifestyle" &&
       round.filters.month === "2026-08" &&
-      round.filters.type === "expense" &&
       round.filters.search === "petrol",
     "parse ∘ buildLedgerUrl round-trips the full filter set",
   );

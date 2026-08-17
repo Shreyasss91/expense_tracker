@@ -3,8 +3,8 @@
 import {
   CartesianGrid,
   Cell,
-  Line,
-  LineChart,
+  Bar,
+  BarChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -31,7 +31,6 @@ export interface MemberSlice {
 export interface TrendPoint {
   label: string;
   expensePaise: number;
-  incomePaise: number;
 }
 
 const tooltipStyle = {
@@ -139,9 +138,8 @@ export function MemberSplit({ slices }: { slices: MemberSlice[] }) {
 
 export function TrendChart({ points }: { points: TrendPoint[] }) {
   const hasExpense = points.some((p) => p.expensePaise > 0);
-  const hasIncome = points.some((p) => p.incomePaise > 0);
 
-  if (!hasExpense && !hasIncome) {
+  if (!hasExpense) {
     return (
       <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed text-center">
         <span className="text-2xl">📈</span>
@@ -153,16 +151,15 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
   return (
     <div className="h-56">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
+        <BarChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
           {/* tick fill defaults to #666, which is unreadable on a dark card —
               pin it to the theme's muted foreground instead */}
           <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
           <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => (Number(v) >= 100000 ? `${Number(v) / 100000}L` : `${Number(v) / 1000}k`)} />
-          <Tooltip formatter={(v, name) => [inr(Number(v)), name === "expensePaise" ? "Expense" : "Income"]} contentStyle={tooltipStyle} cursor={{ stroke: "hsl(var(--border))" }} />
-          {hasExpense && <Line type="monotone" dataKey="expensePaise" name="Expense" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />}
-          {hasIncome && <Line type="monotone" dataKey="incomePaise" name="Income" stroke="#059669" strokeWidth={2} dot={{ r: 2 }} />}
-        </LineChart>
+          <Tooltip formatter={(v) => [inr(Number(v)), "Expense"]} contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))" }} />
+          <Bar dataKey="expensePaise" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={42} />
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );

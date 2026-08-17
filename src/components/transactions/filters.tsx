@@ -105,7 +105,7 @@ export function FiltersBar({
     }
   }
 
-  const hasFilters = !!(filters.memberId || filters.categoryId || filters.tag || filters.month || filters.type || filters.q);
+  const hasFilters = !!(filters.memberId || filters.categoryId || filters.tag || filters.month || filters.q);
 
   return (
     <div className="space-y-2">

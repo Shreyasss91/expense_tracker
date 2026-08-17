@@ -42,21 +42,10 @@ export const transactionBaseSchema = z.object({
   time: timeSchema,
 });
 
-/**
- * §5.2 discriminated union: expense requires a tag, income forbids one.
- * The same schema validates the client payload and is re-validated by the
- * Server Action before any write.
- */
-export const transactionSchema = z.discriminatedUnion("type", [
-  transactionBaseSchema.extend({
-    type: z.literal("expense"),
-    tag: z.enum(TRANSACTION_TAGS),
-  }),
-  transactionBaseSchema.extend({
-    type: z.literal("income"),
-    tag: z.union([z.undefined(), z.null()]).optional(),
-  }),
-]);
+/** Expense-only transaction input shared by the client and Server Actions. */
+export const transactionSchema = transactionBaseSchema.extend({
+  tag: z.enum(TRANSACTION_TAGS),
+});
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
 

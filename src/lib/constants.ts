@@ -73,7 +73,6 @@ export const SEED_CATEGORIES = [
   { slug: "misc", name: "Misc", emoji: "📦", color: "#78716c", sortOrder: 19 },
 ] as const;
 
-export const TRANSACTION_TYPES = ["expense", "income"] as const;
 export const TRANSACTION_TAGS = ["lifestyle", "recurring", "one_time"] as const;
 export const TRANSACTION_TAG_LABELS: Record<(typeof TRANSACTION_TAGS)[number], string> = {
   one_time: "One-time",

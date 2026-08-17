@@ -56,9 +56,11 @@ async function main() {
   for (const raw of rawRows) {
     const occurrence = seen.get(raw) ?? 0;
     seen.set(raw, occurrence + 1);
-    const id = uuidv5(`${raw}\u001F#${occurrence}`, SEED_NAMESPACE);
+    const legacyRaw = raw.split(",");
+    legacyRaw.splice(3, 0, "expense");
+    const id = uuidv5(`${legacyRaw.join(",")}\u001F#${occurrence}`, SEED_NAMESPACE);
     const fields = raw.split(",");
-    if (fields.length !== 8) fail(`seed row has ${fields.length} fields: ${raw.slice(0, 60)}`);
+    if (fields.length !== 7) fail(`seed row has ${fields.length} fields: ${raw.slice(0, 60)}`);
     expected.push({ id, fields });
   }
 
@@ -69,7 +71,6 @@ async function main() {
       id: transactions.id,
       date: transactions.date,
       time: transactions.time,
-      type: transactions.type,
       note: transactions.note,
       amount: transactions.amount,
       tag: transactions.tag,
@@ -93,19 +94,18 @@ async function main() {
       date: r.date,
       time: r.time,
       member: r.member,
-      type: r.type as "income" | "expense",
       note: r.note,
       amount: r.amount,
       category: r.category,
       tag: r.tag,
     });
     const out = line.split(",");
-    if (out.length !== 8) fail(`exported line has ${out.length} fields for seed row: ${fields.join(",").slice(0, 60)}`);
+    if (out.length !== 7) fail(`exported line has ${out.length} fields for seed row: ${fields.join(",").slice(0, 60)}`);
     return out;
   });
 
   // 5. Compare as multisets in canonical form (amounts normalized to 2 dp).
-  const canonical = (f: string[]) => [...f.slice(0, 5), Number(f[5]).toFixed(2), ...f.slice(6)];
+  const canonical = (f: string[]) => [...f.slice(0, 4), Number(f[4]).toFixed(2), ...f.slice(5)];
   const key = (f: string[]) => canonical(f).join("\u001F");
   const seedSorted = expected.map((e) => key(e.fields)).sort();
   const exportSorted = exported.map(key).sort();
@@ -127,8 +127,7 @@ async function main() {
   for (const f of exported) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f[0])) fail(`bad date: ${f[0]}`);
     if (!/^\d{2}:\d{2}$/.test(f[1])) fail(`bad time: ${f[1]}`);
-    if (!["income", "expense"].includes(f[3])) fail(`bad type: ${f[3]}`);
-    if (!/^\d+(\.\d{2})?$/.test(f[5])) fail(`bad amount: ${f[5]}`);
+    if (!/^\d+(\.\d{2})?$/.test(f[4])) fail(`bad amount: ${f[4]}`);
   }
 
   // 7. The export query itself must order by date ASC (created_at ASC ties)
@@ -146,7 +145,7 @@ async function main() {
 
   console.log(
     `✓ Round-trip OK — ${exported.length} seeded rows exported from the DB match ` +
-      `seed.csv in canonical form (header, 8 columns, HH:MM times, 2-dp amounts, date-ASC ordering).`,
+      `seed.csv in canonical form (header, 7 columns, HH:MM times, 2-dp amounts, date-ASC ordering).`,
   );
   // Natural exit (no process.exit) so undici's keep-alive handles drain cleanly.
   process.exitCode = 0;

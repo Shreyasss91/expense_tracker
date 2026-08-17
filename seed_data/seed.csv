@@ -1,1158 +1,1158 @@
-date,time,member,type,item,amount,category,tag
-2022-11-23,19:33,Dad,expense,Site 1st installment 30x50 plot,1200000,Property & Investments,one_time
-2023-10-12,14:48,Mom,expense,Veeledele betel leaves,20,Groceries & Household,lifestyle
-2023-10-16,19:37,Dad,expense,Cake + Sweets celebration,2000,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Balloons celebration,15500,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Food for celebration,32000,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Cake celebration,5500,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Shamiyana tent,10000,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Camera,5000,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Adike hoovu ele pooja items,1600,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Diana Book House,900,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Bakery Prema Veena,500,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Naganna celebration,1500,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Water bottles,900,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Dress celebration,5000,Clothing,one_time
-2023-10-24,19:37,Dad,expense,Tindi snacks,900,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Tips Shubham,1700,Religion & Gifts,one_time
-2023-10-24,19:37,Dad,expense,Suma,1000,Religion & Gifts,one_time
-2024-05-02,17:13,Dad,expense,Mango,300,Groceries & Household,lifestyle
-2024-05-02,17:13,Dad,expense,Bike petrol,1000,Fuel,lifestyle
-2024-05-02,18:43,Dad,expense,Custard powder + sabja seeds,50,Groceries & Household,lifestyle
-2024-05-12,19:46,Dad,expense,Cartoon books + balloons,1117,Kids,lifestyle
-2024-06-09,22:37,Mom,expense,Cosmetics,2312,Personal Care & Fitness,lifestyle
-2024-06-09,22:37,Mom,expense,Baby pampers,279,Kids,recurring
-2024-06-09,22:37,Mom,expense,Parlour,180,Personal Care & Fitness,lifestyle
-2024-06-09,22:37,Mom,expense,Dress,570,Clothing,lifestyle
-2024-06-09,22:37,Mom,expense,Petrol,2000,Fuel,lifestyle
-2024-06-09,22:37,Mom,expense,Fruits,400,Groceries & Household,lifestyle
-2024-06-09,22:37,Mom,expense,Vegetables,100,Groceries & Household,lifestyle
-2024-06-09,22:37,Mom,expense,Baby water bottle,650,Kids,lifestyle
-2024-06-09,22:37,Mom,expense,Monika baby dress,700,Kids,lifestyle
-2024-06-10,08:12,Mom,expense,Baby water bottle,674,Kids,lifestyle
-2024-06-20,18:43,Dad,expense,Dry cleaners,750,Clothing,lifestyle
-2024-06-20,18:43,Dad,expense,Shyam store,2450,Groceries & Household,lifestyle
-2024-06-20,18:43,Dad,expense,Greenland store,1050,Groceries & Household,lifestyle
-2024-06-21,13:14,Dad,expense,Internet recharge,825,Utilities & Recharges,recurring
-2024-06-23,09:32,Dad,expense,Pampers + condoms,600,Groceries & Household,recurring
-2024-06-23,09:32,Dad,expense,Hit insect spray,480,Groceries & Household,lifestyle
-2024-06-23,09:49,Dad,expense,Tarakari vegetables,200,Groceries & Household,lifestyle
-2024-06-23,12:03,Mom,expense,Vinutha dress,1312,Clothing,lifestyle
-2024-06-24,12:43,Dad,expense,Watch repair,800,Misc,one_time
-2024-06-27,15:04,Dad,expense,Petrol,1100,Fuel,lifestyle
-2024-06-29,22:42,Mom,expense,Fruits,220,Groceries & Household,lifestyle
-2024-06-30,20:45,Dad,expense,Hoovu flowers,240,Religion & Gifts,recurring
-2024-06-30,20:45,Dad,expense,Tarakari vegetables,125,Groceries & Household,lifestyle
-2024-06-30,20:45,Dad,expense,Petrol,2000,Fuel,lifestyle
-2024-06-30,20:45,Dad,expense,Gullehalli farm expense,2000,Farm & Garden,one_time
-2024-06-30,20:48,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-07-01,21:11,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-07-01,21:11,Dad,expense,Masala puri,145,Dining Out,lifestyle
-2024-07-04,13:10,Dad,expense,Roundup weedicide,785,Farm & Garden,one_time
-2024-07-04,13:10,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-07-05,00:09,Dad,expense,Chips,124,Dining Out,lifestyle
-2024-07-05,00:09,Dad,expense,Pampers,410,Kids,recurring
-2024-07-05,00:09,Dad,expense,Socks,300,Clothing,lifestyle
-2024-07-05,00:09,Dad,expense,Varna matching,372,Clothing,lifestyle
-2024-07-05,23:19,Dad,expense,Fish,380,Groceries & Household,lifestyle
-2024-07-06,17:51,Dad,expense,Bat,100,Kids,lifestyle
-2024-07-06,17:51,Dad,expense,Haircut,300,Personal Care & Fitness,lifestyle
-2024-07-07,23:05,Dad,expense,Cable,330,Home & Furniture,one_time
-2024-07-16,18:52,Dad,expense,Tiago tyre puncture,600,Vehicle Maintenance,one_time
-2024-07-19,19:38,Dad,expense,Snacks,140,Dining Out,lifestyle
-2024-07-19,19:38,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-07-21,21:31,Dad,expense,Onion + milk,74,Groceries & Household,lifestyle
-2024-07-27,12:57,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-07-27,12:57,Dad,expense,Mobile recharge,980,Utilities & Recharges,recurring
-2024-07-27,12:57,Dad,expense,Internet recharge,825,Utilities & Recharges,recurring
-2024-07-27,13:50,Dad,expense,Mobile recharge,489,Utilities & Recharges,recurring
-2024-07-27,19:39,Mom,expense,Saree PSR Silks,2760,Clothing,lifestyle
-2024-07-27,19:39,Mom,expense,Matching petticoat,620,Clothing,lifestyle
-2024-07-27,21:28,Dad,expense,Papu toys,2500,Kids,lifestyle
-2024-07-27,21:28,Dad,expense,Bakery,358,Dining Out,lifestyle
-2024-07-27,21:29,Dad,expense,More store surf etc,750,Groceries & Household,lifestyle
-2024-07-27,21:47,Dad,expense,MetPlus pampers,750,Kids,recurring
-2024-07-29,19:09,Dad,expense,Balloon + drawing board + sketch pens,350,Kids,lifestyle
-2024-07-29,19:09,Dad,expense,Banana,140,Groceries & Household,lifestyle
-2024-07-29,19:09,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2024-08-01,19:43,Dad,expense,Westside shopping,7044,Clothing,lifestyle
-2024-08-01,21:11,Mom,expense,Tarakari vegetables,400,Groceries & Household,lifestyle
-2024-08-03,13:41,Dad,expense,Marker pens + ink,200,Kids,lifestyle
-2024-08-03,13:41,Dad,expense,Plumbing items,100,Home & Furniture,one_time
-2024-08-06,13:19,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-08-08,14:46,Dad,expense,Aradhana doctor consultation,300,Health & Medical,lifestyle
-2024-08-08,14:47,Dad,expense,Aradhana X-ray,500,Health & Medical,lifestyle
-2024-08-08,14:47,Dad,expense,Aradhana medicine,420,Health & Medical,lifestyle
-2024-08-09,09:54,Dad,expense,Traffic police fine,1000,Misc,one_time
-2024-08-09,09:54,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2024-08-12,20:53,Dad,expense,Petrol,1100,Fuel,lifestyle
-2024-08-12,20:53,Dad,expense,Physiotherapy,400,Health & Medical,lifestyle
-2024-08-13,13:27,Dad,expense,Tyre puncture,70,Vehicle Maintenance,one_time
-2024-08-13,19:50,Dad,expense,Office snacks,200,Misc,lifestyle
-2024-08-13,19:50,Dad,expense,Pen,40,Misc,lifestyle
-2024-08-14,11:45,Dad,expense,Bike battery,2300,Vehicle Maintenance,one_time
-2024-08-15,17:51,Dad,expense,Ramu tailor,1200,Clothing,lifestyle
-2024-08-17,13:53,Dad,expense,Papu dress,600,Kids,lifestyle
-2024-08-17,13:53,Dad,expense,Office pooja tindi,1800,Misc,lifestyle
-2024-08-18,22:17,Dad,expense,Fruits,520,Groceries & Household,lifestyle
-2024-08-18,22:17,Dad,expense,Hoovu flowers,100,Religion & Gifts,recurring
-2024-08-18,22:17,Dad,expense,Kayakanchi offering,2000,Religion & Gifts,one_time
-2024-08-18,22:17,Dad,expense,Petrol,800,Fuel,lifestyle
-2024-08-18,22:17,Dad,expense,Chappal,1150,Clothing,lifestyle
-2024-08-18,22:17,Dad,expense,Train ride + car ride + parking,220,Transport & Parking,lifestyle
-2024-08-18,22:17,Dad,expense,Udupi restaurant,150,Dining Out,lifestyle
-2024-08-18,22:17,Dad,expense,MedPlus pharmacy,980,Health & Medical,lifestyle
-2024-08-21,10:19,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-08-21,10:20,Dad,expense,Papu dress,2100,Kids,lifestyle
-2024-08-24,10:42,Dad,expense,Chats,110,Dining Out,lifestyle
-2024-08-24,10:42,Dad,expense,Paalak rice,155,Dining Out,lifestyle
-2024-08-24,10:42,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-08-24,10:42,Dad,expense,Tarakari vegetables,45,Groceries & Household,lifestyle
-2024-08-24,10:44,Dad,expense,Hoovu flowers,80,Religion & Gifts,recurring
-2024-08-24,10:44,Dad,expense,Bangles + toys,550,Kids,lifestyle
-2024-08-24,10:44,Dad,expense,Milk + curd,80,Groceries & Household,recurring
-2024-08-26,19:18,Dad,expense,Ganapati vishwaradhya,3000,Religion & Gifts,one_time
-2024-08-29,21:58,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-09-02,10:21,Dad,expense,Vinutha movie + mall,1000,Entertainment & Outings,lifestyle
-2024-09-03,10:38,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-09-05,18:38,Dad,expense,Haircut,400,Personal Care & Fitness,lifestyle
-2024-09-07,14:52,Dad,expense,Mysore hotel booking 4 nights,20718.18,Travel & Trips,lifestyle
-2024-09-09,18:14,Dad,expense,Wearable backpack,979,Misc,one_time
-2024-09-09,18:55,Dad,expense,Vinutha haircut,1234,Personal Care & Fitness,lifestyle
-2024-09-13,07:06,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2024-09-13,07:06,Dad,expense,Duster petrol,3000,Fuel,lifestyle
-2024-09-13,21:39,Dad,expense,Mysore tea + biscuits,40,Travel & Trips,lifestyle
-2024-09-13,21:39,Dad,expense,Mysore Ahaar Vedh hotel,380,Travel & Trips,lifestyle
-2024-09-13,21:39,Dad,expense,Mysore Lokaranjan tickets,600,Travel & Trips,lifestyle
-2024-09-13,21:39,Dad,expense,Mysore Lokaranjan photos,500,Travel & Trips,lifestyle
-2024-09-13,21:39,Dad,expense,Mysore Lokaranjan parking,70,Travel & Trips,lifestyle
-2024-09-13,21:39,Dad,expense,Mysore Indian Curry lunch + paan + banana,1350,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore tonga,200,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore wood art items,220,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore auto,30,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore GRS water park,1950,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore GRS up-down + snow park,1612,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore GRS snacks,155,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore GRS oota,520,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore locker,100,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore coffee,80,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore ball,200,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore cap,200,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore mobile pouch,200,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore doll games,150,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore peanuts,20,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore panipuri,60,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore parking,30,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore banana,100,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore oota,430,Travel & Trips,lifestyle
-2024-09-15,06:26,Dad,expense,Mysore vim,20,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Mysore zoo,200,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Mysore auto,60,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Mysore ball,150,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Girish Anna muyyi gift,1000,Religion & Gifts,one_time
-2024-09-16,07:02,Dad,expense,Mysore masala mandakki,100,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Mysore tonga,800,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Mysore oota,300,Travel & Trips,lifestyle
-2024-09-16,07:02,Dad,expense,Petrol,1400,Fuel,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore car parking,40,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore Chamundeshwari ticket,100,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore chappal stand,10,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore Nanjangud temple ticket,300,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore kanike,800,Religion & Gifts,one_time
-2024-09-16,21:49,Dad,expense,Mysore toys,70,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore parking,30,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore hotel,350,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore ice cream,420,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore viewpoint,80,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore kanike,200,Religion & Gifts,one_time
-2024-09-16,21:49,Dad,expense,Mysore masala mandakki,50,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore car parking,40,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore kanike,450,Religion & Gifts,one_time
-2024-09-16,21:49,Dad,expense,Mysore chappal,10,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore art palace,100,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Mysore oota,255,Travel & Trips,lifestyle
-2024-09-16,21:49,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore checkout charges,717,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore tips,150,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore car parking,50,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore palace entry,200,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore majjige,60,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore elephant + horse ride,1000,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Petrol,1600,Fuel,lifestyle
-2024-09-17,19:18,Dad,expense,Mysore coffee + milk,60,Travel & Trips,lifestyle
-2024-09-17,19:18,Dad,expense,Petrol,500,Fuel,lifestyle
-2024-09-18,21:41,Dad,expense,Slide for Papu,1460,Kids,one_time
-2024-09-23,18:13,Dad,expense,Bike petrol,900,Fuel,lifestyle
-2024-09-23,18:13,Dad,expense,Dry fruits,580,Groceries & Household,lifestyle
-2024-09-25,13:59,Dad,expense,Car insurance + emission test,4100,Insurance & Finance,recurring
-2024-09-25,14:35,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-09-27,17:05,Dad,expense,Internet recharge,825,Utilities & Recharges,recurring
-2024-09-27,17:05,Dad,expense,Wheel alignment,300,Vehicle Maintenance,one_time
-2024-10-03,19:27,Dad,expense,Iron laundry,230,Misc,recurring
-2024-10-03,19:27,Dad,expense,Hotel,400,Dining Out,lifestyle
-2024-10-03,19:27,Dad,expense,Bubbles toy,40,Kids,lifestyle
-2024-10-04,17:21,Dad,expense,15 inch LCD tablet,700,Kids,one_time
-2024-10-06,19:30,Dad,expense,Hoovu flowers,40,Religion & Gifts,recurring
-2024-10-06,19:30,Dad,expense,Kanike offering,100,Religion & Gifts,one_time
-2024-10-06,19:30,Dad,expense,Snacks,290,Dining Out,lifestyle
-2024-10-07,18:38,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-10-08,12:43,Dad,expense,Papu consultation + medicine,805,Health & Medical,lifestyle
-2024-10-08,13:07,Dad,expense,Juice,50,Dining Out,lifestyle
-2024-10-12,14:40,Dad,expense,Mobile recharge,800,Utilities & Recharges,recurring
-2024-10-20,20:44,Dad,expense,KrushiMela two toy guns,180,Kids,lifestyle
-2024-10-21,20:37,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-10-22,15:01,Dad,expense,Bike petrol,1000,Fuel,lifestyle
-2024-10-22,15:01,Dad,expense,Amazon Fresh groceries,1042,Groceries & Household,lifestyle
-2024-10-23,19:11,Dad,expense,Papu consultation + vaccination,5500,Health & Medical,one_time
-2024-10-24,09:24,Dad,expense,Haircut,130,Personal Care & Fitness,lifestyle
-2024-10-26,13:17,Dad,expense,Sakrebyele outing,360,Entertainment & Outings,lifestyle
-2024-10-26,13:17,Dad,expense,Lakme,365,Personal Care & Fitness,lifestyle
-2024-10-27,14:26,Dad,expense,Petrol,1000,Fuel,lifestyle
-2024-10-28,15:22,Dad,expense,Internet recharge,825,Utilities & Recharges,recurring
-2024-10-29,19:01,Dad,expense,MedPlus pharmacy,712,Health & Medical,lifestyle
-2024-11-04,11:46,Dad,expense,Hotel tindi,190,Dining Out,lifestyle
-2024-11-04,14:10,Dad,expense,Dry fruits,600,Groceries & Household,lifestyle
-2024-11-09,12:26,Dad,expense,LPG gas cylinder,816,Utilities & Recharges,recurring
-2024-11-11,21:33,Dad,expense,Bike petrol,650,Fuel,lifestyle
-2024-11-11,21:33,Dad,expense,Butterfly park ticket,180,Entertainment & Outings,lifestyle
-2024-11-11,21:33,Dad,expense,Elephant 3D photo,400,Entertainment & Outings,lifestyle
-2024-11-11,21:33,Dad,expense,Hotel,1600,Dining Out,lifestyle
-2024-11-12,18:11,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2024-11-14,14:25,Dad,expense,Soap + kids books,1100,Kids,lifestyle
-2024-11-16,19:03,Dad,expense,Bangarapet chats,130,Dining Out,lifestyle
-2024-11-16,19:20,Dad,expense,Vishnu Medicals,250,Health & Medical,lifestyle
-2024-11-16,19:20,Dad,expense,Hopcoms,70,Groceries & Household,lifestyle
-2024-11-16,19:20,Dad,expense,MedPlus pharmacy,1346,Health & Medical,lifestyle
-2024-11-17,22:43,Dad,expense,Chats,350,Dining Out,lifestyle
-2024-11-17,22:43,Dad,expense,Lipika dress,1720,Clothing,lifestyle
-2024-11-20,19:04,Dad,expense,Doctor fee + file,450,Health & Medical,lifestyle
-2024-11-20,19:04,Dad,expense,Blood test,1200,Health & Medical,lifestyle
-2024-11-20,19:04,Dad,expense,Medicine,1400,Health & Medical,lifestyle
-2024-11-20,19:04,Dad,expense,Injection,600,Health & Medical,lifestyle
-2024-11-20,19:04,Dad,expense,Petrol,1050,Fuel,lifestyle
-2024-11-20,19:25,Dad,expense,FirstCry bottle + toothbrush,800,Kids,lifestyle
-2024-11-23,18:06,Dad,expense,Mobile recharge Shreyas,980,Utilities & Recharges,recurring
-2024-11-23,20:40,Dad,expense,Papu batte dress,5950,Kids,lifestyle
-2024-11-23,20:41,Dad,expense,Iron laundry,180,Misc,recurring
-2024-11-23,20:41,Dad,expense,Fancy store,150,Misc,lifestyle
-2024-11-24,13:38,Dad,expense,Duster petrol,1000,Fuel,lifestyle
-2024-11-25,19:37,Dad,expense,Floating panipuri,90,Dining Out,lifestyle
-2024-11-25,19:37,Dad,expense,Haircut,300,Personal Care & Fitness,lifestyle
-2024-11-26,20:00,Dad,expense,Bus tickets,600,Transport & Parking,lifestyle
-2024-11-27,13:05,Dad,expense,Anna Dasoha Chinmaya Deeksha,1000,Religion & Gifts,one_time
-2024-11-27,14:13,Dad,expense,Duplicate Aadhar + voter card,160,Misc,one_time
-2024-11-28,09:50,Dad,expense,Internet charges,825,Utilities & Recharges,recurring
-2024-11-30,23:11,Dad,expense,Trip bus tickets,600,Travel & Trips,lifestyle
-2024-11-30,23:11,Dad,expense,Trip auto,470,Travel & Trips,lifestyle
-2024-11-30,23:11,Dad,expense,Trip food + snacks,2010,Travel & Trips,lifestyle
-2024-11-30,23:11,Dad,expense,Trip accommodation,400,Travel & Trips,lifestyle
-2024-11-30,23:11,Dad,expense,Trip beach sea walk,300,Travel & Trips,lifestyle
-2024-11-30,23:11,Dad,expense,Trip Papu glitter ball,160,Travel & Trips,lifestyle
-2024-11-30,23:11,Dad,expense,Vinutha surprise gift,5350,Religion & Gifts,one_time
-2024-11-30,23:13,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2024-11-30,23:13,Dad,expense,Papu ICLUD brand dress,5951,Kids,lifestyle
-2024-12-01,10:51,Dad,expense,Petrol,1050,Fuel,lifestyle
-2024-12-03,12:07,Dad,expense,Petrol,1050,Fuel,lifestyle
-2024-12-04,18:06,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2024-12-04,19:26,Dad,expense,Cells + chakli,125,Groceries & Household,lifestyle
-2024-12-05,13:27,Dad,expense,Louis Philippe clothes + socks,1750,Clothing,lifestyle
-2024-12-05,15:04,Dad,expense,Mandakki + bakery,235,Dining Out,lifestyle
-2024-12-05,15:15,Mom,expense,MedPlus pampers,100,Kids,recurring
-2024-12-05,23:12,Mom,expense,Aurora cosmetics,682,Personal Care & Fitness,lifestyle
-2024-12-09,22:02,Dad,expense,Pizza + hotel,1800,Dining Out,lifestyle
-2024-12-11,18:10,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2024-12-11,18:15,Dad,expense,Kotak term insurance annual,16301,Insurance & Finance,recurring
-2024-12-13,16:42,Dad,expense,Moon ball,85,Kids,lifestyle
-2024-12-17,11:21,Dad,expense,Tiago 2 new tyres + balancing + valves,11350,Vehicle Maintenance,one_time
-2024-12-17,12:31,Dad,expense,Tiago window switch repair,250,Vehicle Maintenance,one_time
-2024-12-17,12:31,Dad,expense,Petrol,1050,Fuel,lifestyle
-2024-12-19,11:36,Dad,expense,Funpunch boxing bag,1600,Personal Care & Fitness,one_time
-2024-12-20,09:52,Dad,expense,Petrol,450,Fuel,lifestyle
-2024-12-25,12:38,Dad,expense,Petrol,1750,Fuel,lifestyle
-2024-12-25,12:38,Dad,expense,Bakery,440,Dining Out,lifestyle
-2024-12-29,19:59,Dad,expense,Haircut,130,Personal Care & Fitness,lifestyle
-2024-12-29,19:59,Dad,expense,Snacks,80,Dining Out,lifestyle
-2024-12-31,11:48,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2024-12-31,11:49,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2025-01-01,08:35,Dad,expense,Car petrol,1050,Fuel,lifestyle
-2025-01-01,10:59,Dad,expense,Toy car + books,830,Kids,lifestyle
-2025-01-02,16:34,Dad,expense,TV,26000,Home & Furniture,one_time
-2025-01-03,16:32,Dad,expense,Shankar Eye Hospital consultation,600,Health & Medical,lifestyle
-2025-01-03,16:32,Dad,expense,Bakery,95,Dining Out,lifestyle
-2025-01-03,17:54,Mom,expense,Medicine,517,Health & Medical,lifestyle
-2025-01-03,17:54,Mom,expense,Soap,40,Groceries & Household,lifestyle
-2025-01-05,20:44,Dad,expense,Vinutha mobile recharge,200,Utilities & Recharges,recurring
-2025-01-08,16:54,Dad,expense,MedPlus pharmacy,1370,Health & Medical,lifestyle
-2025-01-08,16:54,Dad,expense,Tarakari vegetables,70,Groceries & Household,lifestyle
-2025-01-08,17:51,Dad,expense,New specs + Crizal lens + accessories,8000,Health & Medical,one_time
-2025-01-11,00:05,Mom,expense,Doctor consultation,300,Health & Medical,lifestyle
-2025-01-11,00:05,Mom,expense,Medicine,210,Health & Medical,lifestyle
-2025-01-11,00:05,Mom,expense,Iron laundry,216,Misc,recurring
-2025-01-13,22:03,Dad,expense,Degree certificate fee,200,Misc,one_time
-2025-01-13,22:03,Dad,expense,Canteen,90,Dining Out,lifestyle
-2025-01-13,22:03,Dad,expense,Petrol,500,Fuel,lifestyle
-2025-01-16,17:20,Dad,expense,Bakery,145,Dining Out,lifestyle
-2025-01-16,17:20,Dad,expense,Tomato,30,Groceries & Household,lifestyle
-2025-01-16,17:20,Dad,expense,Beach ball,195,Kids,lifestyle
-2025-01-16,17:20,Dad,expense,Nail cutter,75,Personal Care & Fitness,lifestyle
-2025-01-16,17:57,Dad,expense,Papu chappal,400,Kids,lifestyle
-2025-01-21,11:46,Dad,expense,Bike petrol,660,Fuel,lifestyle
-2025-01-21,23:35,Dad,expense,Movie,300,Entertainment & Outings,lifestyle
-2025-01-21,23:35,Dad,expense,Popcorn,210,Dining Out,lifestyle
-2025-01-21,23:35,Dad,expense,Parking,30,Transport & Parking,lifestyle
-2025-01-23,09:37,Dad,expense,Car petrol,1050,Fuel,lifestyle
-2025-01-29,20:34,Dad,expense,Jewel Rock hotel,400,Dining Out,lifestyle
-2025-01-29,20:34,Dad,expense,Vibhu salon,300,Personal Care & Fitness,lifestyle
-2025-01-29,20:54,Mom,expense,Pampers,750,Kids,recurring
-2025-01-31,16:50,Dad,expense,Sugarcane juice,50,Dining Out,lifestyle
-2025-01-31,16:50,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-02-02,16:22,Dad,expense,Mobile recharge,799,Utilities & Recharges,recurring
-2025-02-02,16:23,Dad,expense,Tarakari vegetables,200,Groceries & Household,lifestyle
-2025-02-02,16:23,Dad,expense,Hotel,600,Dining Out,lifestyle
-2025-02-02,16:23,Dad,expense,Paneer,100,Groceries & Household,lifestyle
-2025-02-02,16:23,Dad,expense,Ration,40,Groceries & Household,lifestyle
-2025-02-04,15:36,Dad,expense,Bike petrol,550,Fuel,lifestyle
-2025-02-04,15:37,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2025-02-05,11:42,Dad,expense,UGC NET exam book,360,Education,lifestyle
-2025-02-05,11:42,Dad,expense,Graphics tablet,4499,Misc,one_time
-2025-02-05,11:42,Dad,expense,USB-C OTG adapter,109,Misc,one_time
-2025-02-05,11:42,Dad,expense,Sand play tools,189,Kids,lifestyle
-2025-02-05,11:42,Dad,expense,Pencil control book,179,Kids,lifestyle
-2025-02-08,11:40,Dad,expense,Watermelon,240,Groceries & Household,lifestyle
-2025-02-14,08:32,Mom,expense,Petrol,1050,Fuel,lifestyle
-2025-02-14,18:58,Dad,expense,Bike petrol,560,Fuel,lifestyle
-2025-02-17,17:37,Dad,expense,Mobile recharge,934,Utilities & Recharges,recurring
-2025-02-18,13:46,Dad,expense,Diana pencil + calendar + scissors,125,Kids,lifestyle
-2025-02-18,13:46,Dad,expense,Juice,40,Dining Out,lifestyle
-2025-02-18,14:28,Dad,expense,Petrol,1020,Fuel,lifestyle
-2025-02-18,14:28,Dad,expense,Pampers,622,Kids,recurring
-2025-02-18,14:28,Dad,expense,Varna matching,822,Clothing,lifestyle
-2025-02-18,14:30,Dad,expense,Latha beauty parlour,70,Personal Care & Fitness,lifestyle
-2025-02-18,14:30,Dad,expense,Bat + gloves,165,Kids,lifestyle
-2025-02-18,15:39,Mom,expense,Toys,881,Kids,lifestyle
-2025-02-18,19:28,Mom,expense,Westside Papu dress,1696,Kids,lifestyle
-2025-02-22,18:46,Mom,expense,Banana,140,Groceries & Household,lifestyle
-2025-02-22,18:46,Mom,expense,Clock,250,Home & Furniture,one_time
-2025-02-22,18:46,Mom,expense,Petrol,1000,Fuel,lifestyle
-2025-02-22,18:46,Mom,expense,Snacks,90,Dining Out,lifestyle
-2025-02-28,16:47,Dad,expense,Bike petrol,710,Fuel,lifestyle
-2025-02-28,16:47,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2025-02-28,16:47,Dad,expense,Hoovu flowers,60,Religion & Gifts,recurring
-2025-02-28,16:47,Dad,expense,Curd,26,Groceries & Household,lifestyle
-2025-03-01,00:15,Dad,expense,Hambode khara,200,Dining Out,lifestyle
-2025-03-01,00:15,Dad,expense,Ice cream,800,Dining Out,lifestyle
-2025-03-01,00:15,Dad,expense,Milk,27,Groceries & Household,recurring
-2025-03-01,00:16,Dad,expense,Tomato,30,Groceries & Household,lifestyle
-2025-03-01,14:30,Dad,expense,Xerox,60,Misc,lifestyle
-2025-03-01,19:53,Dad,expense,Snacks,180,Dining Out,lifestyle
-2025-03-02,21:59,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2025-03-02,21:59,Dad,expense,Mishra peda chips,200,Dining Out,lifestyle
-2025-03-03,12:22,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-03-04,09:22,Dad,expense,Consultation fee,300,Health & Medical,lifestyle
-2025-03-05,19:16,Dad,expense,Swimming goggles,150,Personal Care & Fitness,lifestyle
-2025-03-05,19:16,Dad,expense,Swimming shorts,150,Personal Care & Fitness,lifestyle
-2025-03-05,19:16,Dad,expense,Swimming pool entry,100,Personal Care & Fitness,lifestyle
-2025-03-05,19:16,Dad,expense,Snacks,110,Dining Out,lifestyle
-2025-03-05,19:16,Dad,expense,Iron laundry,170,Misc,recurring
-2025-03-05,19:16,Dad,expense,Milk,27,Groceries & Household,recurring
-2025-03-06,19:04,Dad,expense,Tale hannu,40,Groceries & Household,lifestyle
-2025-03-06,19:04,Dad,expense,Raw mango,140,Groceries & Household,lifestyle
-2025-03-06,19:04,Dad,expense,Site advertisement,2700,Property & Investments,one_time
-2025-03-07,15:36,Dad,expense,EC encumbrance certificate,460,Property & Investments,one_time
-2025-03-09,18:22,Dad,expense,Duster petrol,500,Fuel,lifestyle
-2025-03-09,18:22,Dad,expense,Jio Hotstar IPL 3 months,150,Utilities & Recharges,recurring
-2025-03-11,18:14,Dad,expense,Juice,150,Dining Out,lifestyle
-2025-03-13,19:53,Dad,expense,Haircut,200,Personal Care & Fitness,lifestyle
-2025-03-14,15:33,Dad,expense,Bike petrol,800,Fuel,lifestyle
-2025-03-18,13:03,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-03-18,13:03,Dad,expense,Juice,115,Dining Out,lifestyle
-2025-03-21,19:20,Dad,expense,Pens,40,Misc,lifestyle
-2025-03-24,21:15,Dad,expense,Srinidhi haircut,350,Personal Care & Fitness,lifestyle
-2025-03-24,21:15,Dad,expense,Resin,1100,Misc,one_time
-2025-03-24,21:15,Dad,expense,Parking,20,Transport & Parking,lifestyle
-2025-03-27,10:40,Dad,expense,Tindi,300,Dining Out,lifestyle
-2025-03-27,13:08,Dad,expense,Saree,990,Clothing,lifestyle
-2025-03-27,13:08,Dad,expense,Westside Papu dress,600,Kids,lifestyle
-2025-03-27,15:12,Mom,expense,MedPlus pharmacy,700,Health & Medical,lifestyle
-2025-03-29,13:55,Dad,expense,AEH switch,250,Home & Furniture,one_time
-2025-03-29,13:55,Dad,expense,Soppu greens,40,Groceries & Household,lifestyle
-2025-03-29,18:14,Dad,expense,Building blocks,732,Kids,lifestyle
-2025-03-30,16:23,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2025-04-01,20:10,Dad,expense,Snacks,150,Dining Out,lifestyle
-2025-04-01,20:10,Dad,expense,Parking,50,Transport & Parking,lifestyle
-2025-04-01,20:10,Dad,expense,Fish show ticket,200,Entertainment & Outings,lifestyle
-2025-04-01,20:10,Dad,expense,Papu ride,50,Entertainment & Outings,lifestyle
-2025-04-01,20:10,Dad,expense,Papu book,150,Kids,lifestyle
-2025-04-02,11:55,Dad,expense,Halasina hannu jackfruit,100,Groceries & Household,lifestyle
-2025-04-02,11:55,Dad,expense,Mobile cover,200,Misc,one_time
-2025-04-02,11:55,Dad,expense,Puzzle game + toys,400,Kids,lifestyle
-2025-04-04,10:05,Dad,expense,Petrol,100,Fuel,lifestyle
-2025-04-04,11:40,Dad,expense,Bread,60,Groceries & Household,lifestyle
-2025-04-04,11:40,Dad,expense,Cheese,136,Groceries & Household,lifestyle
-2025-04-04,11:41,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-04-07,07:57,Dad,expense,Diamond earrings additional payment,14978,Property & Investments,one_time
-2025-04-07,23:11,Dad,expense,Petrol,300,Fuel,lifestyle
-2025-04-08,23:55,Dad,expense,Soda,80,Dining Out,lifestyle
-2025-04-10,20:54,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-04-10,20:54,Dad,expense,Snacks,145,Dining Out,lifestyle
-2025-04-10,20:54,Dad,expense,Cells,160,Groceries & Household,lifestyle
-2025-04-10,21:33,Mom,expense,Ration,150,Groceries & Household,lifestyle
-2025-04-10,21:33,Mom,expense,Slippers,705,Clothing,lifestyle
-2025-04-14,18:49,Mom,expense,Fruits,400,Groceries & Household,lifestyle
-2025-04-14,18:49,Mom,expense,Panipuri,100,Dining Out,lifestyle
-2025-04-14,18:49,Mom,expense,Soap,40,Groceries & Household,lifestyle
-2025-04-18,18:39,Dad,expense,Hotel,2650,Dining Out,lifestyle
-2025-04-21,09:44,Dad,expense,Car petrol,500,Fuel,lifestyle
-2025-04-21,09:44,Dad,expense,Tindi,75,Dining Out,lifestyle
-2025-04-21,12:10,Dad,expense,Dodda Gowda site payment,50000,Property & Investments,one_time
-2025-04-22,16:16,Dad,expense,Blackberry shirt + pants wedding,12580,Clothing,one_time
-2025-04-22,16:50,Dad,expense,Papu car ride,100,Entertainment & Outings,lifestyle
-2025-04-22,17:09,Dad,expense,Ramraj Papu panche shalya,1665,Kids,lifestyle
-2025-04-22,22:28,Dad,expense,Masala puri,120,Dining Out,lifestyle
-2025-04-25,21:01,Dad,expense,Ramu tailor,5000,Clothing,lifestyle
-2025-04-25,21:01,Dad,expense,Janti medicine,20,Health & Medical,lifestyle
-2025-04-25,21:01,Dad,expense,Snacks,70,Dining Out,lifestyle
-2025-04-25,21:01,Dad,expense,Kaccha banian,3713,Clothing,lifestyle
-2025-04-25,21:01,Dad,expense,Condoms,210,Groceries & Household,lifestyle
-2025-04-25,22:40,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2025-04-26,13:40,Mom,expense,Papu shoes + slippers,863,Kids,lifestyle
-2025-04-26,19:36,Dad,expense,Krushi ahara mela,470,Dining Out,lifestyle
-2025-04-26,19:36,Dad,expense,Milk,30,Groceries & Household,recurring
-2025-04-27,13:13,Dad,expense,Fruits,480,Groceries & Household,lifestyle
-2025-04-30,16:00,Dad,expense,Gullehalli Ranganna,300,Farm & Garden,one_time
-2025-05-01,17:04,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-01,18:36,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2025-05-01,19:01,Dad,expense,Vinutha set,3660,Clothing,lifestyle
-2025-05-01,19:33,Dad,expense,Masala puri,80,Dining Out,lifestyle
-2025-05-01,19:55,Mom,expense,Vinutha slippers,1505,Clothing,lifestyle
-2025-05-01,19:55,Mom,expense,Gift shop,200,Religion & Gifts,one_time
-2025-05-02,04:08,Dad,expense,Vinutha mobile recharge,800,Utilities & Recharges,recurring
-2025-05-05,10:34,Dad,expense,Hoovina haara,400,Religion & Gifts,one_time
-2025-05-05,10:34,Dad,expense,Auto,200,Transport & Parking,lifestyle
-2025-05-05,10:34,Dad,expense,Milk,50,Groceries & Household,recurring
-2025-05-05,10:34,Dad,expense,Bike petrol,1000,Fuel,lifestyle
-2025-05-05,10:34,Dad,expense,Milk,28,Groceries & Household,recurring
-2025-05-05,10:34,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-05-05,10:34,Dad,expense,Crocin,10,Health & Medical,lifestyle
-2025-05-05,10:38,Mom,expense,Lipika hospital,200,Health & Medical,lifestyle
-2025-05-05,10:38,Mom,expense,Medicine,352,Health & Medical,lifestyle
-2025-05-05,10:38,Mom,expense,Tender coconut,240,Dining Out,lifestyle
-2025-05-05,10:38,Mom,expense,Auto,100,Transport & Parking,lifestyle
-2025-05-05,14:41,Dad,expense,Oota meal,80,Dining Out,lifestyle
-2025-05-05,20:18,Dad,expense,Consultation,300,Health & Medical,lifestyle
-2025-05-05,20:18,Dad,expense,Medicine,150,Health & Medical,lifestyle
-2025-05-05,20:18,Dad,expense,Pampers,455,Kids,recurring
-2025-05-09,12:37,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-12,10:40,Dad,expense,Muhurta,1000,Religion & Gifts,one_time
-2025-05-12,10:40,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-13,06:28,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-13,22:37,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-16,18:00,Dad,expense,Consultation + medicine,1700,Health & Medical,lifestyle
-2025-05-16,18:00,Dad,expense,Lab tests,2800,Health & Medical,lifestyle
-2025-05-18,17:31,Dad,expense,Arehalli muyyi gift,1000,Religion & Gifts,one_time
-2025-05-18,17:32,Dad,expense,Mobile recharge,932,Utilities & Recharges,recurring
-2025-05-20,12:33,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-20,12:34,Dad,expense,Akkanege kanike,501,Religion & Gifts,one_time
-2025-05-21,19:01,Dad,expense,ENT follow-up checkup,644,Health & Medical,lifestyle
-2025-05-21,19:25,Dad,expense,Snacks,120,Dining Out,lifestyle
-2025-05-22,23:11,Dad,expense,Petrol,700,Fuel,lifestyle
-2025-05-23,12:48,Dad,expense,Mithun wedding muyyi,1000,Religion & Gifts,one_time
-2025-05-24,23:09,Mom,expense,Mall,1100,Entertainment & Outings,lifestyle
-2025-05-24,23:09,Mom,expense,Hotel,1800,Dining Out,lifestyle
-2025-05-26,14:29,Dad,expense,Pens,60,Misc,lifestyle
-2025-05-26,14:29,Dad,expense,Tindi,55,Dining Out,lifestyle
-2025-05-26,14:29,Dad,expense,Oota,80,Dining Out,lifestyle
-2025-05-29,13:26,Dad,expense,Doctor fees,300,Health & Medical,lifestyle
-2025-05-29,13:26,Dad,expense,Medicine,860,Health & Medical,lifestyle
-2025-05-29,13:26,Dad,expense,Tender coconut,240,Dining Out,lifestyle
-2025-05-29,13:26,Dad,expense,Puncture,125,Vehicle Maintenance,one_time
-2025-05-29,14:12,Dad,expense,Wipes,160,Kids,recurring
-2025-05-30,15:06,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-05-31,18:16,Dad,expense,Bike petrol,800,Fuel,lifestyle
-2025-05-31,18:28,Dad,expense,Medicine,148,Health & Medical,lifestyle
-2025-06-03,17:09,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-06-08,20:38,Dad,expense,Monika Prakash muyyi,500,Religion & Gifts,one_time
-2025-06-08,20:38,Dad,expense,Shashan Sudeep gift,200,Religion & Gifts,one_time
-2025-06-08,20:38,Dad,expense,Haircut,120,Personal Care & Fitness,lifestyle
-2025-06-08,20:38,Dad,expense,Pampers + wipes,550,Kids,recurring
-2025-06-12,13:07,Dad,expense,Parcel food,250,Dining Out,lifestyle
-2025-06-12,13:07,Dad,expense,Nursery plants,1100,Farm & Garden,one_time
-2025-06-12,16:28,Mom,expense,Forest department entry,130,Entertainment & Outings,lifestyle
-2025-06-12,16:28,Mom,expense,Hotel,315,Dining Out,lifestyle
-2025-06-12,16:28,Mom,expense,Chips,150,Dining Out,lifestyle
-2025-06-12,16:28,Mom,expense,Puliyogare,100,Dining Out,lifestyle
-2025-06-12,16:28,Mom,expense,Dove shampoo,200,Personal Care & Fitness,lifestyle
-2025-06-12,16:28,Mom,expense,Banian,367,Clothing,lifestyle
-2025-06-17,12:05,Dad,expense,Handheld game console,700,Kids,one_time
-2025-06-18,15:04,Dad,expense,Petrol,750,Fuel,lifestyle
-2025-06-18,15:04,Dad,expense,Battery cells,43,Groceries & Household,lifestyle
-2025-06-19,09:53,Dad,expense,Bike petrol,750,Fuel,lifestyle
-2025-06-19,21:52,Dad,expense,Blanket,950,Home & Furniture,one_time
-2025-06-19,21:52,Dad,expense,Toothbrush,100,Groceries & Household,lifestyle
-2025-06-20,13:07,Mom,expense,Nursery,500,Farm & Garden,one_time
-2025-06-20,13:07,Mom,expense,Temple,300,Religion & Gifts,one_time
-2025-06-20,13:08,Mom,expense,Car petrol,1000,Fuel,lifestyle
-2025-06-21,09:43,Dad,expense,Blinkit,200,Groceries & Household,lifestyle
-2025-06-21,14:39,Dad,expense,Doctor set toy,130,Kids,lifestyle
-2025-06-21,14:39,Dad,expense,Nerale hannu,200,Groceries & Household,lifestyle
-2025-06-21,14:39,Dad,expense,Foam ball gun,550,Kids,lifestyle
-2025-06-23,14:33,Dad,expense,Aadhar PVC card,50,Misc,one_time
-2025-06-23,14:33,Dad,expense,Xerox,330,Misc,lifestyle
-2025-06-23,16:30,Dad,expense,Hotel,2800,Dining Out,lifestyle
-2025-06-23,20:32,Dad,expense,Bakery,1250,Dining Out,lifestyle
-2025-06-23,20:32,Dad,expense,Toys,800,Kids,lifestyle
-2025-06-24,18:35,Mom,expense,Bakery,175,Dining Out,lifestyle
-2025-06-24,18:35,Mom,expense,Bonda,110,Dining Out,lifestyle
-2025-06-29,19:52,Dad,expense,Movie,600,Entertainment & Outings,lifestyle
-2025-06-29,19:52,Dad,expense,Car ride,50,Entertainment & Outings,lifestyle
-2025-06-29,19:52,Dad,expense,Masala puri,80,Dining Out,lifestyle
-2025-06-29,19:52,Dad,expense,Gobi manchurian,120,Dining Out,lifestyle
-2025-06-30,09:43,Dad,expense,Train ride,150,Transport & Parking,lifestyle
-2025-06-30,09:43,Dad,expense,Car ride,50,Transport & Parking,lifestyle
-2025-06-30,11:32,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2025-07-03,14:29,Dad,expense,Dad + Mom Aadhar PVC cards,200,Misc,one_time
-2025-07-03,14:59,Dad,expense,Aadhar PVC card self,50,Misc,one_time
-2025-07-03,15:04,Dad,expense,Vinutha Aadhar cards,100,Misc,one_time
-2025-07-04,09:14,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2025-07-05,09:47,Dad,expense,Tea,75,Dining Out,lifestyle
-2025-07-05,16:38,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-07-09,10:15,Dad,expense,Driver tips,200,Misc,lifestyle
-2025-07-09,11:53,Mom,expense,Baby soap,376,Kids,recurring
-2025-07-09,13:15,Mom,expense,Plants,400,Farm & Garden,one_time
-2025-07-09,13:39,Mom,expense,Chips,300,Dining Out,lifestyle
-2025-07-10,13:16,Dad,expense,Papu toothpaste,164,Kids,recurring
-2025-07-11,07:51,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2025-07-11,07:51,Dad,expense,Iron laundry,180,Misc,recurring
-2025-07-11,10:19,Dad,expense,Bike petrol,520,Fuel,lifestyle
-2025-07-15,19:03,Mom,expense,Sridhar Bhattaru,300,Religion & Gifts,one_time
-2025-07-15,19:03,Mom,expense,Ganesh Adigaru,200,Religion & Gifts,one_time
-2025-07-15,19:04,Mom,expense,Lokesh Aradhya,500,Religion & Gifts,one_time
-2025-08-03,20:25,Dad,expense,Blackberry clothes,6522,Clothing,lifestyle
-2025-08-03,21:33,Dad,expense,Petrol,1200,Fuel,lifestyle
-2025-08-03,21:34,Dad,expense,Haara + shalu + misc,1900,Religion & Gifts,one_time
-2025-08-03,21:34,Dad,expense,Mangala Gowri shopping,5000,Religion & Gifts,one_time
-2025-08-03,21:34,Dad,expense,Shyam store,990,Groceries & Household,lifestyle
-2025-08-03,21:34,Dad,expense,Candid B cream,180,Health & Medical,lifestyle
-2025-08-03,21:34,Dad,expense,Tea,60,Dining Out,lifestyle
-2025-08-03,21:34,Dad,expense,ICICI term insurance,3026,Insurance & Finance,recurring
-2025-08-05,10:09,Dad,expense,Car petrol,500,Fuel,lifestyle
-2025-08-05,16:37,Dad,expense,Bat,350,Kids,lifestyle
-2025-08-06,18:02,Dad,expense,Tindi,45,Dining Out,lifestyle
-2025-08-06,19:19,Mom,expense,Fruits,100,Groceries & Household,lifestyle
-2025-08-06,19:19,Mom,expense,Betel leaves,150,Groceries & Household,lifestyle
-2025-08-06,19:19,Mom,expense,Fruits,100,Groceries & Household,lifestyle
-2025-08-06,19:19,Mom,expense,Tomato,50,Groceries & Household,lifestyle
-2025-08-06,19:19,Mom,expense,Pineapple,150,Groceries & Household,lifestyle
-2025-08-06,19:19,Mom,expense,Masala puri,70,Dining Out,lifestyle
-2025-08-07,13:19,Dad,expense,Zipper cover,35,Home & Furniture,lifestyle
-2025-08-07,13:19,Dad,expense,Mango leaves,70,Religion & Gifts,recurring
-2025-08-07,13:19,Dad,expense,20W bulb,300,Home & Furniture,one_time
-2025-08-07,13:19,Dad,expense,Angle holder,70,Home & Furniture,one_time
-2025-08-07,21:20,Dad,expense,Tiago full service repair,6000,Vehicle Maintenance,one_time
-2025-08-08,12:11,Mom,expense,Fruits,260,Groceries & Household,lifestyle
-2025-08-08,12:11,Mom,expense,Flowers,200,Religion & Gifts,recurring
-2025-08-08,12:11,Mom,expense,Milk,27,Groceries & Household,recurring
-2025-08-09,14:58,Dad,expense,Car petrol,410,Fuel,lifestyle
-2025-08-09,20:23,Mom,expense,Sharad Attemma gift,2000,Religion & Gifts,one_time
-2025-08-11,14:23,Dad,expense,Car petrol,950,Fuel,lifestyle
-2025-08-14,20:32,Dad,expense,Car petrol,950,Fuel,lifestyle
-2025-08-14,20:43,Dad,expense,Bonda,40,Dining Out,lifestyle
-2025-08-15,10:26,Dad,expense,Mobile recharge,932,Utilities & Recharges,recurring
-2025-08-20,23:23,Dad,expense,Layout Ganapati,1000,Religion & Gifts,one_time
-2025-08-20,23:23,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2025-08-20,23:23,Dad,expense,Parking,40,Transport & Parking,lifestyle
-2025-08-20,23:24,Mom,expense,Hotel,150,Dining Out,lifestyle
-2025-08-21,07:40,Dad,expense,Haircut,180,Personal Care & Fitness,lifestyle
-2025-08-22,23:08,Mom,expense,Hoovu flowers,150,Religion & Gifts,recurring
-2025-08-22,23:08,Mom,expense,Bonda,110,Dining Out,lifestyle
-2025-08-22,23:08,Mom,expense,Toys,2550,Kids,lifestyle
-2025-08-24,12:06,Dad,expense,Vinutha recharge,932,Utilities & Recharges,recurring
-2025-08-29,14:13,Dad,expense,Car petrol,1200,Fuel,lifestyle
-2025-08-30,13:15,Mom,expense,Mobile screen guard,200,Misc,one_time
-2025-08-30,13:15,Mom,expense,Shell souvenir,200,Kids,lifestyle
-2025-08-30,13:15,Mom,expense,Bag,200,Misc,lifestyle
-2025-08-30,13:15,Mom,expense,Corn,120,Dining Out,lifestyle
-2025-08-30,13:15,Mom,expense,Jeep ride,50,Entertainment & Outings,lifestyle
-2025-08-30,13:15,Mom,expense,Parking,20,Transport & Parking,lifestyle
-2025-08-30,13:15,Mom,expense,Slipper repair,20,Clothing,lifestyle
-2025-08-30,13:15,Mom,expense,Tender coconut,60,Dining Out,lifestyle
-2025-08-30,16:48,Mom,expense,Hotel,1072,Dining Out,lifestyle
-2025-08-30,16:48,Mom,expense,MedPlus pharmacy,1509,Health & Medical,lifestyle
-2025-09-03,12:40,Dad,expense,Internet,825,Utilities & Recharges,recurring
-2025-09-03,12:40,Dad,expense,Loan overdue charge,1245,Insurance & Finance,one_time
-2025-09-03,13:37,Dad,expense,9W bulb,80,Home & Furniture,one_time
-2025-09-03,20:53,Dad,expense,Photo print,40,Misc,lifestyle
-2025-09-08,11:26,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2025-09-08,11:26,Dad,expense,Tea,110,Dining Out,lifestyle
-2025-09-08,22:37,Dad,expense,E-Swattu updation fees,500,Property & Investments,one_time
-2025-09-08,22:37,Dad,expense,Mutation change fees,300,Property & Investments,one_time
-2025-09-08,22:37,Dad,expense,Xerox,35,Misc,lifestyle
-2025-09-10,20:02,Dad,expense,ENT doctor + medicine,1039,Health & Medical,lifestyle
-2025-09-13,12:58,Dad,expense,Papu haircut,120,Kids,lifestyle
-2025-09-14,10:41,Dad,expense,Ganapathi,2000,Religion & Gifts,one_time
-2025-09-14,11:03,Dad,expense,Tindi,150,Dining Out,lifestyle
-2025-09-14,22:58,Dad,expense,Bangalore hotel 2 nights,3778,Travel & Trips,lifestyle
-2025-09-15,14:21,Dad,expense,Oota,170,Dining Out,lifestyle
-2025-09-15,17:35,Dad,expense,Petrol,3000,Fuel,lifestyle
-2025-09-15,17:54,Dad,expense,Emission test,120,Vehicle Maintenance,one_time
-2025-09-16,10:19,Dad,expense,Bangalore tindi,250,Travel & Trips,lifestyle
-2025-09-16,16:42,Dad,expense,Bangalore Jollywood tickets,3000,Travel & Trips,lifestyle
-2025-09-16,16:42,Dad,expense,Bangalore milk,45,Travel & Trips,lifestyle
-2025-09-16,18:41,Dad,expense,Bangalore keychain,40,Travel & Trips,lifestyle
-2025-09-16,21:20,Dad,expense,Bangalore snacks,250,Travel & Trips,lifestyle
-2025-09-16,21:20,Dad,expense,Bangalore oota,600,Travel & Trips,lifestyle
-2025-09-17,08:53,Dad,expense,Bangalore tindi,100,Travel & Trips,lifestyle
-2025-09-17,13:33,Dad,expense,Bangalore temple,50,Travel & Trips,lifestyle
-2025-09-17,13:33,Dad,expense,Bangalore alms,40,Travel & Trips,lifestyle
-2025-09-17,13:33,Dad,expense,Bangalore zoo,890,Travel & Trips,lifestyle
-2025-09-17,13:33,Dad,expense,Bangalore snacks,170,Travel & Trips,lifestyle
-2025-09-17,15:32,Dad,expense,Bangalore oota,285,Travel & Trips,lifestyle
-2025-09-17,16:40,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-09-17,17:58,Dad,expense,Bangalore fruits,1200,Travel & Trips,lifestyle
-2025-09-18,09:02,Dad,expense,Bangalore tindi,70,Travel & Trips,lifestyle
-2025-09-18,09:02,Dad,expense,Bangalore room boy tip,50,Travel & Trips,lifestyle
-2025-09-18,09:02,Dad,expense,Bangalore Birds of Paradise,767,Travel & Trips,lifestyle
-2025-09-18,09:10,Dad,expense,Kurta,600,Clothing,lifestyle
-2025-09-18,15:31,Mom,expense,Fruits,200,Groceries & Household,lifestyle
-2025-09-18,18:07,Dad,expense,Petrol,2000,Fuel,lifestyle
-2025-09-18,15:17,Dad,expense,Book store,150,Misc,lifestyle
-2025-09-19,18:26,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-09-19,19:03,Dad,expense,Channagiri tea + coffee,120,Dining Out,lifestyle
-2025-09-21,13:43,Dad,expense,Food bag clips,150,Groceries & Household,lifestyle
-2025-09-21,19:37,Dad,expense,Bike insurance,1667,Insurance & Finance,recurring
-2025-09-22,09:51,Dad,expense,Bike petrol,1100,Fuel,lifestyle
-2025-09-22,18:02,Dad,expense,Kids cycle + training wheels + bell,7150,Kids,one_time
-2025-09-22,18:37,Dad,expense,Dad medicine,982,Health & Medical,lifestyle
-2025-09-22,18:37,Dad,expense,More store,3837,Groceries & Household,lifestyle
-2025-09-22,18:37,Dad,expense,Shyam store,2589,Groceries & Household,lifestyle
-2025-09-22,18:37,Dad,expense,Spar store,3213,Groceries & Household,lifestyle
-2025-09-22,19:56,Dad,expense,Parking,30,Transport & Parking,lifestyle
-2025-09-22,19:56,Dad,expense,Hotel,657,Dining Out,lifestyle
-2025-09-24,18:53,Dad,expense,Consultation fee,200,Health & Medical,lifestyle
-2025-09-25,11:12,Dad,expense,Airtel internet 4 months,2355.28,Utilities & Recharges,recurring
-2025-09-25,16:18,Dad,expense,Internet installation,700,Utilities & Recharges,one_time
-2025-09-25,18:49,Dad,expense,Sarji consultation,300,Health & Medical,lifestyle
-2025-09-26,10:38,Dad,expense,Office tindi,1475,Misc,lifestyle
-2025-09-26,13:17,Dad,expense,Gram panchayat fee,100,Property & Investments,one_time
-2025-09-26,13:17,Dad,expense,Xerox,28,Misc,lifestyle
-2025-09-28,11:56,Dad,expense,Duster petrol,1500,Fuel,lifestyle
-2025-09-29,21:04,Dad,expense,Site tax,2500,Property & Investments,one_time
-2025-09-30,19:23,Dad,expense,ICICI term insurance,2564,Insurance & Finance,recurring
-2025-10-01,20:35,Dad,expense,Honey,270,Groceries & Household,lifestyle
-2025-10-02,18:31,Mom,expense,Masala puri,120,Dining Out,lifestyle
-2025-10-03,18:00,Dad,expense,Eswattu print,300,Property & Investments,one_time
-2025-10-03,19:22,Dad,expense,Sarji doctor consultation,300,Health & Medical,lifestyle
-2025-10-03,19:22,Dad,expense,Vaccine,2600,Health & Medical,one_time
-2025-10-03,19:30,Dad,expense,Baby soap,304,Kids,recurring
-2025-10-03,20:07,Dad,expense,Shreyas specs,1000,Health & Medical,one_time
-2025-10-03,20:07,Dad,expense,Papu goggles,200,Kids,lifestyle
-2025-10-04,08:02,Dad,expense,Cells,90,Groceries & Household,lifestyle
-2025-10-04,08:02,Dad,expense,Lemon,14,Groceries & Household,lifestyle
-2025-10-06,18:40,Dad,expense,Coffee + tindi,200,Dining Out,lifestyle
-2025-10-08,13:18,Dad,expense,Garden batte + wire,600,Farm & Garden,one_time
-2025-10-10,07:02,Dad,expense,Mobile recharge,200,Utilities & Recharges,recurring
-2025-10-10,07:02,Dad,expense,Drip materials,800,Farm & Garden,one_time
-2025-10-10,18:54,Dad,expense,Shade net,600,Farm & Garden,one_time
-2025-10-10,18:54,Dad,expense,GI fence wire,80,Farm & Garden,one_time
-2025-10-10,19:19,Dad,expense,Drip materials,280,Farm & Garden,one_time
-2025-10-13,18:33,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-10-18,15:41,Dad,expense,Honey,42,Groceries & Household,lifestyle
-2025-10-18,15:41,Dad,expense,Oota,50,Dining Out,lifestyle
-2025-10-19,11:39,Dad,expense,Bike chain repair,30,Vehicle Maintenance,one_time
-2025-10-19,11:39,Dad,expense,MedPlus pharmacy,673,Health & Medical,lifestyle
-2025-10-19,12:14,Dad,expense,Sugarcane juice,50,Dining Out,lifestyle
-2025-10-19,12:14,Dad,expense,Tarakari vegetables,30,Groceries & Household,lifestyle
-2025-10-19,12:52,Dad,expense,More store,528,Groceries & Household,lifestyle
-2025-10-21,19:08,Dad,expense,Car petrol,500,Fuel,lifestyle
-2025-10-23,14:38,Dad,expense,Aadhar,100,Misc,one_time
-2025-10-23,14:38,Dad,expense,Jio SIM + 1 month recharge,350,Utilities & Recharges,recurring
-2025-10-23,14:38,Dad,expense,Seeds,50,Farm & Garden,one_time
-2025-10-24,19:11,Dad,expense,Janti medicine,17,Health & Medical,lifestyle
-2025-10-24,19:11,Dad,expense,Matka puri,60,Dining Out,lifestyle
-2025-10-24,19:11,Dad,expense,Ambode bonda,70,Dining Out,lifestyle
-2025-10-24,19:11,Dad,expense,Masala puri,80,Dining Out,lifestyle
-2025-10-24,19:11,Dad,expense,Iron laundry,170,Misc,recurring
-2025-10-24,21:36,Mom,expense,Vegetables,67,Groceries & Household,lifestyle
-2025-10-26,20:56,Dad,expense,Samsung mobile cover,300,Misc,one_time
-2025-10-26,20:56,Dad,expense,Sarikannadam Gelke book,283,Misc,lifestyle
-2025-10-26,22:07,Dad,expense,Rashmi Akka arati muyyi,500,Religion & Gifts,one_time
-2025-10-30,11:18,Dad,expense,ICICI term insurance,2564,Insurance & Finance,recurring
-2025-10-30,12:01,Dad,expense,Bike petrol,510,Fuel,lifestyle
-2025-10-30,16:51,Dad,expense,Second legal opinion,6500,Property & Investments,one_time
-2025-10-31,20:10,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-10-31,20:10,Dad,expense,Water bottle,10,Groceries & Household,lifestyle
-2025-11-03,13:06,Dad,expense,FirstCry,452,Kids,lifestyle
-2025-11-03,13:07,Dad,expense,Elaneeru,200,Dining Out,lifestyle
-2025-11-04,14:50,Dad,expense,Oota,190,Dining Out,lifestyle
-2025-11-05,07:30,Dad,expense,Haircut,130,Personal Care & Fitness,lifestyle
-2025-11-06,19:03,Dad,expense,Papu haircut,120,Kids,lifestyle
-2025-11-06,19:03,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2025-11-07,18:39,Dad,expense,Hingu,120,Groceries & Household,lifestyle
-2025-11-09,20:44,Dad,expense,Bubbles,50,Kids,lifestyle
-2025-11-09,20:44,Dad,expense,Snacks,110,Dining Out,lifestyle
-2025-11-10,15:41,Mom,expense,FirstCry books,932,Kids,lifestyle
-2025-11-11,21:44,Dad,expense,Tata petrol,1050,Fuel,lifestyle
-2025-11-12,09:37,Dad,expense,Jio port + recharge,350,Utilities & Recharges,recurring
-2025-11-14,19:56,Dad,expense,Snacks,150,Dining Out,lifestyle
-2025-11-14,19:56,Dad,expense,Nursery flowers,300,Farm & Garden,one_time
-2025-11-14,19:56,Dad,expense,Diana toys,816,Kids,lifestyle
-2025-11-14,20:08,Dad,expense,Diana pen + pencils,90,Kids,lifestyle
-2025-11-14,20:27,Dad,expense,Shampoo + oil + handwash,620,Groceries & Household,lifestyle
-2025-11-14,21:02,Dad,expense,Insect killer,70,Groceries & Household,lifestyle
-2025-11-15,22:08,Dad,expense,Kantara movie tickets,400,Entertainment & Outings,lifestyle
-2025-11-15,22:08,Dad,expense,Movie snacks,420,Entertainment & Outings,lifestyle
-2025-11-17,18:39,Dad,expense,Petrol,1060,Fuel,lifestyle
-2025-11-18,19:48,Dad,expense,Lipika birthday gift,1750,Religion & Gifts,one_time
-2025-11-18,20:10,Dad,expense,Blinkit vegetables,123,Groceries & Household,lifestyle
-2025-11-19,14:22,Dad,expense,Sticky notes,40,Misc,lifestyle
-2025-11-20,16:47,Dad,expense,Sub-registrar mortgage charges,80100,Property & Investments,one_time
-2025-11-20,16:47,Dad,expense,Sub-registrar agent fee,6000,Property & Investments,one_time
-2025-11-21,17:56,Dad,expense,Sweets,395,Dining Out,lifestyle
-2025-11-23,16:48,Dad,expense,Vinutha recharge,864,Utilities & Recharges,recurring
-2025-11-27,13:35,Dad,expense,Pen,160,Misc,lifestyle
-2025-11-27,13:35,Dad,expense,Window mesh,10835,Home & Furniture,one_time
-2025-11-27,16:48,Dad,expense,Legal bond paper + Naveen charges,5000,Property & Investments,one_time
-2025-11-30,11:43,Dad,expense,Petrol,2000,Fuel,lifestyle
-2025-11-30,23:20,Dad,expense,Hotel,600,Dining Out,lifestyle
-2025-11-30,23:23,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-12-04,18:43,Dad,expense,Coffee,40,Dining Out,lifestyle
-2025-12-04,18:43,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2025-12-04,19:15,Dad,expense,Doctor consultation,300,Health & Medical,lifestyle
-2025-12-04,19:15,Dad,expense,Wipes,140,Kids,recurring
-2025-12-04,19:15,Dad,expense,Medicine,695,Health & Medical,lifestyle
-2025-12-06,13:36,Dad,expense,File,740,Misc,lifestyle
-2025-12-08,14:12,Dad,expense,Gas welding,80,Home & Furniture,one_time
-2025-12-08,14:12,Dad,expense,Lollipop,50,Dining Out,lifestyle
-2025-12-09,01:53,Dad,expense,Whey protein,2349,Personal Care & Fitness,lifestyle
-2025-12-09,19:14,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2025-12-09,19:14,Dad,expense,Panipuri,125,Dining Out,lifestyle
-2025-12-09,19:14,Dad,expense,Bellulli pataki firecrackers,220,Religion & Gifts,one_time
-2025-12-09,19:14,Dad,expense,Halwa,150,Dining Out,lifestyle
-2025-12-09,19:21,Dad,expense,Adike powder,200,Groceries & Household,lifestyle
-2025-12-09,19:30,Dad,expense,Magnet + gun toy,200,Kids,lifestyle
-2025-12-09,20:11,Dad,expense,Bubbles,100,Kids,lifestyle
-2025-12-09,20:11,Dad,expense,Books,350,Kids,lifestyle
-2025-12-09,21:16,Dad,expense,Pizza,938,Dining Out,lifestyle
-2025-12-10,19:19,Dad,expense,Protein shaker bottle,305,Personal Care & Fitness,lifestyle
-2025-12-11,12:24,Dad,expense,Mobile recharge,911,Utilities & Recharges,recurring
-2025-12-11,19:02,Dad,expense,Medicine,680,Health & Medical,lifestyle
-2025-12-12,17:55,Dad,expense,Kotak term insurance annual,13813,Insurance & Finance,recurring
-2025-12-13,19:01,Dad,expense,Duster petrol,1000,Fuel,lifestyle
-2025-12-13,19:01,Dad,expense,Snacks,20,Dining Out,lifestyle
-2025-12-14,09:06,Dad,expense,Tarakari vegetables,214,Groceries & Household,lifestyle
-2025-12-14,13:54,Dad,expense,Bucket,610,Home & Furniture,one_time
-2025-12-14,14:30,Dad,expense,Condom + milk + cells + handwash,527,Groceries & Household,lifestyle
-2025-12-14,20:18,Mom,expense,Hopscotch baby socks,451,Kids,lifestyle
-2025-12-16,20:12,Mom,expense,Chips,265,Dining Out,lifestyle
-2025-12-16,20:12,Mom,expense,Bonda,160,Dining Out,lifestyle
-2025-12-16,22:00,Mom,expense,Papu slippers,600,Kids,lifestyle
-2025-12-18,18:35,Mom,expense,Wipes,170,Kids,recurring
-2025-12-18,18:35,Mom,expense,Parlour,70,Personal Care & Fitness,lifestyle
-2025-12-18,19:44,Mom,expense,Hotel,500,Dining Out,lifestyle
-2025-12-18,19:44,Mom,expense,Iron laundry,150,Misc,recurring
-2025-12-18,20:10,Mom,expense,Cup,500,Home & Furniture,one_time
-2025-12-20,14:07,Dad,expense,Petrol,1000,Fuel,lifestyle
-2025-12-20,14:07,Dad,expense,Hotel,1200,Dining Out,lifestyle
-2025-12-20,14:48,Dad,expense,Flower,50,Religion & Gifts,recurring
-2025-12-20,19:03,Mom,expense,Medicine,135,Health & Medical,lifestyle
-2025-12-21,19:07,Dad,expense,Benne dose,510,Dining Out,lifestyle
-2025-12-21,20:52,Dad,expense,Coffee,75,Dining Out,lifestyle
-2025-12-21,22:27,Mom,expense,Paneer,96,Groceries & Household,lifestyle
-2025-12-21,22:27,Mom,expense,Banana,160,Groceries & Household,lifestyle
-2025-12-23,15:02,Dad,expense,Medicine,115,Health & Medical,lifestyle
-2025-12-23,16:07,Dad,expense,Parking,30,Transport & Parking,lifestyle
-2025-12-23,20:15,Dad,expense,Gobi,180,Dining Out,lifestyle
-2025-12-23,21:17,Dad,expense,Kulfi,55,Dining Out,lifestyle
-2025-12-24,09:06,Dad,expense,Bike petrol,1000,Fuel,lifestyle
-2025-12-24,15:37,Mom,expense,Cake,930,Dining Out,lifestyle
-2025-12-27,19:05,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2025-12-27,19:09,Mom,expense,Flower,20,Religion & Gifts,recurring
-2025-12-27,19:09,Mom,expense,Wood apple,240,Groceries & Household,lifestyle
-2025-12-27,19:09,Mom,expense,Bonda + khara,220,Dining Out,lifestyle
-2025-12-27,23:41,Mom,expense,Fish hunting toys,1206,Kids,lifestyle
-2025-12-29,18:33,Dad,expense,Rattan chair,1400,Home & Furniture,one_time
-2025-12-29,19:31,Mom,expense,Chips,334,Dining Out,lifestyle
-2025-12-31,20:24,Dad,expense,Shreyas dress,3205,Clothing,lifestyle
-2025-12-31,21:19,Dad,expense,Bonda,170,Dining Out,lifestyle
-2026-01-01,08:20,Dad,expense,Haircut,150,Personal Care & Fitness,lifestyle
-2026-01-02,15:05,Dad,expense,Nerf gun bullets,335,Kids,lifestyle
-2026-01-03,19:55,Dad,expense,Gobi + baby snack,175,Dining Out,lifestyle
-2026-01-03,20:08,Dad,expense,Mahalakshmi sweets,480,Dining Out,lifestyle
-2026-01-04,12:06,Dad,expense,Hotel,500,Dining Out,lifestyle
-2026-01-06,22:07,Mom,expense,Baby soap,383,Kids,recurring
-2026-01-10,17:13,Dad,expense,Pampers,523,Kids,recurring
-2026-01-10,17:26,Dad,expense,Napkin,50,Groceries & Household,lifestyle
-2026-01-10,19:10,Dad,expense,Snacks,50,Dining Out,lifestyle
-2026-01-10,19:10,Dad,expense,Chargeable gas lighter,150,Home & Furniture,one_time
-2026-01-10,20:21,Dad,expense,Udupi hotel,100,Dining Out,lifestyle
-2026-01-10,21:39,Dad,expense,Westside chappal + outfit,4910,Clothing,lifestyle
-2026-01-12,15:42,Dad,expense,Cough syrup,122,Health & Medical,lifestyle
-2026-01-12,17:17,Dad,expense,Pant length alteration,40,Clothing,lifestyle
-2026-01-12,17:36,Mom,expense,Medicine,170,Health & Medical,lifestyle
-2026-01-12,17:38,Mom,expense,Courier,160,Misc,lifestyle
-2026-01-12,17:38,Mom,expense,Banana,120,Groceries & Household,lifestyle
-2026-01-12,18:22,Mom,expense,Hotel,250,Dining Out,lifestyle
-2026-01-12,18:22,Mom,expense,Yellu sesame,320,Groceries & Household,lifestyle
-2026-01-12,18:30,Mom,expense,Flower,58,Religion & Gifts,recurring
-2026-01-17,19:48,Dad,expense,Caricature,300,Entertainment & Outings,lifestyle
-2026-01-17,19:48,Dad,expense,Mud pot,100,Home & Furniture,lifestyle
-2026-01-17,19:48,Dad,expense,Devara haara,200,Religion & Gifts,one_time
-2026-01-17,19:48,Dad,expense,Channapatna board games,1000,Kids,one_time
-2026-01-17,19:48,Dad,expense,Crispy corn,100,Dining Out,lifestyle
-2026-01-17,20:06,Dad,expense,French fries + holige,100,Dining Out,lifestyle
-2026-01-17,20:06,Dad,expense,Filter coffee,40,Dining Out,lifestyle
-2026-01-18,09:14,Dad,expense,Iron laundry,120,Misc,recurring
-2026-01-18,13:57,Mom,expense,Banana,140,Groceries & Household,lifestyle
-2026-01-19,09:32,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2026-01-19,20:09,Dad,expense,Blinkit tarakari,169,Groceries & Household,lifestyle
-2026-01-20,22:25,Dad,expense,Protein powder 2kg,4700,Personal Care & Fitness,one_time
-2026-01-20,22:25,Dad,expense,Mobile cover,300,Misc,one_time
-2026-01-21,16:26,Dad,expense,Kailash Parbat,1450,Dining Out,lifestyle
-2026-01-21,17:08,Dad,expense,Idli,50,Dining Out,lifestyle
-2026-01-21,19:26,Dad,expense,Temple renovation donation,10000,Religion & Gifts,one_time
-2026-01-22,16:11,Dad,expense,Bike petrol,800,Fuel,lifestyle
-2026-01-26,15:56,Mom,expense,Medicine,1129,Health & Medical,lifestyle
-2026-01-26,15:56,Mom,expense,Hotel,370,Dining Out,lifestyle
-2026-01-27,07:18,Dad,expense,Coffee,38,Dining Out,lifestyle
-2026-01-27,20:40,Mom,expense,Snacks,40,Dining Out,lifestyle
-2026-01-27,20:40,Mom,expense,Elaneeru,180,Dining Out,lifestyle
-2026-01-27,20:40,Mom,expense,Coffee,70,Dining Out,lifestyle
-2026-01-28,12:57,Dad,expense,Hospital,20000,Health & Medical,one_time
-2026-01-28,18:17,Dad,expense,Tiago tyre puncture,150,Vehicle Maintenance,one_time
-2026-01-29,12:26,Dad,expense,Airtel WiFi 4 months,2355.28,Utilities & Recharges,recurring
-2026-01-29,20:16,Dad,expense,Holige + snacks,350,Dining Out,lifestyle
-2026-01-29,20:25,Dad,expense,Custard apple juice,100,Dining Out,lifestyle
-2026-01-30,16:00,Dad,expense,Tiago petrol,1100,Fuel,lifestyle
-2026-02-01,18:10,Mom,expense,Tender coconut,180,Dining Out,lifestyle
-2026-02-06,18:59,Dad,expense,Video game,224,Kids,lifestyle
-2026-02-06,18:59,Dad,expense,Fencing cloth,80,Farm & Garden,one_time
-2026-02-06,18:59,Dad,expense,Bakery,60,Dining Out,lifestyle
-2026-02-07,19:13,Mom,expense,Petrol,1500,Fuel,lifestyle
-2026-02-08,10:57,Mom,expense,Parlour,670,Personal Care & Fitness,lifestyle
-2026-02-09,17:35,Dad,expense,Oota,300,Dining Out,lifestyle
-2026-02-09,17:35,Dad,expense,Sweets + bakery,313,Dining Out,lifestyle
-2026-02-11,18:16,Mom,expense,Haircut,200,Personal Care & Fitness,lifestyle
-2026-02-11,18:16,Mom,expense,Cosmetics,3375,Personal Care & Fitness,lifestyle
-2026-02-11,19:20,Mom,expense,Mahalakshmi bakery,243,Dining Out,lifestyle
-2026-02-11,19:20,Mom,expense,Varna,78,Clothing,lifestyle
-2026-02-11,19:33,Mom,expense,Vegetables,200,Groceries & Household,lifestyle
-2026-02-11,19:41,Mom,expense,Hoovu flowers,50,Religion & Gifts,recurring
-2026-02-12,16:42,Dad,expense,Garden batte 10m,350,Farm & Garden,one_time
-2026-02-12,16:42,Dad,expense,Soap,120,Groceries & Household,lifestyle
-2026-02-13,19:08,Dad,expense,TediBar toy,200,Kids,lifestyle
-2026-02-13,19:08,Dad,expense,Snacks,60,Dining Out,lifestyle
-2026-02-13,19:08,Dad,expense,Iron laundry,80,Misc,recurring
-2026-02-13,20:20,Dad,expense,Bugari,30,Kids,lifestyle
-2026-02-13,20:20,Dad,expense,Petrol container + funnel,120,Vehicle Maintenance,one_time
-2026-02-14,08:56,Dad,expense,Blinkit panipuri,288,Groceries & Household,lifestyle
-2026-02-15,08:31,Dad,expense,Vinutha mobile recharge,870.70,Utilities & Recharges,recurring
-2026-02-15,10:07,Dad,expense,Watermelon,190,Groceries & Household,lifestyle
-2026-02-15,13:14,Dad,expense,Ice cream,890,Dining Out,lifestyle
-2026-02-15,13:19,Dad,expense,Elaneeru,60,Dining Out,lifestyle
-2026-02-15,17:45,Dad,expense,Haircut,180,Personal Care & Fitness,lifestyle
-2026-02-15,17:46,Dad,expense,Gullehalli trench digging,10000,Farm & Garden,one_time
-2026-02-15,21:57,Dad,expense,Jio Hotstar 1 month,113.12,Utilities & Recharges,recurring
-2026-02-16,22:46,Mom,expense,Netflix,199,Utilities & Recharges,recurring
-2026-02-20,08:30,Mom,expense,Books + pens,95,Kids,lifestyle
-2026-02-21,12:51,Dad,expense,Bike petrol,550,Fuel,lifestyle
-2026-02-21,12:51,Dad,expense,Bike service,7890,Vehicle Maintenance,one_time
-2026-02-21,13:34,Dad,expense,Medicine,118,Health & Medical,lifestyle
-2026-02-21,13:34,Dad,expense,Car petrol,150,Fuel,lifestyle
-2026-02-22,18:19,Mom,expense,Chocolate,90,Dining Out,lifestyle
-2026-02-22,18:19,Mom,expense,Petrol,500,Fuel,lifestyle
-2026-02-22,18:19,Mom,expense,Presentation,500,Misc,lifestyle
-2026-02-22,20:02,Dad,expense,Toll,135,Transport & Parking,lifestyle
-2026-02-23,18:21,Dad,expense,Toys,700,Kids,lifestyle
-2026-02-23,18:29,Dad,expense,Iron laundry,130,Misc,recurring
-2026-02-24,18:42,Dad,expense,Westside,4805,Clothing,lifestyle
-2026-02-24,18:56,Dad,expense,Banana,170,Groceries & Household,lifestyle
-2026-02-24,18:56,Dad,expense,Hoovu flowers,50,Religion & Gifts,recurring
-2026-02-25,17:43,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2026-03-02,21:14,Dad,expense,Shrigandha residency hotel,2481.81,Travel & Trips,lifestyle
-2026-03-03,08:23,Dad,expense,Blinkit shampoo,501,Groceries & Household,lifestyle
-2026-03-03,15:09,Mom,expense,Hotel,300,Dining Out,lifestyle
-2026-03-03,19:14,Dad,expense,Duster petrol,2000,Fuel,lifestyle
-2026-03-03,19:14,Dad,expense,Oota,125,Dining Out,lifestyle
-2026-03-04,15:44,Dad,expense,Tindi,90,Dining Out,lifestyle
-2026-03-04,19:21,Dad,expense,Oota,210,Dining Out,lifestyle
-2026-03-05,18:11,Dad,expense,Tindi,50,Dining Out,lifestyle
-2026-03-05,18:11,Dad,expense,Benne dose,240,Dining Out,lifestyle
-2026-03-05,18:11,Dad,expense,Momos,80,Dining Out,lifestyle
-2026-03-06,00:33,Dad,expense,Coffee,30,Dining Out,lifestyle
-2026-03-07,11:44,Dad,expense,Car wash,100,Vehicle Maintenance,lifestyle
-2026-03-07,11:44,Dad,expense,Milkshake,90,Dining Out,lifestyle
-2026-03-07,11:44,Dad,expense,Ticket,130,Entertainment & Outings,lifestyle
-2026-03-07,14:02,Mom,expense,Columbus cafe,70,Dining Out,lifestyle
-2026-03-07,14:02,Mom,expense,Snacks,150,Dining Out,lifestyle
-2026-03-07,14:02,Mom,expense,Car dashing repair,100,Vehicle Maintenance,one_time
-2026-03-07,15:09,Dad,expense,Tender coconut,150,Dining Out,lifestyle
-2026-03-07,16:52,Dad,expense,Duster petrol,1500,Fuel,lifestyle
-2026-03-07,17:20,Dad,expense,Bakery,250,Dining Out,lifestyle
-2026-03-08,20:05,Dad,expense,Bakery,220,Dining Out,lifestyle
-2026-03-09,19:38,Mom,expense,Petrol,1000,Fuel,lifestyle
-2026-03-09,19:38,Mom,expense,Vegetables,50,Groceries & Household,lifestyle
-2026-03-09,19:38,Mom,expense,Tyre patch,700,Vehicle Maintenance,one_time
-2026-03-10,10:42,Dad,expense,Car petrol,1050,Fuel,lifestyle
-2026-03-11,12:42,Dad,expense,Shreyas Airtel recharge,810.23,Utilities & Recharges,recurring
-2026-03-11,14:38,Dad,expense,Bakery,180,Dining Out,lifestyle
-2026-03-11,14:38,Dad,expense,Coconut,60,Groceries & Household,lifestyle
-2026-03-12,11:11,Mom,expense,Petrol,1000,Fuel,lifestyle
-2026-03-12,11:11,Mom,expense,Sarji school,5000,Education,recurring
-2026-03-12,11:34,Dad,expense,Tailor Vinutha,1460,Clothing,lifestyle
-2026-03-12,13:06,Mom,expense,Car ride,50,Entertainment & Outings,lifestyle
-2026-03-12,13:06,Mom,expense,Train ride,100,Entertainment & Outings,lifestyle
-2026-03-12,13:06,Mom,expense,Potato twister,60,Dining Out,lifestyle
-2026-03-12,13:30,Dad,expense,Majjige,40,Dining Out,lifestyle
-2026-03-12,13:30,Dad,expense,Gas geyser pipe,130,Home & Furniture,one_time
-2026-03-12,13:41,Dad,expense,Mall games,100,Entertainment & Outings,lifestyle
-2026-03-12,14:44,Mom,expense,Belt,800,Clothing,lifestyle
-2026-03-12,14:44,Mom,expense,Slippers,1250,Clothing,lifestyle
-2026-03-12,14:44,Mom,expense,Parking,20,Transport & Parking,lifestyle
-2026-03-12,15:31,Dad,expense,Oota,630,Dining Out,lifestyle
-2026-03-12,16:16,Dad,expense,File,80,Misc,lifestyle
-2026-03-13,19:13,Dad,expense,Decathlon swimming dress + goggles,2109,Personal Care & Fitness,lifestyle
-2026-03-13,19:57,Mom,expense,Tender coconut,70,Dining Out,lifestyle
-2026-03-13,19:57,Mom,expense,Bonda,85,Dining Out,lifestyle
-2026-03-13,19:59,Mom,expense,Sarji admission fees,5000,Education,one_time
-2026-03-14,12:03,Dad,expense,Swimming Day 1,200,Personal Care & Fitness,lifestyle
-2026-03-14,12:38,Dad,expense,New UPS,8500,Home & Furniture,one_time
-2026-03-15,11:17,Mom,expense,Tender coconut,60,Dining Out,lifestyle
-2026-03-16,15:34,Dad,expense,Jaguar service plumbing,4750,Home & Furniture,one_time
-2026-03-16,19:34,Mom,expense,Oota,300,Dining Out,lifestyle
-2026-03-17,14:16,Dad,expense,Swimming goggles + armbands,1098,Personal Care & Fitness,lifestyle
-2026-03-17,17:35,Mom,expense,Swimming Day 3,200,Personal Care & Fitness,lifestyle
-2026-03-18,15:38,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2026-03-21,11:05,Mom,expense,Vegetables,60,Groceries & Household,lifestyle
-2026-03-21,11:17,Mom,expense,Curd,28,Groceries & Household,lifestyle
-2026-03-21,11:20,Mom,expense,Banana,80,Groceries & Household,lifestyle
-2026-03-21,11:23,Mom,expense,Groundnut,360,Groceries & Household,lifestyle
-2026-03-22,10:40,Mom,expense,Milk,29,Groceries & Household,recurring
-2026-03-22,21:36,Mom,expense,Curd,30,Groceries & Household,lifestyle
-2026-03-25,19:56,Dad,expense,Ball + earplugs,550,Personal Care & Fitness,lifestyle
-2026-03-25,20:19,Dad,expense,Parking,20,Transport & Parking,lifestyle
-2026-03-26,19:06,Dad,expense,Hotel,530,Dining Out,lifestyle
-2026-03-26,18:04,Mom,expense,Flower,50,Religion & Gifts,recurring
-2026-03-26,18:04,Mom,expense,Lemon,50,Groceries & Household,lifestyle
-2026-03-26,18:05,Mom,expense,Mango,50,Groceries & Household,lifestyle
-2026-03-26,18:05,Mom,expense,Tennis bat,1500,Kids,one_time
-2026-03-26,19:39,Mom,expense,Soap,156,Groceries & Household,lifestyle
-2026-03-27,19:01,Mom,expense,Fruits,600,Groceries & Household,lifestyle
-2026-03-30,12:49,Mom,expense,Tindi,60,Dining Out,lifestyle
-2026-03-30,18:17,Dad,expense,Resistance band,700,Personal Care & Fitness,one_time
-2026-03-30,18:17,Dad,expense,Hand gloves,500,Personal Care & Fitness,one_time
-2026-03-30,18:20,Dad,expense,Lollipop,20,Dining Out,lifestyle
-2026-03-30,19:29,Dad,expense,Benne dose,290,Dining Out,lifestyle
-2026-04-02,16:19,Dad,expense,Haircut,200,Personal Care & Fitness,lifestyle
-2026-04-04,18:46,Mom,expense,Baby soap + toothpaste,630,Kids,recurring
-2026-04-04,21:19,Dad,expense,Holige + chiroti,95,Dining Out,lifestyle
-2026-04-04,21:46,Mom,expense,Sauthekaayi,50,Groceries & Household,lifestyle
-2026-04-05,11:37,Dad,expense,Baby haircut,157,Kids,lifestyle
-2026-04-05,11:51,Mom,expense,Wipes,249,Kids,recurring
-2026-04-06,18:34,Dad,expense,Duster petrol,500,Fuel,lifestyle
-2026-04-06,18:34,Dad,expense,Oota,100,Dining Out,lifestyle
-2026-04-10,13:13,Dad,expense,Snacks,160,Dining Out,lifestyle
-2026-04-10,13:13,Dad,expense,Bike petrol,1000,Fuel,lifestyle
-2026-04-10,15:26,Dad,expense,Medicine,50,Health & Medical,lifestyle
-2026-04-11,07:56,Mom,expense,Snacks,110,Dining Out,lifestyle
-2026-04-11,15:41,Dad,expense,Hotel oota,800,Dining Out,lifestyle
-2026-04-13,22:09,Mom,expense,Snacks,140,Dining Out,lifestyle
-2026-04-14,12:10,Mom,expense,Medicine,120,Health & Medical,lifestyle
-2026-04-15,15:31,Mom,expense,Site tax,4100,Property & Investments,one_time
-2026-04-15,15:34,Dad,expense,Elaneeru,120,Dining Out,lifestyle
-2026-04-15,19:20,Dad,expense,Medicine,292,Health & Medical,lifestyle
-2026-04-15,19:58,Dad,expense,Consultation fee,300,Health & Medical,lifestyle
-2026-04-15,20:08,Dad,expense,Hotel,530,Dining Out,lifestyle
-2026-04-15,21:27,Dad,expense,Elaneeru,320,Dining Out,lifestyle
-2026-04-16,14:55,Dad,expense,Elaneeru,300,Dining Out,lifestyle
-2026-04-16,14:55,Dad,expense,Medicine,60,Health & Medical,lifestyle
-2026-04-17,08:46,Dad,expense,Medicine,283,Health & Medical,lifestyle
-2026-04-17,08:46,Dad,expense,Medicine,778,Health & Medical,lifestyle
-2026-04-17,08:52,Dad,expense,Elaneeru,300,Dining Out,lifestyle
-2026-04-17,22:30,Mom,expense,Parlour,900,Personal Care & Fitness,lifestyle
-2026-04-17,22:30,Mom,expense,Auto,340,Transport & Parking,lifestyle
-2026-04-17,22:30,Mom,expense,Maggi,55,Dining Out,lifestyle
-2026-04-17,22:30,Mom,expense,Iron laundry,140,Misc,recurring
-2026-04-19,08:37,Dad,expense,Snacks,330,Dining Out,lifestyle
-2026-04-19,08:37,Dad,expense,Karpoora,45,Religion & Gifts,recurring
-2026-04-19,16:27,Dad,expense,Water bottle,40,Groceries & Household,lifestyle
-2026-04-19,20:09,Mom,expense,Tender coconut,295,Dining Out,lifestyle
-2026-04-20,14:02,Dad,expense,Zomato parcel oota,424,Dining Out,lifestyle
-2026-04-21,16:33,Dad,expense,Halasina hannu,200,Groceries & Household,lifestyle
-2026-04-24,14:02,Dad,expense,Thermometer cell,30,Groceries & Household,lifestyle
-2026-04-24,14:04,Dad,expense,FirstCry,830,Kids,lifestyle
-2026-04-25,12:45,Dad,expense,Elaneeru,360,Dining Out,lifestyle
-2026-04-25,12:45,Dad,expense,Sugarcane juice,150,Dining Out,lifestyle
-2026-04-28,10:49,Dad,expense,Magic show,1600,Entertainment & Outings,lifestyle
-2026-04-28,10:49,Dad,expense,Coffee,30,Dining Out,lifestyle
-2026-04-28,10:49,Dad,expense,Doctor consultation,300,Health & Medical,lifestyle
-2026-04-28,10:49,Dad,expense,Vishnu Medicals,511,Health & Medical,lifestyle
-2026-04-28,21:24,Dad,expense,Bakery,200,Dining Out,lifestyle
-2026-04-28,21:24,Dad,expense,Hotel,1600,Dining Out,lifestyle
-2026-04-28,21:24,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2026-05-02,19:22,Mom,expense,Ointment,230,Health & Medical,lifestyle
-2026-05-02,19:22,Mom,expense,Iron laundry,170,Misc,recurring
-2026-05-02,19:38,Mom,expense,Pataki,80,Religion & Gifts,one_time
-2026-05-02,19:38,Mom,expense,Medicine,80,Health & Medical,lifestyle
-2026-05-03,20:43,Dad,expense,Car petrol,1000,Fuel,lifestyle
-2026-05-03,20:44,Dad,expense,Medicine,20,Health & Medical,lifestyle
-2026-05-06,12:07,Mom,expense,Marriage gift,1900,Religion & Gifts,one_time
-2026-05-08,13:30,Dad,expense,Mobile charger,600,Misc,one_time
-2026-05-08,13:30,Dad,expense,Mobile screen guard,200,Misc,one_time
-2026-05-09,20:56,Mom,expense,Petrol,1000,Fuel,lifestyle
-2026-05-09,21:25,Dad,expense,Divya anniversary cake,590,Dining Out,lifestyle
-2026-05-10,11:14,Dad,expense,Vinutha recharge,911,Utilities & Recharges,recurring
-2026-05-11,15:07,Mom,expense,Fancy store,150,Misc,lifestyle
-2026-05-13,11:43,Dad,expense,Mobile charger second,600,Misc,one_time
-2026-05-13,11:43,Dad,expense,Maavinakaayi,100,Groceries & Household,lifestyle
-2026-05-14,18:58,Dad,expense,UNO cards,150,Kids,lifestyle
-2026-05-15,16:05,Dad,expense,Hotel,700,Dining Out,lifestyle
-2026-05-15,16:43,Dad,expense,Bowl + spoon + cutting board,689,Home & Furniture,one_time
-2026-05-15,17:16,Dad,expense,Mall B4Fun,500,Entertainment & Outings,lifestyle
-2026-05-15,18:17,Mom,expense,Oil,170,Groceries & Household,lifestyle
-2026-05-15,18:28,Mom,expense,Menasinakai,40,Groceries & Household,lifestyle
-2026-05-15,18:34,Mom,expense,Soap,220,Groceries & Household,lifestyle
-2026-05-18,07:54,Dad,expense,Westside Papu batte,2713,Kids,lifestyle
-2026-05-18,07:54,Dad,expense,Hopscotch Papu dress,2015,Kids,lifestyle
-2026-05-18,07:54,Dad,expense,FirstCry school bag + lunchbox + slippers,2374,Kids,lifestyle
-2026-05-18,08:14,Mom,expense,Flipkart dress,647,Clothing,lifestyle
-2026-05-19,13:45,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2026-05-19,13:45,Dad,expense,Sarji school fees,39000,Education,recurring
-2026-05-19,13:47,Dad,expense,Stationery Diana,630,Education,lifestyle
-2026-05-19,14:00,Mom,expense,Angels store,592,Clothing,lifestyle
-2026-05-19,14:06,Mom,expense,Chips,165,Dining Out,lifestyle
-2026-05-19,14:07,Mom,expense,Kadalebele,98,Groceries & Household,lifestyle
-2026-05-19,14:28,Mom,expense,Parlour,70,Personal Care & Fitness,lifestyle
-2026-05-20,16:27,Dad,expense,Color print,70,Misc,lifestyle
-2026-05-20,16:27,Dad,expense,Color paper,20,Misc,lifestyle
-2026-05-20,16:28,Dad,expense,Comb,20,Groceries & Household,lifestyle
-2026-05-21,14:37,Dad,expense,Oats,108,Groceries & Household,lifestyle
-2026-05-21,14:37,Dad,expense,Ointment,160,Health & Medical,lifestyle
-2026-05-22,17:49,Mom,expense,Mandakki,200,Groceries & Household,lifestyle
-2026-05-22,17:49,Mom,expense,Diana store,120,Kids,lifestyle
-2026-05-22,17:49,Mom,expense,Vegetables,160,Groceries & Household,lifestyle
-2026-05-22,19:49,Mom,expense,Ambika store,110,Groceries & Household,lifestyle
-2026-05-24,11:17,Dad,expense,Vinutha dress,647,Clothing,lifestyle
-2026-05-24,12:32,Mom,expense,Water bottle,343,Home & Furniture,one_time
-2026-05-24,17:38,Dad,expense,Blinkit marker pen + Dove shampoo,294,Groceries & Household,lifestyle
-2026-05-25,11:37,Mom,expense,Geyser shell,160,Home & Furniture,one_time
-2026-05-25,11:37,Mom,expense,Snacks,70,Dining Out,lifestyle
-2026-05-25,12:34,Mom,expense,Petrol,100,Fuel,lifestyle
-2026-05-25,12:34,Mom,expense,Bread,170,Groceries & Household,lifestyle
-2026-05-25,12:34,Mom,expense,Medicine,570,Health & Medical,lifestyle
-2026-05-25,12:40,Dad,expense,Petrol,1000,Fuel,lifestyle
-2026-05-26,12:22,Dad,expense,Fence wire,190,Farm & Garden,one_time
-2026-05-26,12:41,Mom,expense,Soppu,20,Groceries & Household,lifestyle
-2026-05-26,12:41,Mom,expense,Kurushani,80,Groceries & Household,lifestyle
-2026-05-28,19:05,Dad,expense,Blinkit,272,Groceries & Household,lifestyle
-2026-05-29,21:25,Dad,expense,Iron laundry,90,Misc,recurring
-2026-05-30,14:40,Dad,expense,Airtel WiFi 4 months,2433.79,Utilities & Recharges,recurring
-2026-05-30,19:40,Mom,expense,Haircut,750,Personal Care & Fitness,lifestyle
-2026-05-30,19:47,Mom,expense,Pista,499,Groceries & Household,lifestyle
-2026-05-30,19:49,Mom,expense,Chips,55,Dining Out,lifestyle
-2026-05-30,20:01,Mom,expense,Vegetables,185,Groceries & Household,lifestyle
-2026-05-31,14:03,Mom,expense,Hopscotch baby dress,2015,Kids,lifestyle
-2026-06-02,21:28,Mom,expense,Petrol,2000,Fuel,lifestyle
-2026-06-02,21:28,Mom,expense,Fruits,270,Groceries & Household,lifestyle
-2026-06-03,13:55,Dad,expense,Airtel recharge,805,Utilities & Recharges,recurring
-2026-06-05,23:58,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2026-06-08,20:48,Dad,expense,Doctor fees,300,Health & Medical,lifestyle
-2026-06-08,20:48,Dad,expense,Medicine,808,Health & Medical,lifestyle
-2026-06-09,11:56,Dad,expense,Lab tests,800,Health & Medical,lifestyle
-2026-06-09,13:37,Mom,expense,Cream + shampoo,471,Personal Care & Fitness,lifestyle
-2026-06-10,14:03,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2026-06-10,15:16,Mom,expense,Baby soap + brush,600,Kids,recurring
-2026-06-10,15:18,Mom,expense,Baby book + handkerchief,500,Kids,lifestyle
-2026-06-10,16:20,Mom,expense,Baby mat,630,Kids,lifestyle
-2026-06-11,16:03,Mom,expense,Crayons,92,Kids,lifestyle
-2026-06-12,13:43,Mom,expense,Iron laundry,180,Misc,recurring
-2026-06-13,16:03,Mom,expense,Baby pants,1180,Kids,lifestyle
-2026-06-14,08:59,Dad,expense,Bike petrol,500,Fuel,lifestyle
-2026-06-15,18:27,Dad,expense,Medicine,219,Health & Medical,lifestyle
-2026-06-16,20:08,Dad,expense,Snacks,450,Dining Out,lifestyle
-2026-06-17,18:41,Dad,expense,Snacks,165,Dining Out,lifestyle
-2026-06-19,14:01,Dad,expense,Nerale hannu,100,Groceries & Household,lifestyle
-2026-06-19,14:01,Dad,expense,Gobi manchurian,150,Dining Out,lifestyle
-2026-06-19,14:13,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2026-06-20,21:33,Dad,expense,Halasina hannu,300,Groceries & Household,lifestyle
-2026-06-21,11:59,Dad,expense,Haircut,200,Personal Care & Fitness,lifestyle
-2026-06-22,14:09,Dad,expense,Tarakari vegetables,120,Groceries & Household,lifestyle
-2026-06-22,14:09,Dad,expense,Atharva gift,400,Religion & Gifts,one_time
-2026-06-22,14:10,Dad,expense,Jamun,100,Groceries & Household,lifestyle
-2026-06-25,08:21,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2026-06-25,15:44,Dad,expense,Iron laundry,117,Misc,recurring
-2026-06-28,21:03,Mom,expense,Sapna Book House,525,Education,lifestyle
-2026-06-28,21:14,Dad,expense,Parking,20,Transport & Parking,lifestyle
-2026-06-28,22:26,Dad,expense,Hotel,600,Dining Out,lifestyle
-2026-06-30,18:51,Dad,expense,Bangalore travel + food,1840,Travel & Trips,lifestyle
-2026-07-03,14:50,Dad,expense,Keyboard,580,Misc,one_time
-2026-07-03,14:50,Dad,expense,Storage bag,300,Home & Furniture,one_time
-2026-07-03,14:50,Dad,expense,Dove shampoo,530,Personal Care & Fitness,lifestyle
-2026-07-04,14:17,Dad,expense,Sweet corn,50,Groceries & Household,lifestyle
-2026-07-04,14:17,Dad,expense,Tomato,40,Groceries & Household,lifestyle
-2026-07-04,14:17,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2026-07-04,17:56,Dad,expense,Papad + handwash + sev,350,Groceries & Household,lifestyle
-2026-07-04,19:23,Dad,expense,JioTV OTT,200,Utilities & Recharges,recurring
-2026-07-05,18:32,Dad,expense,Ergonomic chair,3299,Home & Furniture,one_time
-2026-07-07,17:00,Mom,expense,Iron laundry,130,Misc,recurring
-2026-07-10,15:29,Dad,expense,Iron laundry,105,Misc,recurring
-2026-07-10,19:16,Dad,expense,Parking,20,Transport & Parking,lifestyle
-2026-07-10,19:16,Dad,expense,Snacks,245,Dining Out,lifestyle
-2026-07-11,17:53,Dad,expense,Oota,350,Dining Out,lifestyle
-2026-07-11,17:53,Dad,expense,Potato,30,Groceries & Household,lifestyle
-2026-07-12,15:37,Dad,expense,Tiago petrol,1000,Fuel,lifestyle
-2026-07-18,19:32,Dad,expense,Medicine,436,Health & Medical,lifestyle
-2026-07-18,19:32,Dad,expense,Doctor fees,300,Health & Medical,lifestyle
-2026-07-18,20:03,Mom,expense,Snacks,240,Dining Out,lifestyle
-2026-07-18,20:03,Mom,expense,Tender coconut,330,Dining Out,lifestyle
-2026-07-18,20:13,Mom,expense,Car petrol,2000,Fuel,lifestyle
-2026-07-21,13:43,Dad,expense,Halasina hannu,200,Groceries & Household,lifestyle
-2026-07-22,19:24,Mom,expense,Fruits,410,Groceries & Household,lifestyle
-2026-07-22,21:00,Mom,expense,Fruits,190,Groceries & Household,lifestyle
-2026-07-24,19:09,Dad,expense,Bike petrol,700,Fuel,lifestyle
-2026-07-24,19:09,Dad,expense,Chips + boti,165,Dining Out,lifestyle
-2026-07-24,19:09,Dad,expense,Iron laundry,130,Misc,recurring
-2026-07-25,18:16,Mom,expense,Slippers,560,Clothing,lifestyle
-2026-07-25,18:16,Mom,expense,Dry fruits,1899,Groceries & Household,lifestyle
-2026-07-25,18:27,Mom,expense,Matching,129,Clothing,lifestyle
-2026-07-25,19:06,Mom,expense,Vegetables,80,Groceries & Household,lifestyle
-2026-07-25,19:37,Mom,expense,Baby wipes,155,Kids,recurring
-2026-07-25,19:37,Mom,expense,Panipuri,45,Dining Out,lifestyle
-2026-07-29,18:02,Mom,expense,Saree,4874,Clothing,lifestyle
-2026-07-31,22:01,Dad,expense,Books,40,Misc,lifestyle
-2026-07-31,22:01,Dad,expense,Oota,60,Dining Out,lifestyle
-2026-07-31,22:01,Dad,expense,Art school 3 months,5000,Education,recurring
-2026-08-01,19:50,Mom,expense,Mandakki,100,Groceries & Household,lifestyle
-2026-08-01,19:50,Mom,expense,Westside,5310,Clothing,lifestyle
-2026-08-01,19:50,Mom,expense,Ball,30,Kids,lifestyle
-2026-08-01,19:50,Mom,expense,Apple,270,Groceries & Household,lifestyle
-2026-08-01,20:04,Mom,expense,Banana,160,Groceries & Household,lifestyle
-2026-08-02,19:07,Mom,expense,Bakery,680,Dining Out,lifestyle
-2026-08-02,20:30,Dad,expense,Mekke jola,160,Groceries & Household,lifestyle
-2026-08-03,20:20,Dad,expense,Jio recharge,904,Utilities & Recharges,recurring
-2026-08-04,19:25,Dad,expense,Tarakari vegetables,140,Groceries & Household,lifestyle
-2026-08-04,19:25,Dad,expense,Plate,30,Home & Furniture,lifestyle
-2026-08-04,19:25,Dad,expense,Tiago petrol,2000,Fuel,lifestyle
-2026-08-07,17:53,Mom,expense,Snacks,385,Dining Out,lifestyle
-2026-08-07,18:13,Mom,expense,Bakery,505,Dining Out,lifestyle
-2026-08-07,18:33,Mom,expense,Ration,1929,Groceries & Household,lifestyle
-2026-08-07,19:44,Mom,expense,Bathroom brush,380,Groceries & Household,lifestyle
-2026-08-07,20:13,Dad,expense,Car wash + dicky hydraulic,1500,Vehicle Maintenance,one_time
-2026-08-07,20:19,Dad,expense,2-seater sofa,8000,Home & Furniture,one_time
-2026-08-07,20:19,Dad,expense,Two pillows,1000,Home & Furniture,one_time
-2026-08-07,20:19,Dad,expense,Mat,500,Home & Furniture,one_time
-2026-08-07,20:19,Dad,expense,Spectacles advance,1000,Health & Medical,one_time
-2026-08-07,21:00,Mom,expense,Vegetables,350,Groceries & Household,lifestyle
-2026-08-07,21:03,Mom,expense,Jaggery,270,Groceries & Household,lifestyle
-2026-08-07,21:04,Mom,expense,Milk,28,Groceries & Household,recurring
-2026-08-08,13:49,Dad,expense,Geyser repair,500,Home & Furniture,one_time
-2026-08-10,21:14,Dad,expense,Oota,100,Dining Out,lifestyle
-2026-08-10,21:14,Dad,expense,Car key,80,Vehicle Maintenance,one_time
-2026-08-10,22:51,Mom,expense,Silver coin,1413,Property & Investments,one_time
-2026-08-11,11:19,Mom,expense,Iron laundry,120,Misc,recurring
-2026-08-11,13:20,Dad,expense,Silver articles,13060,Property & Investments,one_time
-2026-08-11,13:20,Dad,expense,Bhima monthly EMI,2000,Property & Investments,recurring
-2026-08-11,14:30,Dad,expense,Specs balance,2300,Health & Medical,one_time
-2026-08-11,14:49,Dad,expense,Papu specs,100,Kids,lifestyle
-2026-08-11,15:15,Dad,expense,Elaneeru,60,Dining Out,lifestyle
-2026-08-11,16:51,Mom,expense,Steel bowl,1500,Home & Furniture,one_time
-2026-08-12,15:53,Dad,expense,Oota,100,Dining Out,lifestyle
+date,time,member,item,amount,category,tag
+2022-11-23,19:33,Dad,Site 1st installment 30x50 plot,1200000,Property & Investments,one_time
+2023-10-12,14:48,Mom,Veeledele betel leaves,20,Groceries & Household,lifestyle
+2023-10-16,19:37,Dad,Cake + Sweets celebration,2000,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Balloons celebration,15500,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Food for celebration,32000,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Cake celebration,5500,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Shamiyana tent,10000,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Camera,5000,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Adike hoovu ele pooja items,1600,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Diana Book House,900,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Bakery Prema Veena,500,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Naganna celebration,1500,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Water bottles,900,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Dress celebration,5000,Clothing,one_time
+2023-10-24,19:37,Dad,Tindi snacks,900,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Tips Shubham,1700,Religion & Gifts,one_time
+2023-10-24,19:37,Dad,Suma,1000,Religion & Gifts,one_time
+2024-05-02,17:13,Dad,Mango,300,Groceries & Household,lifestyle
+2024-05-02,17:13,Dad,Bike petrol,1000,Fuel,lifestyle
+2024-05-02,18:43,Dad,Custard powder + sabja seeds,50,Groceries & Household,lifestyle
+2024-05-12,19:46,Dad,Cartoon books + balloons,1117,Kids,lifestyle
+2024-06-09,22:37,Mom,Cosmetics,2312,Personal Care & Fitness,lifestyle
+2024-06-09,22:37,Mom,Baby pampers,279,Kids,recurring
+2024-06-09,22:37,Mom,Parlour,180,Personal Care & Fitness,lifestyle
+2024-06-09,22:37,Mom,Dress,570,Clothing,lifestyle
+2024-06-09,22:37,Mom,Petrol,2000,Fuel,lifestyle
+2024-06-09,22:37,Mom,Fruits,400,Groceries & Household,lifestyle
+2024-06-09,22:37,Mom,Vegetables,100,Groceries & Household,lifestyle
+2024-06-09,22:37,Mom,Baby water bottle,650,Kids,lifestyle
+2024-06-09,22:37,Mom,Monika baby dress,700,Kids,lifestyle
+2024-06-10,08:12,Mom,Baby water bottle,674,Kids,lifestyle
+2024-06-20,18:43,Dad,Dry cleaners,750,Clothing,lifestyle
+2024-06-20,18:43,Dad,Shyam store,2450,Groceries & Household,lifestyle
+2024-06-20,18:43,Dad,Greenland store,1050,Groceries & Household,lifestyle
+2024-06-21,13:14,Dad,Internet recharge,825,Utilities & Recharges,recurring
+2024-06-23,09:32,Dad,Pampers + condoms,600,Groceries & Household,recurring
+2024-06-23,09:32,Dad,Hit insect spray,480,Groceries & Household,lifestyle
+2024-06-23,09:49,Dad,Tarakari vegetables,200,Groceries & Household,lifestyle
+2024-06-23,12:03,Mom,Vinutha dress,1312,Clothing,lifestyle
+2024-06-24,12:43,Dad,Watch repair,800,Misc,one_time
+2024-06-27,15:04,Dad,Petrol,1100,Fuel,lifestyle
+2024-06-29,22:42,Mom,Fruits,220,Groceries & Household,lifestyle
+2024-06-30,20:45,Dad,Hoovu flowers,240,Religion & Gifts,recurring
+2024-06-30,20:45,Dad,Tarakari vegetables,125,Groceries & Household,lifestyle
+2024-06-30,20:45,Dad,Petrol,2000,Fuel,lifestyle
+2024-06-30,20:45,Dad,Gullehalli farm expense,2000,Farm & Garden,one_time
+2024-06-30,20:48,Dad,Petrol,1000,Fuel,lifestyle
+2024-07-01,21:11,Dad,Petrol,1000,Fuel,lifestyle
+2024-07-01,21:11,Dad,Masala puri,145,Dining Out,lifestyle
+2024-07-04,13:10,Dad,Roundup weedicide,785,Farm & Garden,one_time
+2024-07-04,13:10,Dad,Petrol,1000,Fuel,lifestyle
+2024-07-05,00:09,Dad,Chips,124,Dining Out,lifestyle
+2024-07-05,00:09,Dad,Pampers,410,Kids,recurring
+2024-07-05,00:09,Dad,Socks,300,Clothing,lifestyle
+2024-07-05,00:09,Dad,Varna matching,372,Clothing,lifestyle
+2024-07-05,23:19,Dad,Fish,380,Groceries & Household,lifestyle
+2024-07-06,17:51,Dad,Bat,100,Kids,lifestyle
+2024-07-06,17:51,Dad,Haircut,300,Personal Care & Fitness,lifestyle
+2024-07-07,23:05,Dad,Cable,330,Home & Furniture,one_time
+2024-07-16,18:52,Dad,Tiago tyre puncture,600,Vehicle Maintenance,one_time
+2024-07-19,19:38,Dad,Snacks,140,Dining Out,lifestyle
+2024-07-19,19:38,Dad,Petrol,1000,Fuel,lifestyle
+2024-07-21,21:31,Dad,Onion + milk,74,Groceries & Household,lifestyle
+2024-07-27,12:57,Dad,Petrol,1000,Fuel,lifestyle
+2024-07-27,12:57,Dad,Mobile recharge,980,Utilities & Recharges,recurring
+2024-07-27,12:57,Dad,Internet recharge,825,Utilities & Recharges,recurring
+2024-07-27,13:50,Dad,Mobile recharge,489,Utilities & Recharges,recurring
+2024-07-27,19:39,Mom,Saree PSR Silks,2760,Clothing,lifestyle
+2024-07-27,19:39,Mom,Matching petticoat,620,Clothing,lifestyle
+2024-07-27,21:28,Dad,Papu toys,2500,Kids,lifestyle
+2024-07-27,21:28,Dad,Bakery,358,Dining Out,lifestyle
+2024-07-27,21:29,Dad,More store surf etc,750,Groceries & Household,lifestyle
+2024-07-27,21:47,Dad,MetPlus pampers,750,Kids,recurring
+2024-07-29,19:09,Dad,Balloon + drawing board + sketch pens,350,Kids,lifestyle
+2024-07-29,19:09,Dad,Banana,140,Groceries & Household,lifestyle
+2024-07-29,19:09,Dad,Car petrol,1000,Fuel,lifestyle
+2024-08-01,19:43,Dad,Westside shopping,7044,Clothing,lifestyle
+2024-08-01,21:11,Mom,Tarakari vegetables,400,Groceries & Household,lifestyle
+2024-08-03,13:41,Dad,Marker pens + ink,200,Kids,lifestyle
+2024-08-03,13:41,Dad,Plumbing items,100,Home & Furniture,one_time
+2024-08-06,13:19,Dad,Petrol,1000,Fuel,lifestyle
+2024-08-08,14:46,Dad,Aradhana doctor consultation,300,Health & Medical,lifestyle
+2024-08-08,14:47,Dad,Aradhana X-ray,500,Health & Medical,lifestyle
+2024-08-08,14:47,Dad,Aradhana medicine,420,Health & Medical,lifestyle
+2024-08-09,09:54,Dad,Traffic police fine,1000,Misc,one_time
+2024-08-09,09:54,Dad,Bike petrol,500,Fuel,lifestyle
+2024-08-12,20:53,Dad,Petrol,1100,Fuel,lifestyle
+2024-08-12,20:53,Dad,Physiotherapy,400,Health & Medical,lifestyle
+2024-08-13,13:27,Dad,Tyre puncture,70,Vehicle Maintenance,one_time
+2024-08-13,19:50,Dad,Office snacks,200,Misc,lifestyle
+2024-08-13,19:50,Dad,Pen,40,Misc,lifestyle
+2024-08-14,11:45,Dad,Bike battery,2300,Vehicle Maintenance,one_time
+2024-08-15,17:51,Dad,Ramu tailor,1200,Clothing,lifestyle
+2024-08-17,13:53,Dad,Papu dress,600,Kids,lifestyle
+2024-08-17,13:53,Dad,Office pooja tindi,1800,Misc,lifestyle
+2024-08-18,22:17,Dad,Fruits,520,Groceries & Household,lifestyle
+2024-08-18,22:17,Dad,Hoovu flowers,100,Religion & Gifts,recurring
+2024-08-18,22:17,Dad,Kayakanchi offering,2000,Religion & Gifts,one_time
+2024-08-18,22:17,Dad,Petrol,800,Fuel,lifestyle
+2024-08-18,22:17,Dad,Chappal,1150,Clothing,lifestyle
+2024-08-18,22:17,Dad,Train ride + car ride + parking,220,Transport & Parking,lifestyle
+2024-08-18,22:17,Dad,Udupi restaurant,150,Dining Out,lifestyle
+2024-08-18,22:17,Dad,MedPlus pharmacy,980,Health & Medical,lifestyle
+2024-08-21,10:19,Dad,Petrol,1000,Fuel,lifestyle
+2024-08-21,10:20,Dad,Papu dress,2100,Kids,lifestyle
+2024-08-24,10:42,Dad,Chats,110,Dining Out,lifestyle
+2024-08-24,10:42,Dad,Paalak rice,155,Dining Out,lifestyle
+2024-08-24,10:42,Dad,Petrol,1000,Fuel,lifestyle
+2024-08-24,10:42,Dad,Tarakari vegetables,45,Groceries & Household,lifestyle
+2024-08-24,10:44,Dad,Hoovu flowers,80,Religion & Gifts,recurring
+2024-08-24,10:44,Dad,Bangles + toys,550,Kids,lifestyle
+2024-08-24,10:44,Dad,Milk + curd,80,Groceries & Household,recurring
+2024-08-26,19:18,Dad,Ganapati vishwaradhya,3000,Religion & Gifts,one_time
+2024-08-29,21:58,Dad,Petrol,1000,Fuel,lifestyle
+2024-09-02,10:21,Dad,Vinutha movie + mall,1000,Entertainment & Outings,lifestyle
+2024-09-03,10:38,Dad,Petrol,1000,Fuel,lifestyle
+2024-09-05,18:38,Dad,Haircut,400,Personal Care & Fitness,lifestyle
+2024-09-07,14:52,Dad,Mysore hotel booking 4 nights,20718.18,Travel & Trips,lifestyle
+2024-09-09,18:14,Dad,Wearable backpack,979,Misc,one_time
+2024-09-09,18:55,Dad,Vinutha haircut,1234,Personal Care & Fitness,lifestyle
+2024-09-13,07:06,Dad,Tiago petrol,1000,Fuel,lifestyle
+2024-09-13,07:06,Dad,Duster petrol,3000,Fuel,lifestyle
+2024-09-13,21:39,Dad,Mysore tea + biscuits,40,Travel & Trips,lifestyle
+2024-09-13,21:39,Dad,Mysore Ahaar Vedh hotel,380,Travel & Trips,lifestyle
+2024-09-13,21:39,Dad,Mysore Lokaranjan tickets,600,Travel & Trips,lifestyle
+2024-09-13,21:39,Dad,Mysore Lokaranjan photos,500,Travel & Trips,lifestyle
+2024-09-13,21:39,Dad,Mysore Lokaranjan parking,70,Travel & Trips,lifestyle
+2024-09-13,21:39,Dad,Mysore Indian Curry lunch + paan + banana,1350,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore tonga,200,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore wood art items,220,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore auto,30,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore GRS water park,1950,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore GRS up-down + snow park,1612,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore GRS snacks,155,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore GRS oota,520,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore locker,100,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore coffee,80,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore ball,200,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore cap,200,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore mobile pouch,200,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore doll games,150,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore peanuts,20,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore panipuri,60,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore parking,30,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore banana,100,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore oota,430,Travel & Trips,lifestyle
+2024-09-15,06:26,Dad,Mysore vim,20,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Mysore zoo,200,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Mysore auto,60,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Mysore ball,150,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Girish Anna muyyi gift,1000,Religion & Gifts,one_time
+2024-09-16,07:02,Dad,Mysore masala mandakki,100,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Mysore tonga,800,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Mysore oota,300,Travel & Trips,lifestyle
+2024-09-16,07:02,Dad,Petrol,1400,Fuel,lifestyle
+2024-09-16,21:49,Dad,Mysore car parking,40,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore Chamundeshwari ticket,100,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore chappal stand,10,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore Nanjangud temple ticket,300,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore kanike,800,Religion & Gifts,one_time
+2024-09-16,21:49,Dad,Mysore toys,70,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore parking,30,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore hotel,350,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore ice cream,420,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore viewpoint,80,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore kanike,200,Religion & Gifts,one_time
+2024-09-16,21:49,Dad,Mysore masala mandakki,50,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore car parking,40,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore kanike,450,Religion & Gifts,one_time
+2024-09-16,21:49,Dad,Mysore chappal,10,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore art palace,100,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Mysore oota,255,Travel & Trips,lifestyle
+2024-09-16,21:49,Dad,Petrol,1000,Fuel,lifestyle
+2024-09-17,19:18,Dad,Mysore checkout charges,717,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Mysore tips,150,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Mysore car parking,50,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Mysore palace entry,200,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Mysore majjige,60,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Mysore elephant + horse ride,1000,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Petrol,1600,Fuel,lifestyle
+2024-09-17,19:18,Dad,Mysore coffee + milk,60,Travel & Trips,lifestyle
+2024-09-17,19:18,Dad,Petrol,500,Fuel,lifestyle
+2024-09-18,21:41,Dad,Slide for Papu,1460,Kids,one_time
+2024-09-23,18:13,Dad,Bike petrol,900,Fuel,lifestyle
+2024-09-23,18:13,Dad,Dry fruits,580,Groceries & Household,lifestyle
+2024-09-25,13:59,Dad,Car insurance + emission test,4100,Insurance & Finance,recurring
+2024-09-25,14:35,Dad,Petrol,1000,Fuel,lifestyle
+2024-09-27,17:05,Dad,Internet recharge,825,Utilities & Recharges,recurring
+2024-09-27,17:05,Dad,Wheel alignment,300,Vehicle Maintenance,one_time
+2024-10-03,19:27,Dad,Iron laundry,230,Misc,recurring
+2024-10-03,19:27,Dad,Hotel,400,Dining Out,lifestyle
+2024-10-03,19:27,Dad,Bubbles toy,40,Kids,lifestyle
+2024-10-04,17:21,Dad,15 inch LCD tablet,700,Kids,one_time
+2024-10-06,19:30,Dad,Hoovu flowers,40,Religion & Gifts,recurring
+2024-10-06,19:30,Dad,Kanike offering,100,Religion & Gifts,one_time
+2024-10-06,19:30,Dad,Snacks,290,Dining Out,lifestyle
+2024-10-07,18:38,Dad,Petrol,1000,Fuel,lifestyle
+2024-10-08,12:43,Dad,Papu consultation + medicine,805,Health & Medical,lifestyle
+2024-10-08,13:07,Dad,Juice,50,Dining Out,lifestyle
+2024-10-12,14:40,Dad,Mobile recharge,800,Utilities & Recharges,recurring
+2024-10-20,20:44,Dad,KrushiMela two toy guns,180,Kids,lifestyle
+2024-10-21,20:37,Dad,Petrol,1000,Fuel,lifestyle
+2024-10-22,15:01,Dad,Bike petrol,1000,Fuel,lifestyle
+2024-10-22,15:01,Dad,Amazon Fresh groceries,1042,Groceries & Household,lifestyle
+2024-10-23,19:11,Dad,Papu consultation + vaccination,5500,Health & Medical,one_time
+2024-10-24,09:24,Dad,Haircut,130,Personal Care & Fitness,lifestyle
+2024-10-26,13:17,Dad,Sakrebyele outing,360,Entertainment & Outings,lifestyle
+2024-10-26,13:17,Dad,Lakme,365,Personal Care & Fitness,lifestyle
+2024-10-27,14:26,Dad,Petrol,1000,Fuel,lifestyle
+2024-10-28,15:22,Dad,Internet recharge,825,Utilities & Recharges,recurring
+2024-10-29,19:01,Dad,MedPlus pharmacy,712,Health & Medical,lifestyle
+2024-11-04,11:46,Dad,Hotel tindi,190,Dining Out,lifestyle
+2024-11-04,14:10,Dad,Dry fruits,600,Groceries & Household,lifestyle
+2024-11-09,12:26,Dad,LPG gas cylinder,816,Utilities & Recharges,recurring
+2024-11-11,21:33,Dad,Bike petrol,650,Fuel,lifestyle
+2024-11-11,21:33,Dad,Butterfly park ticket,180,Entertainment & Outings,lifestyle
+2024-11-11,21:33,Dad,Elephant 3D photo,400,Entertainment & Outings,lifestyle
+2024-11-11,21:33,Dad,Hotel,1600,Dining Out,lifestyle
+2024-11-12,18:11,Dad,Car petrol,1000,Fuel,lifestyle
+2024-11-14,14:25,Dad,Soap + kids books,1100,Kids,lifestyle
+2024-11-16,19:03,Dad,Bangarapet chats,130,Dining Out,lifestyle
+2024-11-16,19:20,Dad,Vishnu Medicals,250,Health & Medical,lifestyle
+2024-11-16,19:20,Dad,Hopcoms,70,Groceries & Household,lifestyle
+2024-11-16,19:20,Dad,MedPlus pharmacy,1346,Health & Medical,lifestyle
+2024-11-17,22:43,Dad,Chats,350,Dining Out,lifestyle
+2024-11-17,22:43,Dad,Lipika dress,1720,Clothing,lifestyle
+2024-11-20,19:04,Dad,Doctor fee + file,450,Health & Medical,lifestyle
+2024-11-20,19:04,Dad,Blood test,1200,Health & Medical,lifestyle
+2024-11-20,19:04,Dad,Medicine,1400,Health & Medical,lifestyle
+2024-11-20,19:04,Dad,Injection,600,Health & Medical,lifestyle
+2024-11-20,19:04,Dad,Petrol,1050,Fuel,lifestyle
+2024-11-20,19:25,Dad,FirstCry bottle + toothbrush,800,Kids,lifestyle
+2024-11-23,18:06,Dad,Mobile recharge Shreyas,980,Utilities & Recharges,recurring
+2024-11-23,20:40,Dad,Papu batte dress,5950,Kids,lifestyle
+2024-11-23,20:41,Dad,Iron laundry,180,Misc,recurring
+2024-11-23,20:41,Dad,Fancy store,150,Misc,lifestyle
+2024-11-24,13:38,Dad,Duster petrol,1000,Fuel,lifestyle
+2024-11-25,19:37,Dad,Floating panipuri,90,Dining Out,lifestyle
+2024-11-25,19:37,Dad,Haircut,300,Personal Care & Fitness,lifestyle
+2024-11-26,20:00,Dad,Bus tickets,600,Transport & Parking,lifestyle
+2024-11-27,13:05,Dad,Anna Dasoha Chinmaya Deeksha,1000,Religion & Gifts,one_time
+2024-11-27,14:13,Dad,Duplicate Aadhar + voter card,160,Misc,one_time
+2024-11-28,09:50,Dad,Internet charges,825,Utilities & Recharges,recurring
+2024-11-30,23:11,Dad,Trip bus tickets,600,Travel & Trips,lifestyle
+2024-11-30,23:11,Dad,Trip auto,470,Travel & Trips,lifestyle
+2024-11-30,23:11,Dad,Trip food + snacks,2010,Travel & Trips,lifestyle
+2024-11-30,23:11,Dad,Trip accommodation,400,Travel & Trips,lifestyle
+2024-11-30,23:11,Dad,Trip beach sea walk,300,Travel & Trips,lifestyle
+2024-11-30,23:11,Dad,Trip Papu glitter ball,160,Travel & Trips,lifestyle
+2024-11-30,23:11,Dad,Vinutha surprise gift,5350,Religion & Gifts,one_time
+2024-11-30,23:13,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2024-11-30,23:13,Dad,Papu ICLUD brand dress,5951,Kids,lifestyle
+2024-12-01,10:51,Dad,Petrol,1050,Fuel,lifestyle
+2024-12-03,12:07,Dad,Petrol,1050,Fuel,lifestyle
+2024-12-04,18:06,Dad,Bike petrol,500,Fuel,lifestyle
+2024-12-04,19:26,Dad,Cells + chakli,125,Groceries & Household,lifestyle
+2024-12-05,13:27,Dad,Louis Philippe clothes + socks,1750,Clothing,lifestyle
+2024-12-05,15:04,Dad,Mandakki + bakery,235,Dining Out,lifestyle
+2024-12-05,15:15,Mom,MedPlus pampers,100,Kids,recurring
+2024-12-05,23:12,Mom,Aurora cosmetics,682,Personal Care & Fitness,lifestyle
+2024-12-09,22:02,Dad,Pizza + hotel,1800,Dining Out,lifestyle
+2024-12-11,18:10,Dad,Car petrol,1000,Fuel,lifestyle
+2024-12-11,18:15,Dad,Kotak term insurance annual,16301,Insurance & Finance,recurring
+2024-12-13,16:42,Dad,Moon ball,85,Kids,lifestyle
+2024-12-17,11:21,Dad,Tiago 2 new tyres + balancing + valves,11350,Vehicle Maintenance,one_time
+2024-12-17,12:31,Dad,Tiago window switch repair,250,Vehicle Maintenance,one_time
+2024-12-17,12:31,Dad,Petrol,1050,Fuel,lifestyle
+2024-12-19,11:36,Dad,Funpunch boxing bag,1600,Personal Care & Fitness,one_time
+2024-12-20,09:52,Dad,Petrol,450,Fuel,lifestyle
+2024-12-25,12:38,Dad,Petrol,1750,Fuel,lifestyle
+2024-12-25,12:38,Dad,Bakery,440,Dining Out,lifestyle
+2024-12-29,19:59,Dad,Haircut,130,Personal Care & Fitness,lifestyle
+2024-12-29,19:59,Dad,Snacks,80,Dining Out,lifestyle
+2024-12-31,11:48,Dad,Internet,825,Utilities & Recharges,recurring
+2024-12-31,11:49,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2025-01-01,08:35,Dad,Car petrol,1050,Fuel,lifestyle
+2025-01-01,10:59,Dad,Toy car + books,830,Kids,lifestyle
+2025-01-02,16:34,Dad,TV,26000,Home & Furniture,one_time
+2025-01-03,16:32,Dad,Shankar Eye Hospital consultation,600,Health & Medical,lifestyle
+2025-01-03,16:32,Dad,Bakery,95,Dining Out,lifestyle
+2025-01-03,17:54,Mom,Medicine,517,Health & Medical,lifestyle
+2025-01-03,17:54,Mom,Soap,40,Groceries & Household,lifestyle
+2025-01-05,20:44,Dad,Vinutha mobile recharge,200,Utilities & Recharges,recurring
+2025-01-08,16:54,Dad,MedPlus pharmacy,1370,Health & Medical,lifestyle
+2025-01-08,16:54,Dad,Tarakari vegetables,70,Groceries & Household,lifestyle
+2025-01-08,17:51,Dad,New specs + Crizal lens + accessories,8000,Health & Medical,one_time
+2025-01-11,00:05,Mom,Doctor consultation,300,Health & Medical,lifestyle
+2025-01-11,00:05,Mom,Medicine,210,Health & Medical,lifestyle
+2025-01-11,00:05,Mom,Iron laundry,216,Misc,recurring
+2025-01-13,22:03,Dad,Degree certificate fee,200,Misc,one_time
+2025-01-13,22:03,Dad,Canteen,90,Dining Out,lifestyle
+2025-01-13,22:03,Dad,Petrol,500,Fuel,lifestyle
+2025-01-16,17:20,Dad,Bakery,145,Dining Out,lifestyle
+2025-01-16,17:20,Dad,Tomato,30,Groceries & Household,lifestyle
+2025-01-16,17:20,Dad,Beach ball,195,Kids,lifestyle
+2025-01-16,17:20,Dad,Nail cutter,75,Personal Care & Fitness,lifestyle
+2025-01-16,17:57,Dad,Papu chappal,400,Kids,lifestyle
+2025-01-21,11:46,Dad,Bike petrol,660,Fuel,lifestyle
+2025-01-21,23:35,Dad,Movie,300,Entertainment & Outings,lifestyle
+2025-01-21,23:35,Dad,Popcorn,210,Dining Out,lifestyle
+2025-01-21,23:35,Dad,Parking,30,Transport & Parking,lifestyle
+2025-01-23,09:37,Dad,Car petrol,1050,Fuel,lifestyle
+2025-01-29,20:34,Dad,Jewel Rock hotel,400,Dining Out,lifestyle
+2025-01-29,20:34,Dad,Vibhu salon,300,Personal Care & Fitness,lifestyle
+2025-01-29,20:54,Mom,Pampers,750,Kids,recurring
+2025-01-31,16:50,Dad,Sugarcane juice,50,Dining Out,lifestyle
+2025-01-31,16:50,Dad,Internet,825,Utilities & Recharges,recurring
+2025-02-02,16:22,Dad,Mobile recharge,799,Utilities & Recharges,recurring
+2025-02-02,16:23,Dad,Tarakari vegetables,200,Groceries & Household,lifestyle
+2025-02-02,16:23,Dad,Hotel,600,Dining Out,lifestyle
+2025-02-02,16:23,Dad,Paneer,100,Groceries & Household,lifestyle
+2025-02-02,16:23,Dad,Ration,40,Groceries & Household,lifestyle
+2025-02-04,15:36,Dad,Bike petrol,550,Fuel,lifestyle
+2025-02-04,15:37,Dad,Car petrol,1000,Fuel,lifestyle
+2025-02-05,11:42,Dad,UGC NET exam book,360,Education,lifestyle
+2025-02-05,11:42,Dad,Graphics tablet,4499,Misc,one_time
+2025-02-05,11:42,Dad,USB-C OTG adapter,109,Misc,one_time
+2025-02-05,11:42,Dad,Sand play tools,189,Kids,lifestyle
+2025-02-05,11:42,Dad,Pencil control book,179,Kids,lifestyle
+2025-02-08,11:40,Dad,Watermelon,240,Groceries & Household,lifestyle
+2025-02-14,08:32,Mom,Petrol,1050,Fuel,lifestyle
+2025-02-14,18:58,Dad,Bike petrol,560,Fuel,lifestyle
+2025-02-17,17:37,Dad,Mobile recharge,934,Utilities & Recharges,recurring
+2025-02-18,13:46,Dad,Diana pencil + calendar + scissors,125,Kids,lifestyle
+2025-02-18,13:46,Dad,Juice,40,Dining Out,lifestyle
+2025-02-18,14:28,Dad,Petrol,1020,Fuel,lifestyle
+2025-02-18,14:28,Dad,Pampers,622,Kids,recurring
+2025-02-18,14:28,Dad,Varna matching,822,Clothing,lifestyle
+2025-02-18,14:30,Dad,Latha beauty parlour,70,Personal Care & Fitness,lifestyle
+2025-02-18,14:30,Dad,Bat + gloves,165,Kids,lifestyle
+2025-02-18,15:39,Mom,Toys,881,Kids,lifestyle
+2025-02-18,19:28,Mom,Westside Papu dress,1696,Kids,lifestyle
+2025-02-22,18:46,Mom,Banana,140,Groceries & Household,lifestyle
+2025-02-22,18:46,Mom,Clock,250,Home & Furniture,one_time
+2025-02-22,18:46,Mom,Petrol,1000,Fuel,lifestyle
+2025-02-22,18:46,Mom,Snacks,90,Dining Out,lifestyle
+2025-02-28,16:47,Dad,Bike petrol,710,Fuel,lifestyle
+2025-02-28,16:47,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2025-02-28,16:47,Dad,Hoovu flowers,60,Religion & Gifts,recurring
+2025-02-28,16:47,Dad,Curd,26,Groceries & Household,lifestyle
+2025-03-01,00:15,Dad,Hambode khara,200,Dining Out,lifestyle
+2025-03-01,00:15,Dad,Ice cream,800,Dining Out,lifestyle
+2025-03-01,00:15,Dad,Milk,27,Groceries & Household,recurring
+2025-03-01,00:16,Dad,Tomato,30,Groceries & Household,lifestyle
+2025-03-01,14:30,Dad,Xerox,60,Misc,lifestyle
+2025-03-01,19:53,Dad,Snacks,180,Dining Out,lifestyle
+2025-03-02,21:59,Dad,Car petrol,1000,Fuel,lifestyle
+2025-03-02,21:59,Dad,Mishra peda chips,200,Dining Out,lifestyle
+2025-03-03,12:22,Dad,Internet,825,Utilities & Recharges,recurring
+2025-03-04,09:22,Dad,Consultation fee,300,Health & Medical,lifestyle
+2025-03-05,19:16,Dad,Swimming goggles,150,Personal Care & Fitness,lifestyle
+2025-03-05,19:16,Dad,Swimming shorts,150,Personal Care & Fitness,lifestyle
+2025-03-05,19:16,Dad,Swimming pool entry,100,Personal Care & Fitness,lifestyle
+2025-03-05,19:16,Dad,Snacks,110,Dining Out,lifestyle
+2025-03-05,19:16,Dad,Iron laundry,170,Misc,recurring
+2025-03-05,19:16,Dad,Milk,27,Groceries & Household,recurring
+2025-03-06,19:04,Dad,Tale hannu,40,Groceries & Household,lifestyle
+2025-03-06,19:04,Dad,Raw mango,140,Groceries & Household,lifestyle
+2025-03-06,19:04,Dad,Site advertisement,2700,Property & Investments,one_time
+2025-03-07,15:36,Dad,EC encumbrance certificate,460,Property & Investments,one_time
+2025-03-09,18:22,Dad,Duster petrol,500,Fuel,lifestyle
+2025-03-09,18:22,Dad,Jio Hotstar IPL 3 months,150,Utilities & Recharges,recurring
+2025-03-11,18:14,Dad,Juice,150,Dining Out,lifestyle
+2025-03-13,19:53,Dad,Haircut,200,Personal Care & Fitness,lifestyle
+2025-03-14,15:33,Dad,Bike petrol,800,Fuel,lifestyle
+2025-03-18,13:03,Dad,Petrol,1000,Fuel,lifestyle
+2025-03-18,13:03,Dad,Juice,115,Dining Out,lifestyle
+2025-03-21,19:20,Dad,Pens,40,Misc,lifestyle
+2025-03-24,21:15,Dad,Srinidhi haircut,350,Personal Care & Fitness,lifestyle
+2025-03-24,21:15,Dad,Resin,1100,Misc,one_time
+2025-03-24,21:15,Dad,Parking,20,Transport & Parking,lifestyle
+2025-03-27,10:40,Dad,Tindi,300,Dining Out,lifestyle
+2025-03-27,13:08,Dad,Saree,990,Clothing,lifestyle
+2025-03-27,13:08,Dad,Westside Papu dress,600,Kids,lifestyle
+2025-03-27,15:12,Mom,MedPlus pharmacy,700,Health & Medical,lifestyle
+2025-03-29,13:55,Dad,AEH switch,250,Home & Furniture,one_time
+2025-03-29,13:55,Dad,Soppu greens,40,Groceries & Household,lifestyle
+2025-03-29,18:14,Dad,Building blocks,732,Kids,lifestyle
+2025-03-30,16:23,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2025-04-01,20:10,Dad,Snacks,150,Dining Out,lifestyle
+2025-04-01,20:10,Dad,Parking,50,Transport & Parking,lifestyle
+2025-04-01,20:10,Dad,Fish show ticket,200,Entertainment & Outings,lifestyle
+2025-04-01,20:10,Dad,Papu ride,50,Entertainment & Outings,lifestyle
+2025-04-01,20:10,Dad,Papu book,150,Kids,lifestyle
+2025-04-02,11:55,Dad,Halasina hannu jackfruit,100,Groceries & Household,lifestyle
+2025-04-02,11:55,Dad,Mobile cover,200,Misc,one_time
+2025-04-02,11:55,Dad,Puzzle game + toys,400,Kids,lifestyle
+2025-04-04,10:05,Dad,Petrol,100,Fuel,lifestyle
+2025-04-04,11:40,Dad,Bread,60,Groceries & Household,lifestyle
+2025-04-04,11:40,Dad,Cheese,136,Groceries & Household,lifestyle
+2025-04-04,11:41,Dad,Internet,825,Utilities & Recharges,recurring
+2025-04-07,07:57,Dad,Diamond earrings additional payment,14978,Property & Investments,one_time
+2025-04-07,23:11,Dad,Petrol,300,Fuel,lifestyle
+2025-04-08,23:55,Dad,Soda,80,Dining Out,lifestyle
+2025-04-10,20:54,Dad,Petrol,1000,Fuel,lifestyle
+2025-04-10,20:54,Dad,Snacks,145,Dining Out,lifestyle
+2025-04-10,20:54,Dad,Cells,160,Groceries & Household,lifestyle
+2025-04-10,21:33,Mom,Ration,150,Groceries & Household,lifestyle
+2025-04-10,21:33,Mom,Slippers,705,Clothing,lifestyle
+2025-04-14,18:49,Mom,Fruits,400,Groceries & Household,lifestyle
+2025-04-14,18:49,Mom,Panipuri,100,Dining Out,lifestyle
+2025-04-14,18:49,Mom,Soap,40,Groceries & Household,lifestyle
+2025-04-18,18:39,Dad,Hotel,2650,Dining Out,lifestyle
+2025-04-21,09:44,Dad,Car petrol,500,Fuel,lifestyle
+2025-04-21,09:44,Dad,Tindi,75,Dining Out,lifestyle
+2025-04-21,12:10,Dad,Dodda Gowda site payment,50000,Property & Investments,one_time
+2025-04-22,16:16,Dad,Blackberry shirt + pants wedding,12580,Clothing,one_time
+2025-04-22,16:50,Dad,Papu car ride,100,Entertainment & Outings,lifestyle
+2025-04-22,17:09,Dad,Ramraj Papu panche shalya,1665,Kids,lifestyle
+2025-04-22,22:28,Dad,Masala puri,120,Dining Out,lifestyle
+2025-04-25,21:01,Dad,Ramu tailor,5000,Clothing,lifestyle
+2025-04-25,21:01,Dad,Janti medicine,20,Health & Medical,lifestyle
+2025-04-25,21:01,Dad,Snacks,70,Dining Out,lifestyle
+2025-04-25,21:01,Dad,Kaccha banian,3713,Clothing,lifestyle
+2025-04-25,21:01,Dad,Condoms,210,Groceries & Household,lifestyle
+2025-04-25,22:40,Dad,Car petrol,1000,Fuel,lifestyle
+2025-04-26,13:40,Mom,Papu shoes + slippers,863,Kids,lifestyle
+2025-04-26,19:36,Dad,Krushi ahara mela,470,Dining Out,lifestyle
+2025-04-26,19:36,Dad,Milk,30,Groceries & Household,recurring
+2025-04-27,13:13,Dad,Fruits,480,Groceries & Household,lifestyle
+2025-04-30,16:00,Dad,Gullehalli Ranganna,300,Farm & Garden,one_time
+2025-05-01,17:04,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-01,18:36,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2025-05-01,19:01,Dad,Vinutha set,3660,Clothing,lifestyle
+2025-05-01,19:33,Dad,Masala puri,80,Dining Out,lifestyle
+2025-05-01,19:55,Mom,Vinutha slippers,1505,Clothing,lifestyle
+2025-05-01,19:55,Mom,Gift shop,200,Religion & Gifts,one_time
+2025-05-02,04:08,Dad,Vinutha mobile recharge,800,Utilities & Recharges,recurring
+2025-05-05,10:34,Dad,Hoovina haara,400,Religion & Gifts,one_time
+2025-05-05,10:34,Dad,Auto,200,Transport & Parking,lifestyle
+2025-05-05,10:34,Dad,Milk,50,Groceries & Household,recurring
+2025-05-05,10:34,Dad,Bike petrol,1000,Fuel,lifestyle
+2025-05-05,10:34,Dad,Milk,28,Groceries & Household,recurring
+2025-05-05,10:34,Dad,Internet,825,Utilities & Recharges,recurring
+2025-05-05,10:34,Dad,Crocin,10,Health & Medical,lifestyle
+2025-05-05,10:38,Mom,Lipika hospital,200,Health & Medical,lifestyle
+2025-05-05,10:38,Mom,Medicine,352,Health & Medical,lifestyle
+2025-05-05,10:38,Mom,Tender coconut,240,Dining Out,lifestyle
+2025-05-05,10:38,Mom,Auto,100,Transport & Parking,lifestyle
+2025-05-05,14:41,Dad,Oota meal,80,Dining Out,lifestyle
+2025-05-05,20:18,Dad,Consultation,300,Health & Medical,lifestyle
+2025-05-05,20:18,Dad,Medicine,150,Health & Medical,lifestyle
+2025-05-05,20:18,Dad,Pampers,455,Kids,recurring
+2025-05-09,12:37,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-12,10:40,Dad,Muhurta,1000,Religion & Gifts,one_time
+2025-05-12,10:40,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-13,06:28,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-13,22:37,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-16,18:00,Dad,Consultation + medicine,1700,Health & Medical,lifestyle
+2025-05-16,18:00,Dad,Lab tests,2800,Health & Medical,lifestyle
+2025-05-18,17:31,Dad,Arehalli muyyi gift,1000,Religion & Gifts,one_time
+2025-05-18,17:32,Dad,Mobile recharge,932,Utilities & Recharges,recurring
+2025-05-20,12:33,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-20,12:34,Dad,Akkanege kanike,501,Religion & Gifts,one_time
+2025-05-21,19:01,Dad,ENT follow-up checkup,644,Health & Medical,lifestyle
+2025-05-21,19:25,Dad,Snacks,120,Dining Out,lifestyle
+2025-05-22,23:11,Dad,Petrol,700,Fuel,lifestyle
+2025-05-23,12:48,Dad,Mithun wedding muyyi,1000,Religion & Gifts,one_time
+2025-05-24,23:09,Mom,Mall,1100,Entertainment & Outings,lifestyle
+2025-05-24,23:09,Mom,Hotel,1800,Dining Out,lifestyle
+2025-05-26,14:29,Dad,Pens,60,Misc,lifestyle
+2025-05-26,14:29,Dad,Tindi,55,Dining Out,lifestyle
+2025-05-26,14:29,Dad,Oota,80,Dining Out,lifestyle
+2025-05-29,13:26,Dad,Doctor fees,300,Health & Medical,lifestyle
+2025-05-29,13:26,Dad,Medicine,860,Health & Medical,lifestyle
+2025-05-29,13:26,Dad,Tender coconut,240,Dining Out,lifestyle
+2025-05-29,13:26,Dad,Puncture,125,Vehicle Maintenance,one_time
+2025-05-29,14:12,Dad,Wipes,160,Kids,recurring
+2025-05-30,15:06,Dad,Petrol,1000,Fuel,lifestyle
+2025-05-31,18:16,Dad,Bike petrol,800,Fuel,lifestyle
+2025-05-31,18:28,Dad,Medicine,148,Health & Medical,lifestyle
+2025-06-03,17:09,Dad,Internet,825,Utilities & Recharges,recurring
+2025-06-08,20:38,Dad,Monika Prakash muyyi,500,Religion & Gifts,one_time
+2025-06-08,20:38,Dad,Shashan Sudeep gift,200,Religion & Gifts,one_time
+2025-06-08,20:38,Dad,Haircut,120,Personal Care & Fitness,lifestyle
+2025-06-08,20:38,Dad,Pampers + wipes,550,Kids,recurring
+2025-06-12,13:07,Dad,Parcel food,250,Dining Out,lifestyle
+2025-06-12,13:07,Dad,Nursery plants,1100,Farm & Garden,one_time
+2025-06-12,16:28,Mom,Forest department entry,130,Entertainment & Outings,lifestyle
+2025-06-12,16:28,Mom,Hotel,315,Dining Out,lifestyle
+2025-06-12,16:28,Mom,Chips,150,Dining Out,lifestyle
+2025-06-12,16:28,Mom,Puliyogare,100,Dining Out,lifestyle
+2025-06-12,16:28,Mom,Dove shampoo,200,Personal Care & Fitness,lifestyle
+2025-06-12,16:28,Mom,Banian,367,Clothing,lifestyle
+2025-06-17,12:05,Dad,Handheld game console,700,Kids,one_time
+2025-06-18,15:04,Dad,Petrol,750,Fuel,lifestyle
+2025-06-18,15:04,Dad,Battery cells,43,Groceries & Household,lifestyle
+2025-06-19,09:53,Dad,Bike petrol,750,Fuel,lifestyle
+2025-06-19,21:52,Dad,Blanket,950,Home & Furniture,one_time
+2025-06-19,21:52,Dad,Toothbrush,100,Groceries & Household,lifestyle
+2025-06-20,13:07,Mom,Nursery,500,Farm & Garden,one_time
+2025-06-20,13:07,Mom,Temple,300,Religion & Gifts,one_time
+2025-06-20,13:08,Mom,Car petrol,1000,Fuel,lifestyle
+2025-06-21,09:43,Dad,Blinkit,200,Groceries & Household,lifestyle
+2025-06-21,14:39,Dad,Doctor set toy,130,Kids,lifestyle
+2025-06-21,14:39,Dad,Nerale hannu,200,Groceries & Household,lifestyle
+2025-06-21,14:39,Dad,Foam ball gun,550,Kids,lifestyle
+2025-06-23,14:33,Dad,Aadhar PVC card,50,Misc,one_time
+2025-06-23,14:33,Dad,Xerox,330,Misc,lifestyle
+2025-06-23,16:30,Dad,Hotel,2800,Dining Out,lifestyle
+2025-06-23,20:32,Dad,Bakery,1250,Dining Out,lifestyle
+2025-06-23,20:32,Dad,Toys,800,Kids,lifestyle
+2025-06-24,18:35,Mom,Bakery,175,Dining Out,lifestyle
+2025-06-24,18:35,Mom,Bonda,110,Dining Out,lifestyle
+2025-06-29,19:52,Dad,Movie,600,Entertainment & Outings,lifestyle
+2025-06-29,19:52,Dad,Car ride,50,Entertainment & Outings,lifestyle
+2025-06-29,19:52,Dad,Masala puri,80,Dining Out,lifestyle
+2025-06-29,19:52,Dad,Gobi manchurian,120,Dining Out,lifestyle
+2025-06-30,09:43,Dad,Train ride,150,Transport & Parking,lifestyle
+2025-06-30,09:43,Dad,Car ride,50,Transport & Parking,lifestyle
+2025-06-30,11:32,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2025-07-03,14:29,Dad,Dad + Mom Aadhar PVC cards,200,Misc,one_time
+2025-07-03,14:59,Dad,Aadhar PVC card self,50,Misc,one_time
+2025-07-03,15:04,Dad,Vinutha Aadhar cards,100,Misc,one_time
+2025-07-04,09:14,Dad,Car petrol,1000,Fuel,lifestyle
+2025-07-05,09:47,Dad,Tea,75,Dining Out,lifestyle
+2025-07-05,16:38,Dad,Internet,825,Utilities & Recharges,recurring
+2025-07-09,10:15,Dad,Driver tips,200,Misc,lifestyle
+2025-07-09,11:53,Mom,Baby soap,376,Kids,recurring
+2025-07-09,13:15,Mom,Plants,400,Farm & Garden,one_time
+2025-07-09,13:39,Mom,Chips,300,Dining Out,lifestyle
+2025-07-10,13:16,Dad,Papu toothpaste,164,Kids,recurring
+2025-07-11,07:51,Dad,Car petrol,1000,Fuel,lifestyle
+2025-07-11,07:51,Dad,Iron laundry,180,Misc,recurring
+2025-07-11,10:19,Dad,Bike petrol,520,Fuel,lifestyle
+2025-07-15,19:03,Mom,Sridhar Bhattaru,300,Religion & Gifts,one_time
+2025-07-15,19:03,Mom,Ganesh Adigaru,200,Religion & Gifts,one_time
+2025-07-15,19:04,Mom,Lokesh Aradhya,500,Religion & Gifts,one_time
+2025-08-03,20:25,Dad,Blackberry clothes,6522,Clothing,lifestyle
+2025-08-03,21:33,Dad,Petrol,1200,Fuel,lifestyle
+2025-08-03,21:34,Dad,Haara + shalu + misc,1900,Religion & Gifts,one_time
+2025-08-03,21:34,Dad,Mangala Gowri shopping,5000,Religion & Gifts,one_time
+2025-08-03,21:34,Dad,Shyam store,990,Groceries & Household,lifestyle
+2025-08-03,21:34,Dad,Candid B cream,180,Health & Medical,lifestyle
+2025-08-03,21:34,Dad,Tea,60,Dining Out,lifestyle
+2025-08-03,21:34,Dad,ICICI term insurance,3026,Insurance & Finance,recurring
+2025-08-05,10:09,Dad,Car petrol,500,Fuel,lifestyle
+2025-08-05,16:37,Dad,Bat,350,Kids,lifestyle
+2025-08-06,18:02,Dad,Tindi,45,Dining Out,lifestyle
+2025-08-06,19:19,Mom,Fruits,100,Groceries & Household,lifestyle
+2025-08-06,19:19,Mom,Betel leaves,150,Groceries & Household,lifestyle
+2025-08-06,19:19,Mom,Fruits,100,Groceries & Household,lifestyle
+2025-08-06,19:19,Mom,Tomato,50,Groceries & Household,lifestyle
+2025-08-06,19:19,Mom,Pineapple,150,Groceries & Household,lifestyle
+2025-08-06,19:19,Mom,Masala puri,70,Dining Out,lifestyle
+2025-08-07,13:19,Dad,Zipper cover,35,Home & Furniture,lifestyle
+2025-08-07,13:19,Dad,Mango leaves,70,Religion & Gifts,recurring
+2025-08-07,13:19,Dad,20W bulb,300,Home & Furniture,one_time
+2025-08-07,13:19,Dad,Angle holder,70,Home & Furniture,one_time
+2025-08-07,21:20,Dad,Tiago full service repair,6000,Vehicle Maintenance,one_time
+2025-08-08,12:11,Mom,Fruits,260,Groceries & Household,lifestyle
+2025-08-08,12:11,Mom,Flowers,200,Religion & Gifts,recurring
+2025-08-08,12:11,Mom,Milk,27,Groceries & Household,recurring
+2025-08-09,14:58,Dad,Car petrol,410,Fuel,lifestyle
+2025-08-09,20:23,Mom,Sharad Attemma gift,2000,Religion & Gifts,one_time
+2025-08-11,14:23,Dad,Car petrol,950,Fuel,lifestyle
+2025-08-14,20:32,Dad,Car petrol,950,Fuel,lifestyle
+2025-08-14,20:43,Dad,Bonda,40,Dining Out,lifestyle
+2025-08-15,10:26,Dad,Mobile recharge,932,Utilities & Recharges,recurring
+2025-08-20,23:23,Dad,Layout Ganapati,1000,Religion & Gifts,one_time
+2025-08-20,23:23,Dad,Car petrol,1000,Fuel,lifestyle
+2025-08-20,23:23,Dad,Parking,40,Transport & Parking,lifestyle
+2025-08-20,23:24,Mom,Hotel,150,Dining Out,lifestyle
+2025-08-21,07:40,Dad,Haircut,180,Personal Care & Fitness,lifestyle
+2025-08-22,23:08,Mom,Hoovu flowers,150,Religion & Gifts,recurring
+2025-08-22,23:08,Mom,Bonda,110,Dining Out,lifestyle
+2025-08-22,23:08,Mom,Toys,2550,Kids,lifestyle
+2025-08-24,12:06,Dad,Vinutha recharge,932,Utilities & Recharges,recurring
+2025-08-29,14:13,Dad,Car petrol,1200,Fuel,lifestyle
+2025-08-30,13:15,Mom,Mobile screen guard,200,Misc,one_time
+2025-08-30,13:15,Mom,Shell souvenir,200,Kids,lifestyle
+2025-08-30,13:15,Mom,Bag,200,Misc,lifestyle
+2025-08-30,13:15,Mom,Corn,120,Dining Out,lifestyle
+2025-08-30,13:15,Mom,Jeep ride,50,Entertainment & Outings,lifestyle
+2025-08-30,13:15,Mom,Parking,20,Transport & Parking,lifestyle
+2025-08-30,13:15,Mom,Slipper repair,20,Clothing,lifestyle
+2025-08-30,13:15,Mom,Tender coconut,60,Dining Out,lifestyle
+2025-08-30,16:48,Mom,Hotel,1072,Dining Out,lifestyle
+2025-08-30,16:48,Mom,MedPlus pharmacy,1509,Health & Medical,lifestyle
+2025-09-03,12:40,Dad,Internet,825,Utilities & Recharges,recurring
+2025-09-03,12:40,Dad,Loan overdue charge,1245,Insurance & Finance,one_time
+2025-09-03,13:37,Dad,9W bulb,80,Home & Furniture,one_time
+2025-09-03,20:53,Dad,Photo print,40,Misc,lifestyle
+2025-09-08,11:26,Dad,Bike petrol,500,Fuel,lifestyle
+2025-09-08,11:26,Dad,Tea,110,Dining Out,lifestyle
+2025-09-08,22:37,Dad,E-Swattu updation fees,500,Property & Investments,one_time
+2025-09-08,22:37,Dad,Mutation change fees,300,Property & Investments,one_time
+2025-09-08,22:37,Dad,Xerox,35,Misc,lifestyle
+2025-09-10,20:02,Dad,ENT doctor + medicine,1039,Health & Medical,lifestyle
+2025-09-13,12:58,Dad,Papu haircut,120,Kids,lifestyle
+2025-09-14,10:41,Dad,Ganapathi,2000,Religion & Gifts,one_time
+2025-09-14,11:03,Dad,Tindi,150,Dining Out,lifestyle
+2025-09-14,22:58,Dad,Bangalore hotel 2 nights,3778,Travel & Trips,lifestyle
+2025-09-15,14:21,Dad,Oota,170,Dining Out,lifestyle
+2025-09-15,17:35,Dad,Petrol,3000,Fuel,lifestyle
+2025-09-15,17:54,Dad,Emission test,120,Vehicle Maintenance,one_time
+2025-09-16,10:19,Dad,Bangalore tindi,250,Travel & Trips,lifestyle
+2025-09-16,16:42,Dad,Bangalore Jollywood tickets,3000,Travel & Trips,lifestyle
+2025-09-16,16:42,Dad,Bangalore milk,45,Travel & Trips,lifestyle
+2025-09-16,18:41,Dad,Bangalore keychain,40,Travel & Trips,lifestyle
+2025-09-16,21:20,Dad,Bangalore snacks,250,Travel & Trips,lifestyle
+2025-09-16,21:20,Dad,Bangalore oota,600,Travel & Trips,lifestyle
+2025-09-17,08:53,Dad,Bangalore tindi,100,Travel & Trips,lifestyle
+2025-09-17,13:33,Dad,Bangalore temple,50,Travel & Trips,lifestyle
+2025-09-17,13:33,Dad,Bangalore alms,40,Travel & Trips,lifestyle
+2025-09-17,13:33,Dad,Bangalore zoo,890,Travel & Trips,lifestyle
+2025-09-17,13:33,Dad,Bangalore snacks,170,Travel & Trips,lifestyle
+2025-09-17,15:32,Dad,Bangalore oota,285,Travel & Trips,lifestyle
+2025-09-17,16:40,Dad,Petrol,1000,Fuel,lifestyle
+2025-09-17,17:58,Dad,Bangalore fruits,1200,Travel & Trips,lifestyle
+2025-09-18,09:02,Dad,Bangalore tindi,70,Travel & Trips,lifestyle
+2025-09-18,09:02,Dad,Bangalore room boy tip,50,Travel & Trips,lifestyle
+2025-09-18,09:02,Dad,Bangalore Birds of Paradise,767,Travel & Trips,lifestyle
+2025-09-18,09:10,Dad,Kurta,600,Clothing,lifestyle
+2025-09-18,15:31,Mom,Fruits,200,Groceries & Household,lifestyle
+2025-09-18,18:07,Dad,Petrol,2000,Fuel,lifestyle
+2025-09-18,15:17,Dad,Book store,150,Misc,lifestyle
+2025-09-19,18:26,Dad,Petrol,1000,Fuel,lifestyle
+2025-09-19,19:03,Dad,Channagiri tea + coffee,120,Dining Out,lifestyle
+2025-09-21,13:43,Dad,Food bag clips,150,Groceries & Household,lifestyle
+2025-09-21,19:37,Dad,Bike insurance,1667,Insurance & Finance,recurring
+2025-09-22,09:51,Dad,Bike petrol,1100,Fuel,lifestyle
+2025-09-22,18:02,Dad,Kids cycle + training wheels + bell,7150,Kids,one_time
+2025-09-22,18:37,Dad,Dad medicine,982,Health & Medical,lifestyle
+2025-09-22,18:37,Dad,More store,3837,Groceries & Household,lifestyle
+2025-09-22,18:37,Dad,Shyam store,2589,Groceries & Household,lifestyle
+2025-09-22,18:37,Dad,Spar store,3213,Groceries & Household,lifestyle
+2025-09-22,19:56,Dad,Parking,30,Transport & Parking,lifestyle
+2025-09-22,19:56,Dad,Hotel,657,Dining Out,lifestyle
+2025-09-24,18:53,Dad,Consultation fee,200,Health & Medical,lifestyle
+2025-09-25,11:12,Dad,Airtel internet 4 months,2355.28,Utilities & Recharges,recurring
+2025-09-25,16:18,Dad,Internet installation,700,Utilities & Recharges,one_time
+2025-09-25,18:49,Dad,Sarji consultation,300,Health & Medical,lifestyle
+2025-09-26,10:38,Dad,Office tindi,1475,Misc,lifestyle
+2025-09-26,13:17,Dad,Gram panchayat fee,100,Property & Investments,one_time
+2025-09-26,13:17,Dad,Xerox,28,Misc,lifestyle
+2025-09-28,11:56,Dad,Duster petrol,1500,Fuel,lifestyle
+2025-09-29,21:04,Dad,Site tax,2500,Property & Investments,one_time
+2025-09-30,19:23,Dad,ICICI term insurance,2564,Insurance & Finance,recurring
+2025-10-01,20:35,Dad,Honey,270,Groceries & Household,lifestyle
+2025-10-02,18:31,Mom,Masala puri,120,Dining Out,lifestyle
+2025-10-03,18:00,Dad,Eswattu print,300,Property & Investments,one_time
+2025-10-03,19:22,Dad,Sarji doctor consultation,300,Health & Medical,lifestyle
+2025-10-03,19:22,Dad,Vaccine,2600,Health & Medical,one_time
+2025-10-03,19:30,Dad,Baby soap,304,Kids,recurring
+2025-10-03,20:07,Dad,Shreyas specs,1000,Health & Medical,one_time
+2025-10-03,20:07,Dad,Papu goggles,200,Kids,lifestyle
+2025-10-04,08:02,Dad,Cells,90,Groceries & Household,lifestyle
+2025-10-04,08:02,Dad,Lemon,14,Groceries & Household,lifestyle
+2025-10-06,18:40,Dad,Coffee + tindi,200,Dining Out,lifestyle
+2025-10-08,13:18,Dad,Garden batte + wire,600,Farm & Garden,one_time
+2025-10-10,07:02,Dad,Mobile recharge,200,Utilities & Recharges,recurring
+2025-10-10,07:02,Dad,Drip materials,800,Farm & Garden,one_time
+2025-10-10,18:54,Dad,Shade net,600,Farm & Garden,one_time
+2025-10-10,18:54,Dad,GI fence wire,80,Farm & Garden,one_time
+2025-10-10,19:19,Dad,Drip materials,280,Farm & Garden,one_time
+2025-10-13,18:33,Dad,Petrol,1000,Fuel,lifestyle
+2025-10-18,15:41,Dad,Honey,42,Groceries & Household,lifestyle
+2025-10-18,15:41,Dad,Oota,50,Dining Out,lifestyle
+2025-10-19,11:39,Dad,Bike chain repair,30,Vehicle Maintenance,one_time
+2025-10-19,11:39,Dad,MedPlus pharmacy,673,Health & Medical,lifestyle
+2025-10-19,12:14,Dad,Sugarcane juice,50,Dining Out,lifestyle
+2025-10-19,12:14,Dad,Tarakari vegetables,30,Groceries & Household,lifestyle
+2025-10-19,12:52,Dad,More store,528,Groceries & Household,lifestyle
+2025-10-21,19:08,Dad,Car petrol,500,Fuel,lifestyle
+2025-10-23,14:38,Dad,Aadhar,100,Misc,one_time
+2025-10-23,14:38,Dad,Jio SIM + 1 month recharge,350,Utilities & Recharges,recurring
+2025-10-23,14:38,Dad,Seeds,50,Farm & Garden,one_time
+2025-10-24,19:11,Dad,Janti medicine,17,Health & Medical,lifestyle
+2025-10-24,19:11,Dad,Matka puri,60,Dining Out,lifestyle
+2025-10-24,19:11,Dad,Ambode bonda,70,Dining Out,lifestyle
+2025-10-24,19:11,Dad,Masala puri,80,Dining Out,lifestyle
+2025-10-24,19:11,Dad,Iron laundry,170,Misc,recurring
+2025-10-24,21:36,Mom,Vegetables,67,Groceries & Household,lifestyle
+2025-10-26,20:56,Dad,Samsung mobile cover,300,Misc,one_time
+2025-10-26,20:56,Dad,Sarikannadam Gelke book,283,Misc,lifestyle
+2025-10-26,22:07,Dad,Rashmi Akka arati muyyi,500,Religion & Gifts,one_time
+2025-10-30,11:18,Dad,ICICI term insurance,2564,Insurance & Finance,recurring
+2025-10-30,12:01,Dad,Bike petrol,510,Fuel,lifestyle
+2025-10-30,16:51,Dad,Second legal opinion,6500,Property & Investments,one_time
+2025-10-31,20:10,Dad,Petrol,1000,Fuel,lifestyle
+2025-10-31,20:10,Dad,Water bottle,10,Groceries & Household,lifestyle
+2025-11-03,13:06,Dad,FirstCry,452,Kids,lifestyle
+2025-11-03,13:07,Dad,Elaneeru,200,Dining Out,lifestyle
+2025-11-04,14:50,Dad,Oota,190,Dining Out,lifestyle
+2025-11-05,07:30,Dad,Haircut,130,Personal Care & Fitness,lifestyle
+2025-11-06,19:03,Dad,Papu haircut,120,Kids,lifestyle
+2025-11-06,19:03,Dad,Tiago petrol,1000,Fuel,lifestyle
+2025-11-07,18:39,Dad,Hingu,120,Groceries & Household,lifestyle
+2025-11-09,20:44,Dad,Bubbles,50,Kids,lifestyle
+2025-11-09,20:44,Dad,Snacks,110,Dining Out,lifestyle
+2025-11-10,15:41,Mom,FirstCry books,932,Kids,lifestyle
+2025-11-11,21:44,Dad,Tata petrol,1050,Fuel,lifestyle
+2025-11-12,09:37,Dad,Jio port + recharge,350,Utilities & Recharges,recurring
+2025-11-14,19:56,Dad,Snacks,150,Dining Out,lifestyle
+2025-11-14,19:56,Dad,Nursery flowers,300,Farm & Garden,one_time
+2025-11-14,19:56,Dad,Diana toys,816,Kids,lifestyle
+2025-11-14,20:08,Dad,Diana pen + pencils,90,Kids,lifestyle
+2025-11-14,20:27,Dad,Shampoo + oil + handwash,620,Groceries & Household,lifestyle
+2025-11-14,21:02,Dad,Insect killer,70,Groceries & Household,lifestyle
+2025-11-15,22:08,Dad,Kantara movie tickets,400,Entertainment & Outings,lifestyle
+2025-11-15,22:08,Dad,Movie snacks,420,Entertainment & Outings,lifestyle
+2025-11-17,18:39,Dad,Petrol,1060,Fuel,lifestyle
+2025-11-18,19:48,Dad,Lipika birthday gift,1750,Religion & Gifts,one_time
+2025-11-18,20:10,Dad,Blinkit vegetables,123,Groceries & Household,lifestyle
+2025-11-19,14:22,Dad,Sticky notes,40,Misc,lifestyle
+2025-11-20,16:47,Dad,Sub-registrar mortgage charges,80100,Property & Investments,one_time
+2025-11-20,16:47,Dad,Sub-registrar agent fee,6000,Property & Investments,one_time
+2025-11-21,17:56,Dad,Sweets,395,Dining Out,lifestyle
+2025-11-23,16:48,Dad,Vinutha recharge,864,Utilities & Recharges,recurring
+2025-11-27,13:35,Dad,Pen,160,Misc,lifestyle
+2025-11-27,13:35,Dad,Window mesh,10835,Home & Furniture,one_time
+2025-11-27,16:48,Dad,Legal bond paper + Naveen charges,5000,Property & Investments,one_time
+2025-11-30,11:43,Dad,Petrol,2000,Fuel,lifestyle
+2025-11-30,23:20,Dad,Hotel,600,Dining Out,lifestyle
+2025-11-30,23:23,Dad,Petrol,1000,Fuel,lifestyle
+2025-12-04,18:43,Dad,Coffee,40,Dining Out,lifestyle
+2025-12-04,18:43,Dad,Tiago petrol,1000,Fuel,lifestyle
+2025-12-04,19:15,Dad,Doctor consultation,300,Health & Medical,lifestyle
+2025-12-04,19:15,Dad,Wipes,140,Kids,recurring
+2025-12-04,19:15,Dad,Medicine,695,Health & Medical,lifestyle
+2025-12-06,13:36,Dad,File,740,Misc,lifestyle
+2025-12-08,14:12,Dad,Gas welding,80,Home & Furniture,one_time
+2025-12-08,14:12,Dad,Lollipop,50,Dining Out,lifestyle
+2025-12-09,01:53,Dad,Whey protein,2349,Personal Care & Fitness,lifestyle
+2025-12-09,19:14,Dad,Bike petrol,500,Fuel,lifestyle
+2025-12-09,19:14,Dad,Panipuri,125,Dining Out,lifestyle
+2025-12-09,19:14,Dad,Bellulli pataki firecrackers,220,Religion & Gifts,one_time
+2025-12-09,19:14,Dad,Halwa,150,Dining Out,lifestyle
+2025-12-09,19:21,Dad,Adike powder,200,Groceries & Household,lifestyle
+2025-12-09,19:30,Dad,Magnet + gun toy,200,Kids,lifestyle
+2025-12-09,20:11,Dad,Bubbles,100,Kids,lifestyle
+2025-12-09,20:11,Dad,Books,350,Kids,lifestyle
+2025-12-09,21:16,Dad,Pizza,938,Dining Out,lifestyle
+2025-12-10,19:19,Dad,Protein shaker bottle,305,Personal Care & Fitness,lifestyle
+2025-12-11,12:24,Dad,Mobile recharge,911,Utilities & Recharges,recurring
+2025-12-11,19:02,Dad,Medicine,680,Health & Medical,lifestyle
+2025-12-12,17:55,Dad,Kotak term insurance annual,13813,Insurance & Finance,recurring
+2025-12-13,19:01,Dad,Duster petrol,1000,Fuel,lifestyle
+2025-12-13,19:01,Dad,Snacks,20,Dining Out,lifestyle
+2025-12-14,09:06,Dad,Tarakari vegetables,214,Groceries & Household,lifestyle
+2025-12-14,13:54,Dad,Bucket,610,Home & Furniture,one_time
+2025-12-14,14:30,Dad,Condom + milk + cells + handwash,527,Groceries & Household,lifestyle
+2025-12-14,20:18,Mom,Hopscotch baby socks,451,Kids,lifestyle
+2025-12-16,20:12,Mom,Chips,265,Dining Out,lifestyle
+2025-12-16,20:12,Mom,Bonda,160,Dining Out,lifestyle
+2025-12-16,22:00,Mom,Papu slippers,600,Kids,lifestyle
+2025-12-18,18:35,Mom,Wipes,170,Kids,recurring
+2025-12-18,18:35,Mom,Parlour,70,Personal Care & Fitness,lifestyle
+2025-12-18,19:44,Mom,Hotel,500,Dining Out,lifestyle
+2025-12-18,19:44,Mom,Iron laundry,150,Misc,recurring
+2025-12-18,20:10,Mom,Cup,500,Home & Furniture,one_time
+2025-12-20,14:07,Dad,Petrol,1000,Fuel,lifestyle
+2025-12-20,14:07,Dad,Hotel,1200,Dining Out,lifestyle
+2025-12-20,14:48,Dad,Flower,50,Religion & Gifts,recurring
+2025-12-20,19:03,Mom,Medicine,135,Health & Medical,lifestyle
+2025-12-21,19:07,Dad,Benne dose,510,Dining Out,lifestyle
+2025-12-21,20:52,Dad,Coffee,75,Dining Out,lifestyle
+2025-12-21,22:27,Mom,Paneer,96,Groceries & Household,lifestyle
+2025-12-21,22:27,Mom,Banana,160,Groceries & Household,lifestyle
+2025-12-23,15:02,Dad,Medicine,115,Health & Medical,lifestyle
+2025-12-23,16:07,Dad,Parking,30,Transport & Parking,lifestyle
+2025-12-23,20:15,Dad,Gobi,180,Dining Out,lifestyle
+2025-12-23,21:17,Dad,Kulfi,55,Dining Out,lifestyle
+2025-12-24,09:06,Dad,Bike petrol,1000,Fuel,lifestyle
+2025-12-24,15:37,Mom,Cake,930,Dining Out,lifestyle
+2025-12-27,19:05,Dad,Tiago petrol,1000,Fuel,lifestyle
+2025-12-27,19:09,Mom,Flower,20,Religion & Gifts,recurring
+2025-12-27,19:09,Mom,Wood apple,240,Groceries & Household,lifestyle
+2025-12-27,19:09,Mom,Bonda + khara,220,Dining Out,lifestyle
+2025-12-27,23:41,Mom,Fish hunting toys,1206,Kids,lifestyle
+2025-12-29,18:33,Dad,Rattan chair,1400,Home & Furniture,one_time
+2025-12-29,19:31,Mom,Chips,334,Dining Out,lifestyle
+2025-12-31,20:24,Dad,Shreyas dress,3205,Clothing,lifestyle
+2025-12-31,21:19,Dad,Bonda,170,Dining Out,lifestyle
+2026-01-01,08:20,Dad,Haircut,150,Personal Care & Fitness,lifestyle
+2026-01-02,15:05,Dad,Nerf gun bullets,335,Kids,lifestyle
+2026-01-03,19:55,Dad,Gobi + baby snack,175,Dining Out,lifestyle
+2026-01-03,20:08,Dad,Mahalakshmi sweets,480,Dining Out,lifestyle
+2026-01-04,12:06,Dad,Hotel,500,Dining Out,lifestyle
+2026-01-06,22:07,Mom,Baby soap,383,Kids,recurring
+2026-01-10,17:13,Dad,Pampers,523,Kids,recurring
+2026-01-10,17:26,Dad,Napkin,50,Groceries & Household,lifestyle
+2026-01-10,19:10,Dad,Snacks,50,Dining Out,lifestyle
+2026-01-10,19:10,Dad,Chargeable gas lighter,150,Home & Furniture,one_time
+2026-01-10,20:21,Dad,Udupi hotel,100,Dining Out,lifestyle
+2026-01-10,21:39,Dad,Westside chappal + outfit,4910,Clothing,lifestyle
+2026-01-12,15:42,Dad,Cough syrup,122,Health & Medical,lifestyle
+2026-01-12,17:17,Dad,Pant length alteration,40,Clothing,lifestyle
+2026-01-12,17:36,Mom,Medicine,170,Health & Medical,lifestyle
+2026-01-12,17:38,Mom,Courier,160,Misc,lifestyle
+2026-01-12,17:38,Mom,Banana,120,Groceries & Household,lifestyle
+2026-01-12,18:22,Mom,Hotel,250,Dining Out,lifestyle
+2026-01-12,18:22,Mom,Yellu sesame,320,Groceries & Household,lifestyle
+2026-01-12,18:30,Mom,Flower,58,Religion & Gifts,recurring
+2026-01-17,19:48,Dad,Caricature,300,Entertainment & Outings,lifestyle
+2026-01-17,19:48,Dad,Mud pot,100,Home & Furniture,lifestyle
+2026-01-17,19:48,Dad,Devara haara,200,Religion & Gifts,one_time
+2026-01-17,19:48,Dad,Channapatna board games,1000,Kids,one_time
+2026-01-17,19:48,Dad,Crispy corn,100,Dining Out,lifestyle
+2026-01-17,20:06,Dad,French fries + holige,100,Dining Out,lifestyle
+2026-01-17,20:06,Dad,Filter coffee,40,Dining Out,lifestyle
+2026-01-18,09:14,Dad,Iron laundry,120,Misc,recurring
+2026-01-18,13:57,Mom,Banana,140,Groceries & Household,lifestyle
+2026-01-19,09:32,Dad,Car petrol,1000,Fuel,lifestyle
+2026-01-19,20:09,Dad,Blinkit tarakari,169,Groceries & Household,lifestyle
+2026-01-20,22:25,Dad,Protein powder 2kg,4700,Personal Care & Fitness,one_time
+2026-01-20,22:25,Dad,Mobile cover,300,Misc,one_time
+2026-01-21,16:26,Dad,Kailash Parbat,1450,Dining Out,lifestyle
+2026-01-21,17:08,Dad,Idli,50,Dining Out,lifestyle
+2026-01-21,19:26,Dad,Temple renovation donation,10000,Religion & Gifts,one_time
+2026-01-22,16:11,Dad,Bike petrol,800,Fuel,lifestyle
+2026-01-26,15:56,Mom,Medicine,1129,Health & Medical,lifestyle
+2026-01-26,15:56,Mom,Hotel,370,Dining Out,lifestyle
+2026-01-27,07:18,Dad,Coffee,38,Dining Out,lifestyle
+2026-01-27,20:40,Mom,Snacks,40,Dining Out,lifestyle
+2026-01-27,20:40,Mom,Elaneeru,180,Dining Out,lifestyle
+2026-01-27,20:40,Mom,Coffee,70,Dining Out,lifestyle
+2026-01-28,12:57,Dad,Hospital,20000,Health & Medical,one_time
+2026-01-28,18:17,Dad,Tiago tyre puncture,150,Vehicle Maintenance,one_time
+2026-01-29,12:26,Dad,Airtel WiFi 4 months,2355.28,Utilities & Recharges,recurring
+2026-01-29,20:16,Dad,Holige + snacks,350,Dining Out,lifestyle
+2026-01-29,20:25,Dad,Custard apple juice,100,Dining Out,lifestyle
+2026-01-30,16:00,Dad,Tiago petrol,1100,Fuel,lifestyle
+2026-02-01,18:10,Mom,Tender coconut,180,Dining Out,lifestyle
+2026-02-06,18:59,Dad,Video game,224,Kids,lifestyle
+2026-02-06,18:59,Dad,Fencing cloth,80,Farm & Garden,one_time
+2026-02-06,18:59,Dad,Bakery,60,Dining Out,lifestyle
+2026-02-07,19:13,Mom,Petrol,1500,Fuel,lifestyle
+2026-02-08,10:57,Mom,Parlour,670,Personal Care & Fitness,lifestyle
+2026-02-09,17:35,Dad,Oota,300,Dining Out,lifestyle
+2026-02-09,17:35,Dad,Sweets + bakery,313,Dining Out,lifestyle
+2026-02-11,18:16,Mom,Haircut,200,Personal Care & Fitness,lifestyle
+2026-02-11,18:16,Mom,Cosmetics,3375,Personal Care & Fitness,lifestyle
+2026-02-11,19:20,Mom,Mahalakshmi bakery,243,Dining Out,lifestyle
+2026-02-11,19:20,Mom,Varna,78,Clothing,lifestyle
+2026-02-11,19:33,Mom,Vegetables,200,Groceries & Household,lifestyle
+2026-02-11,19:41,Mom,Hoovu flowers,50,Religion & Gifts,recurring
+2026-02-12,16:42,Dad,Garden batte 10m,350,Farm & Garden,one_time
+2026-02-12,16:42,Dad,Soap,120,Groceries & Household,lifestyle
+2026-02-13,19:08,Dad,TediBar toy,200,Kids,lifestyle
+2026-02-13,19:08,Dad,Snacks,60,Dining Out,lifestyle
+2026-02-13,19:08,Dad,Iron laundry,80,Misc,recurring
+2026-02-13,20:20,Dad,Bugari,30,Kids,lifestyle
+2026-02-13,20:20,Dad,Petrol container + funnel,120,Vehicle Maintenance,one_time
+2026-02-14,08:56,Dad,Blinkit panipuri,288,Groceries & Household,lifestyle
+2026-02-15,08:31,Dad,Vinutha mobile recharge,870.70,Utilities & Recharges,recurring
+2026-02-15,10:07,Dad,Watermelon,190,Groceries & Household,lifestyle
+2026-02-15,13:14,Dad,Ice cream,890,Dining Out,lifestyle
+2026-02-15,13:19,Dad,Elaneeru,60,Dining Out,lifestyle
+2026-02-15,17:45,Dad,Haircut,180,Personal Care & Fitness,lifestyle
+2026-02-15,17:46,Dad,Gullehalli trench digging,10000,Farm & Garden,one_time
+2026-02-15,21:57,Dad,Jio Hotstar 1 month,113.12,Utilities & Recharges,recurring
+2026-02-16,22:46,Mom,Netflix,199,Utilities & Recharges,recurring
+2026-02-20,08:30,Mom,Books + pens,95,Kids,lifestyle
+2026-02-21,12:51,Dad,Bike petrol,550,Fuel,lifestyle
+2026-02-21,12:51,Dad,Bike service,7890,Vehicle Maintenance,one_time
+2026-02-21,13:34,Dad,Medicine,118,Health & Medical,lifestyle
+2026-02-21,13:34,Dad,Car petrol,150,Fuel,lifestyle
+2026-02-22,18:19,Mom,Chocolate,90,Dining Out,lifestyle
+2026-02-22,18:19,Mom,Petrol,500,Fuel,lifestyle
+2026-02-22,18:19,Mom,Presentation,500,Misc,lifestyle
+2026-02-22,20:02,Dad,Toll,135,Transport & Parking,lifestyle
+2026-02-23,18:21,Dad,Toys,700,Kids,lifestyle
+2026-02-23,18:29,Dad,Iron laundry,130,Misc,recurring
+2026-02-24,18:42,Dad,Westside,4805,Clothing,lifestyle
+2026-02-24,18:56,Dad,Banana,170,Groceries & Household,lifestyle
+2026-02-24,18:56,Dad,Hoovu flowers,50,Religion & Gifts,recurring
+2026-02-25,17:43,Dad,Car petrol,1000,Fuel,lifestyle
+2026-03-02,21:14,Dad,Shrigandha residency hotel,2481.81,Travel & Trips,lifestyle
+2026-03-03,08:23,Dad,Blinkit shampoo,501,Groceries & Household,lifestyle
+2026-03-03,15:09,Mom,Hotel,300,Dining Out,lifestyle
+2026-03-03,19:14,Dad,Duster petrol,2000,Fuel,lifestyle
+2026-03-03,19:14,Dad,Oota,125,Dining Out,lifestyle
+2026-03-04,15:44,Dad,Tindi,90,Dining Out,lifestyle
+2026-03-04,19:21,Dad,Oota,210,Dining Out,lifestyle
+2026-03-05,18:11,Dad,Tindi,50,Dining Out,lifestyle
+2026-03-05,18:11,Dad,Benne dose,240,Dining Out,lifestyle
+2026-03-05,18:11,Dad,Momos,80,Dining Out,lifestyle
+2026-03-06,00:33,Dad,Coffee,30,Dining Out,lifestyle
+2026-03-07,11:44,Dad,Car wash,100,Vehicle Maintenance,lifestyle
+2026-03-07,11:44,Dad,Milkshake,90,Dining Out,lifestyle
+2026-03-07,11:44,Dad,Ticket,130,Entertainment & Outings,lifestyle
+2026-03-07,14:02,Mom,Columbus cafe,70,Dining Out,lifestyle
+2026-03-07,14:02,Mom,Snacks,150,Dining Out,lifestyle
+2026-03-07,14:02,Mom,Car dashing repair,100,Vehicle Maintenance,one_time
+2026-03-07,15:09,Dad,Tender coconut,150,Dining Out,lifestyle
+2026-03-07,16:52,Dad,Duster petrol,1500,Fuel,lifestyle
+2026-03-07,17:20,Dad,Bakery,250,Dining Out,lifestyle
+2026-03-08,20:05,Dad,Bakery,220,Dining Out,lifestyle
+2026-03-09,19:38,Mom,Petrol,1000,Fuel,lifestyle
+2026-03-09,19:38,Mom,Vegetables,50,Groceries & Household,lifestyle
+2026-03-09,19:38,Mom,Tyre patch,700,Vehicle Maintenance,one_time
+2026-03-10,10:42,Dad,Car petrol,1050,Fuel,lifestyle
+2026-03-11,12:42,Dad,Shreyas Airtel recharge,810.23,Utilities & Recharges,recurring
+2026-03-11,14:38,Dad,Bakery,180,Dining Out,lifestyle
+2026-03-11,14:38,Dad,Coconut,60,Groceries & Household,lifestyle
+2026-03-12,11:11,Mom,Petrol,1000,Fuel,lifestyle
+2026-03-12,11:11,Mom,Sarji school,5000,Education,recurring
+2026-03-12,11:34,Dad,Tailor Vinutha,1460,Clothing,lifestyle
+2026-03-12,13:06,Mom,Car ride,50,Entertainment & Outings,lifestyle
+2026-03-12,13:06,Mom,Train ride,100,Entertainment & Outings,lifestyle
+2026-03-12,13:06,Mom,Potato twister,60,Dining Out,lifestyle
+2026-03-12,13:30,Dad,Majjige,40,Dining Out,lifestyle
+2026-03-12,13:30,Dad,Gas geyser pipe,130,Home & Furniture,one_time
+2026-03-12,13:41,Dad,Mall games,100,Entertainment & Outings,lifestyle
+2026-03-12,14:44,Mom,Belt,800,Clothing,lifestyle
+2026-03-12,14:44,Mom,Slippers,1250,Clothing,lifestyle
+2026-03-12,14:44,Mom,Parking,20,Transport & Parking,lifestyle
+2026-03-12,15:31,Dad,Oota,630,Dining Out,lifestyle
+2026-03-12,16:16,Dad,File,80,Misc,lifestyle
+2026-03-13,19:13,Dad,Decathlon swimming dress + goggles,2109,Personal Care & Fitness,lifestyle
+2026-03-13,19:57,Mom,Tender coconut,70,Dining Out,lifestyle
+2026-03-13,19:57,Mom,Bonda,85,Dining Out,lifestyle
+2026-03-13,19:59,Mom,Sarji admission fees,5000,Education,one_time
+2026-03-14,12:03,Dad,Swimming Day 1,200,Personal Care & Fitness,lifestyle
+2026-03-14,12:38,Dad,New UPS,8500,Home & Furniture,one_time
+2026-03-15,11:17,Mom,Tender coconut,60,Dining Out,lifestyle
+2026-03-16,15:34,Dad,Jaguar service plumbing,4750,Home & Furniture,one_time
+2026-03-16,19:34,Mom,Oota,300,Dining Out,lifestyle
+2026-03-17,14:16,Dad,Swimming goggles + armbands,1098,Personal Care & Fitness,lifestyle
+2026-03-17,17:35,Mom,Swimming Day 3,200,Personal Care & Fitness,lifestyle
+2026-03-18,15:38,Dad,Car petrol,1000,Fuel,lifestyle
+2026-03-21,11:05,Mom,Vegetables,60,Groceries & Household,lifestyle
+2026-03-21,11:17,Mom,Curd,28,Groceries & Household,lifestyle
+2026-03-21,11:20,Mom,Banana,80,Groceries & Household,lifestyle
+2026-03-21,11:23,Mom,Groundnut,360,Groceries & Household,lifestyle
+2026-03-22,10:40,Mom,Milk,29,Groceries & Household,recurring
+2026-03-22,21:36,Mom,Curd,30,Groceries & Household,lifestyle
+2026-03-25,19:56,Dad,Ball + earplugs,550,Personal Care & Fitness,lifestyle
+2026-03-25,20:19,Dad,Parking,20,Transport & Parking,lifestyle
+2026-03-26,19:06,Dad,Hotel,530,Dining Out,lifestyle
+2026-03-26,18:04,Mom,Flower,50,Religion & Gifts,recurring
+2026-03-26,18:04,Mom,Lemon,50,Groceries & Household,lifestyle
+2026-03-26,18:05,Mom,Mango,50,Groceries & Household,lifestyle
+2026-03-26,18:05,Mom,Tennis bat,1500,Kids,one_time
+2026-03-26,19:39,Mom,Soap,156,Groceries & Household,lifestyle
+2026-03-27,19:01,Mom,Fruits,600,Groceries & Household,lifestyle
+2026-03-30,12:49,Mom,Tindi,60,Dining Out,lifestyle
+2026-03-30,18:17,Dad,Resistance band,700,Personal Care & Fitness,one_time
+2026-03-30,18:17,Dad,Hand gloves,500,Personal Care & Fitness,one_time
+2026-03-30,18:20,Dad,Lollipop,20,Dining Out,lifestyle
+2026-03-30,19:29,Dad,Benne dose,290,Dining Out,lifestyle
+2026-04-02,16:19,Dad,Haircut,200,Personal Care & Fitness,lifestyle
+2026-04-04,18:46,Mom,Baby soap + toothpaste,630,Kids,recurring
+2026-04-04,21:19,Dad,Holige + chiroti,95,Dining Out,lifestyle
+2026-04-04,21:46,Mom,Sauthekaayi,50,Groceries & Household,lifestyle
+2026-04-05,11:37,Dad,Baby haircut,157,Kids,lifestyle
+2026-04-05,11:51,Mom,Wipes,249,Kids,recurring
+2026-04-06,18:34,Dad,Duster petrol,500,Fuel,lifestyle
+2026-04-06,18:34,Dad,Oota,100,Dining Out,lifestyle
+2026-04-10,13:13,Dad,Snacks,160,Dining Out,lifestyle
+2026-04-10,13:13,Dad,Bike petrol,1000,Fuel,lifestyle
+2026-04-10,15:26,Dad,Medicine,50,Health & Medical,lifestyle
+2026-04-11,07:56,Mom,Snacks,110,Dining Out,lifestyle
+2026-04-11,15:41,Dad,Hotel oota,800,Dining Out,lifestyle
+2026-04-13,22:09,Mom,Snacks,140,Dining Out,lifestyle
+2026-04-14,12:10,Mom,Medicine,120,Health & Medical,lifestyle
+2026-04-15,15:31,Mom,Site tax,4100,Property & Investments,one_time
+2026-04-15,15:34,Dad,Elaneeru,120,Dining Out,lifestyle
+2026-04-15,19:20,Dad,Medicine,292,Health & Medical,lifestyle
+2026-04-15,19:58,Dad,Consultation fee,300,Health & Medical,lifestyle
+2026-04-15,20:08,Dad,Hotel,530,Dining Out,lifestyle
+2026-04-15,21:27,Dad,Elaneeru,320,Dining Out,lifestyle
+2026-04-16,14:55,Dad,Elaneeru,300,Dining Out,lifestyle
+2026-04-16,14:55,Dad,Medicine,60,Health & Medical,lifestyle
+2026-04-17,08:46,Dad,Medicine,283,Health & Medical,lifestyle
+2026-04-17,08:46,Dad,Medicine,778,Health & Medical,lifestyle
+2026-04-17,08:52,Dad,Elaneeru,300,Dining Out,lifestyle
+2026-04-17,22:30,Mom,Parlour,900,Personal Care & Fitness,lifestyle
+2026-04-17,22:30,Mom,Auto,340,Transport & Parking,lifestyle
+2026-04-17,22:30,Mom,Maggi,55,Dining Out,lifestyle
+2026-04-17,22:30,Mom,Iron laundry,140,Misc,recurring
+2026-04-19,08:37,Dad,Snacks,330,Dining Out,lifestyle
+2026-04-19,08:37,Dad,Karpoora,45,Religion & Gifts,recurring
+2026-04-19,16:27,Dad,Water bottle,40,Groceries & Household,lifestyle
+2026-04-19,20:09,Mom,Tender coconut,295,Dining Out,lifestyle
+2026-04-20,14:02,Dad,Zomato parcel oota,424,Dining Out,lifestyle
+2026-04-21,16:33,Dad,Halasina hannu,200,Groceries & Household,lifestyle
+2026-04-24,14:02,Dad,Thermometer cell,30,Groceries & Household,lifestyle
+2026-04-24,14:04,Dad,FirstCry,830,Kids,lifestyle
+2026-04-25,12:45,Dad,Elaneeru,360,Dining Out,lifestyle
+2026-04-25,12:45,Dad,Sugarcane juice,150,Dining Out,lifestyle
+2026-04-28,10:49,Dad,Magic show,1600,Entertainment & Outings,lifestyle
+2026-04-28,10:49,Dad,Coffee,30,Dining Out,lifestyle
+2026-04-28,10:49,Dad,Doctor consultation,300,Health & Medical,lifestyle
+2026-04-28,10:49,Dad,Vishnu Medicals,511,Health & Medical,lifestyle
+2026-04-28,21:24,Dad,Bakery,200,Dining Out,lifestyle
+2026-04-28,21:24,Dad,Hotel,1600,Dining Out,lifestyle
+2026-04-28,21:24,Dad,Car petrol,1000,Fuel,lifestyle
+2026-05-02,19:22,Mom,Ointment,230,Health & Medical,lifestyle
+2026-05-02,19:22,Mom,Iron laundry,170,Misc,recurring
+2026-05-02,19:38,Mom,Pataki,80,Religion & Gifts,one_time
+2026-05-02,19:38,Mom,Medicine,80,Health & Medical,lifestyle
+2026-05-03,20:43,Dad,Car petrol,1000,Fuel,lifestyle
+2026-05-03,20:44,Dad,Medicine,20,Health & Medical,lifestyle
+2026-05-06,12:07,Mom,Marriage gift,1900,Religion & Gifts,one_time
+2026-05-08,13:30,Dad,Mobile charger,600,Misc,one_time
+2026-05-08,13:30,Dad,Mobile screen guard,200,Misc,one_time
+2026-05-09,20:56,Mom,Petrol,1000,Fuel,lifestyle
+2026-05-09,21:25,Dad,Divya anniversary cake,590,Dining Out,lifestyle
+2026-05-10,11:14,Dad,Vinutha recharge,911,Utilities & Recharges,recurring
+2026-05-11,15:07,Mom,Fancy store,150,Misc,lifestyle
+2026-05-13,11:43,Dad,Mobile charger second,600,Misc,one_time
+2026-05-13,11:43,Dad,Maavinakaayi,100,Groceries & Household,lifestyle
+2026-05-14,18:58,Dad,UNO cards,150,Kids,lifestyle
+2026-05-15,16:05,Dad,Hotel,700,Dining Out,lifestyle
+2026-05-15,16:43,Dad,Bowl + spoon + cutting board,689,Home & Furniture,one_time
+2026-05-15,17:16,Dad,Mall B4Fun,500,Entertainment & Outings,lifestyle
+2026-05-15,18:17,Mom,Oil,170,Groceries & Household,lifestyle
+2026-05-15,18:28,Mom,Menasinakai,40,Groceries & Household,lifestyle
+2026-05-15,18:34,Mom,Soap,220,Groceries & Household,lifestyle
+2026-05-18,07:54,Dad,Westside Papu batte,2713,Kids,lifestyle
+2026-05-18,07:54,Dad,Hopscotch Papu dress,2015,Kids,lifestyle
+2026-05-18,07:54,Dad,FirstCry school bag + lunchbox + slippers,2374,Kids,lifestyle
+2026-05-18,08:14,Mom,Flipkart dress,647,Clothing,lifestyle
+2026-05-19,13:45,Dad,Bike petrol,500,Fuel,lifestyle
+2026-05-19,13:45,Dad,Sarji school fees,39000,Education,recurring
+2026-05-19,13:47,Dad,Stationery Diana,630,Education,lifestyle
+2026-05-19,14:00,Mom,Angels store,592,Clothing,lifestyle
+2026-05-19,14:06,Mom,Chips,165,Dining Out,lifestyle
+2026-05-19,14:07,Mom,Kadalebele,98,Groceries & Household,lifestyle
+2026-05-19,14:28,Mom,Parlour,70,Personal Care & Fitness,lifestyle
+2026-05-20,16:27,Dad,Color print,70,Misc,lifestyle
+2026-05-20,16:27,Dad,Color paper,20,Misc,lifestyle
+2026-05-20,16:28,Dad,Comb,20,Groceries & Household,lifestyle
+2026-05-21,14:37,Dad,Oats,108,Groceries & Household,lifestyle
+2026-05-21,14:37,Dad,Ointment,160,Health & Medical,lifestyle
+2026-05-22,17:49,Mom,Mandakki,200,Groceries & Household,lifestyle
+2026-05-22,17:49,Mom,Diana store,120,Kids,lifestyle
+2026-05-22,17:49,Mom,Vegetables,160,Groceries & Household,lifestyle
+2026-05-22,19:49,Mom,Ambika store,110,Groceries & Household,lifestyle
+2026-05-24,11:17,Dad,Vinutha dress,647,Clothing,lifestyle
+2026-05-24,12:32,Mom,Water bottle,343,Home & Furniture,one_time
+2026-05-24,17:38,Dad,Blinkit marker pen + Dove shampoo,294,Groceries & Household,lifestyle
+2026-05-25,11:37,Mom,Geyser shell,160,Home & Furniture,one_time
+2026-05-25,11:37,Mom,Snacks,70,Dining Out,lifestyle
+2026-05-25,12:34,Mom,Petrol,100,Fuel,lifestyle
+2026-05-25,12:34,Mom,Bread,170,Groceries & Household,lifestyle
+2026-05-25,12:34,Mom,Medicine,570,Health & Medical,lifestyle
+2026-05-25,12:40,Dad,Petrol,1000,Fuel,lifestyle
+2026-05-26,12:22,Dad,Fence wire,190,Farm & Garden,one_time
+2026-05-26,12:41,Mom,Soppu,20,Groceries & Household,lifestyle
+2026-05-26,12:41,Mom,Kurushani,80,Groceries & Household,lifestyle
+2026-05-28,19:05,Dad,Blinkit,272,Groceries & Household,lifestyle
+2026-05-29,21:25,Dad,Iron laundry,90,Misc,recurring
+2026-05-30,14:40,Dad,Airtel WiFi 4 months,2433.79,Utilities & Recharges,recurring
+2026-05-30,19:40,Mom,Haircut,750,Personal Care & Fitness,lifestyle
+2026-05-30,19:47,Mom,Pista,499,Groceries & Household,lifestyle
+2026-05-30,19:49,Mom,Chips,55,Dining Out,lifestyle
+2026-05-30,20:01,Mom,Vegetables,185,Groceries & Household,lifestyle
+2026-05-31,14:03,Mom,Hopscotch baby dress,2015,Kids,lifestyle
+2026-06-02,21:28,Mom,Petrol,2000,Fuel,lifestyle
+2026-06-02,21:28,Mom,Fruits,270,Groceries & Household,lifestyle
+2026-06-03,13:55,Dad,Airtel recharge,805,Utilities & Recharges,recurring
+2026-06-05,23:58,Dad,Bike petrol,500,Fuel,lifestyle
+2026-06-08,20:48,Dad,Doctor fees,300,Health & Medical,lifestyle
+2026-06-08,20:48,Dad,Medicine,808,Health & Medical,lifestyle
+2026-06-09,11:56,Dad,Lab tests,800,Health & Medical,lifestyle
+2026-06-09,13:37,Mom,Cream + shampoo,471,Personal Care & Fitness,lifestyle
+2026-06-10,14:03,Dad,Tiago petrol,1000,Fuel,lifestyle
+2026-06-10,15:16,Mom,Baby soap + brush,600,Kids,recurring
+2026-06-10,15:18,Mom,Baby book + handkerchief,500,Kids,lifestyle
+2026-06-10,16:20,Mom,Baby mat,630,Kids,lifestyle
+2026-06-11,16:03,Mom,Crayons,92,Kids,lifestyle
+2026-06-12,13:43,Mom,Iron laundry,180,Misc,recurring
+2026-06-13,16:03,Mom,Baby pants,1180,Kids,lifestyle
+2026-06-14,08:59,Dad,Bike petrol,500,Fuel,lifestyle
+2026-06-15,18:27,Dad,Medicine,219,Health & Medical,lifestyle
+2026-06-16,20:08,Dad,Snacks,450,Dining Out,lifestyle
+2026-06-17,18:41,Dad,Snacks,165,Dining Out,lifestyle
+2026-06-19,14:01,Dad,Nerale hannu,100,Groceries & Household,lifestyle
+2026-06-19,14:01,Dad,Gobi manchurian,150,Dining Out,lifestyle
+2026-06-19,14:13,Dad,Tiago petrol,1000,Fuel,lifestyle
+2026-06-20,21:33,Dad,Halasina hannu,300,Groceries & Household,lifestyle
+2026-06-21,11:59,Dad,Haircut,200,Personal Care & Fitness,lifestyle
+2026-06-22,14:09,Dad,Tarakari vegetables,120,Groceries & Household,lifestyle
+2026-06-22,14:09,Dad,Atharva gift,400,Religion & Gifts,one_time
+2026-06-22,14:10,Dad,Jamun,100,Groceries & Household,lifestyle
+2026-06-25,08:21,Dad,Tiago petrol,1000,Fuel,lifestyle
+2026-06-25,15:44,Dad,Iron laundry,117,Misc,recurring
+2026-06-28,21:03,Mom,Sapna Book House,525,Education,lifestyle
+2026-06-28,21:14,Dad,Parking,20,Transport & Parking,lifestyle
+2026-06-28,22:26,Dad,Hotel,600,Dining Out,lifestyle
+2026-06-30,18:51,Dad,Bangalore travel + food,1840,Travel & Trips,lifestyle
+2026-07-03,14:50,Dad,Keyboard,580,Misc,one_time
+2026-07-03,14:50,Dad,Storage bag,300,Home & Furniture,one_time
+2026-07-03,14:50,Dad,Dove shampoo,530,Personal Care & Fitness,lifestyle
+2026-07-04,14:17,Dad,Sweet corn,50,Groceries & Household,lifestyle
+2026-07-04,14:17,Dad,Tomato,40,Groceries & Household,lifestyle
+2026-07-04,14:17,Dad,Tiago petrol,1000,Fuel,lifestyle
+2026-07-04,17:56,Dad,Papad + handwash + sev,350,Groceries & Household,lifestyle
+2026-07-04,19:23,Dad,JioTV OTT,200,Utilities & Recharges,recurring
+2026-07-05,18:32,Dad,Ergonomic chair,3299,Home & Furniture,one_time
+2026-07-07,17:00,Mom,Iron laundry,130,Misc,recurring
+2026-07-10,15:29,Dad,Iron laundry,105,Misc,recurring
+2026-07-10,19:16,Dad,Parking,20,Transport & Parking,lifestyle
+2026-07-10,19:16,Dad,Snacks,245,Dining Out,lifestyle
+2026-07-11,17:53,Dad,Oota,350,Dining Out,lifestyle
+2026-07-11,17:53,Dad,Potato,30,Groceries & Household,lifestyle
+2026-07-12,15:37,Dad,Tiago petrol,1000,Fuel,lifestyle
+2026-07-18,19:32,Dad,Medicine,436,Health & Medical,lifestyle
+2026-07-18,19:32,Dad,Doctor fees,300,Health & Medical,lifestyle
+2026-07-18,20:03,Mom,Snacks,240,Dining Out,lifestyle
+2026-07-18,20:03,Mom,Tender coconut,330,Dining Out,lifestyle
+2026-07-18,20:13,Mom,Car petrol,2000,Fuel,lifestyle
+2026-07-21,13:43,Dad,Halasina hannu,200,Groceries & Household,lifestyle
+2026-07-22,19:24,Mom,Fruits,410,Groceries & Household,lifestyle
+2026-07-22,21:00,Mom,Fruits,190,Groceries & Household,lifestyle
+2026-07-24,19:09,Dad,Bike petrol,700,Fuel,lifestyle
+2026-07-24,19:09,Dad,Chips + boti,165,Dining Out,lifestyle
+2026-07-24,19:09,Dad,Iron laundry,130,Misc,recurring
+2026-07-25,18:16,Mom,Slippers,560,Clothing,lifestyle
+2026-07-25,18:16,Mom,Dry fruits,1899,Groceries & Household,lifestyle
+2026-07-25,18:27,Mom,Matching,129,Clothing,lifestyle
+2026-07-25,19:06,Mom,Vegetables,80,Groceries & Household,lifestyle
+2026-07-25,19:37,Mom,Baby wipes,155,Kids,recurring
+2026-07-25,19:37,Mom,Panipuri,45,Dining Out,lifestyle
+2026-07-29,18:02,Mom,Saree,4874,Clothing,lifestyle
+2026-07-31,22:01,Dad,Books,40,Misc,lifestyle
+2026-07-31,22:01,Dad,Oota,60,Dining Out,lifestyle
+2026-07-31,22:01,Dad,Art school 3 months,5000,Education,recurring
+2026-08-01,19:50,Mom,Mandakki,100,Groceries & Household,lifestyle
+2026-08-01,19:50,Mom,Westside,5310,Clothing,lifestyle
+2026-08-01,19:50,Mom,Ball,30,Kids,lifestyle
+2026-08-01,19:50,Mom,Apple,270,Groceries & Household,lifestyle
+2026-08-01,20:04,Mom,Banana,160,Groceries & Household,lifestyle
+2026-08-02,19:07,Mom,Bakery,680,Dining Out,lifestyle
+2026-08-02,20:30,Dad,Mekke jola,160,Groceries & Household,lifestyle
+2026-08-03,20:20,Dad,Jio recharge,904,Utilities & Recharges,recurring
+2026-08-04,19:25,Dad,Tarakari vegetables,140,Groceries & Household,lifestyle
+2026-08-04,19:25,Dad,Plate,30,Home & Furniture,lifestyle
+2026-08-04,19:25,Dad,Tiago petrol,2000,Fuel,lifestyle
+2026-08-07,17:53,Mom,Snacks,385,Dining Out,lifestyle
+2026-08-07,18:13,Mom,Bakery,505,Dining Out,lifestyle
+2026-08-07,18:33,Mom,Ration,1929,Groceries & Household,lifestyle
+2026-08-07,19:44,Mom,Bathroom brush,380,Groceries & Household,lifestyle
+2026-08-07,20:13,Dad,Car wash + dicky hydraulic,1500,Vehicle Maintenance,one_time
+2026-08-07,20:19,Dad,2-seater sofa,8000,Home & Furniture,one_time
+2026-08-07,20:19,Dad,Two pillows,1000,Home & Furniture,one_time
+2026-08-07,20:19,Dad,Mat,500,Home & Furniture,one_time
+2026-08-07,20:19,Dad,Spectacles advance,1000,Health & Medical,one_time
+2026-08-07,21:00,Mom,Vegetables,350,Groceries & Household,lifestyle
+2026-08-07,21:03,Mom,Jaggery,270,Groceries & Household,lifestyle
+2026-08-07,21:04,Mom,Milk,28,Groceries & Household,recurring
+2026-08-08,13:49,Dad,Geyser repair,500,Home & Furniture,one_time
+2026-08-10,21:14,Dad,Oota,100,Dining Out,lifestyle
+2026-08-10,21:14,Dad,Car key,80,Vehicle Maintenance,one_time
+2026-08-10,22:51,Mom,Silver coin,1413,Property & Investments,one_time
+2026-08-11,11:19,Mom,Iron laundry,120,Misc,recurring
+2026-08-11,13:20,Dad,Silver articles,13060,Property & Investments,one_time
+2026-08-11,13:20,Dad,Bhima monthly EMI,2000,Property & Investments,recurring
+2026-08-11,14:30,Dad,Specs balance,2300,Health & Medical,one_time
+2026-08-11,14:49,Dad,Papu specs,100,Kids,lifestyle
+2026-08-11,15:15,Dad,Elaneeru,60,Dining Out,lifestyle
+2026-08-11,16:51,Mom,Steel bowl,1500,Home & Furniture,one_time
+2026-08-12,15:53,Dad,Oota,100,Dining Out,lifestyle

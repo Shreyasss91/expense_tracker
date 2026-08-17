@@ -72,8 +72,8 @@ export async function getMonthBudgetStatus(
     getExcludeBillsEnabled(db),
     db
       .select({
-        expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
-        recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
+        expense: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'recurring'), 0)`,
       })
       .from(transactions)
       .where(and(gte(transactions.date, start), lte(transactions.date, end))),
@@ -101,9 +101,9 @@ export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId:
     getExcludeBillsEnabled(db),
     db
       .select({
-        total: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
-        recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'recurring'), 0)`,
-        category: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.categoryId} = ${categoryId}), 0)`,
+        total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'recurring'), 0)`,
+        category: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.categoryId} = ${categoryId}), 0)`,
       })
       .from(transactions)
       .where(and(gte(transactions.date, start), lte(transactions.date, end))),

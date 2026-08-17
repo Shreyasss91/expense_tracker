@@ -123,7 +123,6 @@ const rows: CsvExportRow[] = [
     date: "2026-08-15",
     time: "21:49:00",
     member: "Dad, Sr.",
-    type: "expense",
     note: 'Dinner at "Mysore Palace Rd", the "fancy" one',
     amount: "1250.00",
     category: 'Food & "Dining"',
@@ -133,17 +132,15 @@ const rows: CsvExportRow[] = [
     date: "2026-08-14",
     time: "09:15:00",
     member: "Mom",
-    type: "income",
     note: "Refund\nreceived",
     amount: "500.00",
     category: "Misc",
-    tag: null,
+    tag: "lifestyle",
   },
   {
     date: "2026-08-13",
     time: "10:00:00",
     member: "Son",
-    type: "expense",
     note: "Toys",
     amount: "300.00",
     category: "Kids",
@@ -152,9 +149,9 @@ const rows: CsvExportRow[] = [
 ];
 
 const expectedLines = [
-  `2026-08-15,21:49,"Dad, Sr.",expense,"Dinner at ""Mysore Palace Rd"", the ""fancy"" one",1250.00,"Food & ""Dining""",lifestyle`,
-  `2026-08-14,09:15,Mom,income,"Refund\nreceived",500.00,Misc,`,
-  `2026-08-13,10:00,Son,expense,Toys,300.00,Kids,one_time`,
+  `2026-08-15,21:49,"Dad, Sr.","Dinner at ""Mysore Palace Rd"", the ""fancy"" one",1250.00,"Food & ""Dining""",lifestyle`,
+  `2026-08-14,09:15,Mom,"Refund\nreceived",500.00,Misc,lifestyle`,
+  `2026-08-13,10:00,Son,Toys,300.00,Kids,one_time`,
 ];
 
 for (let i = 0; i < rows.length; i++) {
@@ -168,14 +165,14 @@ ok("formatCsvLine: adversarial member/note/category fields serialize to correct 
 const csv = rows.map(formatCsvLine).join("\r\n") + "\r\n";
 const parsed = parseCsv(csv);
 const expectedFields = [
-  ["2026-08-15", "21:49", "Dad, Sr.", "expense", 'Dinner at "Mysore Palace Rd", the "fancy" one', "1250.00", 'Food & "Dining"', "lifestyle"],
-  ["2026-08-14", "09:15", "Mom", "income", "Refund\nreceived", "500.00", "Misc", ""],
-  ["2026-08-13", "10:00", "Son", "expense", "Toys", "300.00", "Kids", "one_time"],
+  ["2026-08-15", "21:49", "Dad, Sr.", 'Dinner at "Mysore Palace Rd", the "fancy" one', "1250.00", 'Food & "Dining"', "lifestyle"],
+  ["2026-08-14", "09:15", "Mom", "Refund\nreceived", "500.00", "Misc", "lifestyle"],
+  ["2026-08-13", "10:00", "Son", "Toys", "300.00", "Kids", "one_time"],
 ];
 if (JSON.stringify(parsed) !== JSON.stringify(expectedFields)) {
   fail(`round-trip mismatch.\n  expected: ${JSON.stringify(expectedFields)}\n  got:      ${JSON.stringify(parsed)}`);
 }
-ok("round-trip: 3 rows × 8 fields survive formatCsvLine → parse with exact field equality (CRLF records)");
+ok("round-trip: 3 rows × 7 fields survive formatCsvLine → parse with exact field equality (CRLF records)");
 
 console.log("✓ CSV quoting OK — RFC 4180 quoting round-trips through a real parser.");
 process.exitCode = 0;

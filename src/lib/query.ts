@@ -10,7 +10,6 @@ export interface TransactionListFilters {
   memberId?: string;
   categoryId?: string;
   tag?: "one_time" | "recurring" | "lifestyle";
-  type?: "income" | "expense";
   /** YYYY-MM */
   month?: string;
   search?: string;
@@ -35,7 +34,6 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
   if (filters.memberId) conds.push(eq(transactions.memberId, filters.memberId));
   if (filters.categoryId) conds.push(eq(transactions.categoryId, filters.categoryId));
   if (filters.tag) conds.push(eq(transactions.tag, filters.tag));
-  if (filters.type) conds.push(eq(transactions.type, filters.type));
   if (filters.month) {
     const month = monthKeySchema.parse(filters.month);
     conds.push(gte(transactions.date, `${month}-01`), lte(transactions.date, monthEnd(month)));
@@ -69,7 +67,6 @@ export function mapRow(row: {
   id: string;
   memberId: string;
   categoryId: string;
-  type: string;
   tag: string | null;
   amount: string;
   note: string | null;
@@ -89,7 +86,6 @@ export function mapRow(row: {
     id: row.id,
     memberId: row.memberId,
     categoryId: row.categoryId,
-    type: row.type as "income" | "expense",
     tag: row.tag as TransactionListRow["tag"],
     amount: row.amount,
     note: row.note,
@@ -123,7 +119,6 @@ export interface TransactionListRow {
   id: string;
   memberId: string;
   categoryId: string;
-  type: "income" | "expense";
   tag: "one_time" | "recurring" | "lifestyle" | null;
   amount: string;
   note: string | null;
@@ -152,9 +147,9 @@ export async function getLedgerSummary(filters: TransactionListFilters): Promise
   const where = buildWhere(filters, null);
   const rows = await db
     .select({
-      expense: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense'), 0)`,
-      lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense' AND ${transactions.tag} = 'lifestyle'), 0)`,
-      largest: sql<string | null>`MAX(${transactions.amount}) FILTER (WHERE ${transactions.type} = 'expense')`,
+      expense: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'lifestyle'), 0)`,
+      largest: sql<string | null>`MAX(${transactions.amount})`,
       count: sql<number>`COUNT(*)::int`,
     })
     .from(transactions)

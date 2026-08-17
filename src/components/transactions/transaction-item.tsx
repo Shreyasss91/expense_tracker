@@ -23,7 +23,6 @@ export function TransactionItem({
   const startX = useRef<number | null>(null);
   const dragging = useRef(false);
 
-  const isExpense = row.type === "expense";
   const paise = rupeesToPaise(row.amount);
 
   function onTouchStart(e: React.TouchEvent) {
@@ -130,8 +129,8 @@ export function TransactionItem({
         >
           <Pencil className="h-3.5 w-3.5" />
         </button>
-        <span className={cn("shrink-0 text-sm font-semibold tabular-nums", isExpense ? "text-red-600" : "text-emerald-600")}>
-          {isExpense ? "−" : "+"}
+        <span className="shrink-0 text-sm font-semibold tabular-nums text-red-600">
+          −
           {formatINR(paise)}
         </span>
       </div>

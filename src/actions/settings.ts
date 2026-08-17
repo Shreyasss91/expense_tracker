@@ -183,7 +183,7 @@ export async function getCategoryBudgetStatus(monthKey: string) {
         total: sql<string>`SUM(${transactions.amount})`,
       })
       .from(transactions)
-      .where(and(eq(transactions.type, "expense"), gte(transactions.date, `${key}-01`), lte(transactions.date, monthEnd(key))))
+      .where(and(gte(transactions.date, `${key}-01`), lte(transactions.date, monthEnd(key))))
       .groupBy(transactions.categoryId),
   ]);
 

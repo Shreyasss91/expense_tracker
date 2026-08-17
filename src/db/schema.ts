@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import {
-  check,
   date,
   index,
   integer,
@@ -14,7 +13,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const transactionTypeEnum = pgEnum("transaction_type", ["income", "expense"]);
 export const transactionTagEnum = pgEnum("transaction_tag", ["one_time", "recurring", "lifestyle"]);
 
 export const members = pgTable("members", {
@@ -50,9 +48,7 @@ export const transactions = pgTable(
     categoryId: uuid("category_id")
       .references(() => categories.id)
       .notNull(),
-    type: transactionTypeEnum("type").notNull().default("expense"),
-    // Nullable in type only — constrained by CHECK below (§5.2)
-    tag: transactionTagEnum("tag"),
+    tag: transactionTagEnum("tag").notNull(),
     // Read as string; see §5.8
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     note: text("note"),
@@ -72,12 +68,6 @@ export const transactions = pgTable(
       t.time.desc(),
       t.createdAt.desc(),
       t.id.desc(),
-    ),
-    // §5.2 invariant, enforced at the last line of defence
-    tagInvariant: check(
-      "transactions_tag_invariant",
-      sql`(${t.type} = 'expense' AND ${t.tag} IS NOT NULL)
-       OR (${t.type} = 'income'  AND ${t.tag} IS NULL)`,
     ),
   }),
 );
