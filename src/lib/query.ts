@@ -1,9 +1,8 @@
-import "server-only";
-
 import { and, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
+import { monthKeySchema } from "@/lib/validations";
 
 export const PAGE_SIZE = 50; // §7.3
 
@@ -24,25 +23,11 @@ export interface Cursor {
   id: string;
 }
 
-export interface TransactionListRow {
-  id: string;
-  memberId: string;
-  categoryId: string;
-  type: "income" | "expense";
-  tag: "one_time" | "recurring" | "lifestyle" | null;
-  amount: string;
-  note: string | null;
-  date: string;
-  time: string;
-  createdAt: string; // ISO
-  member: { name: string; emoji: string; color: string; slug: string };
-  category: { name: string; emoji: string; color: string; slug: string };
-}
-
 function monthEnd(monthKey: string): string {
-  const [y, m] = monthKey.split("-").map(Number);
+  const month = monthKeySchema.parse(monthKey);
+  const [y, m] = month.split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+  return `${month}-${String(lastDay).padStart(2, "0")}`;
 }
 
 export function buildWhere(filters: TransactionListFilters, cursor: Cursor | null): SQL | undefined {
@@ -52,7 +37,8 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
   if (filters.tag) conds.push(eq(transactions.tag, filters.tag));
   if (filters.type) conds.push(eq(transactions.type, filters.type));
   if (filters.month) {
-    conds.push(gte(transactions.date, `${filters.month}-01`), lte(transactions.date, monthEnd(filters.month)));
+    const month = monthKeySchema.parse(filters.month);
+    conds.push(gte(transactions.date, `${month}-01`), lte(transactions.date, monthEnd(month)));
   }
   if (filters.search?.trim()) conds.push(ilike(transactions.note, `%${filters.search.trim()}%`));
 
@@ -132,6 +118,21 @@ export const listOrderBy = [
   desc(transactions.createdAt),
   desc(transactions.id),
 ];
+
+export interface TransactionListRow {
+  id: string;
+  memberId: string;
+  categoryId: string;
+  type: "income" | "expense";
+  tag: "one_time" | "recurring" | "lifestyle" | null;
+  amount: string;
+  note: string | null;
+  date: string;
+  time: string;
+  createdAt: string;
+  member: { name: string; emoji: string; color: string; slug: string };
+  category: { name: string; emoji: string; color: string; slug: string };
+}
 
 export interface LedgerSummary {
   expensePaise: number;
