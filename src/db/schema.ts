@@ -87,8 +87,10 @@ export const transactions = pgTable(
  *  - month: 'yyyy-MM' for a single month, NULL for the default applying to every month.
  *  - categoryId: NULL = total monthly limit; a category id = limit for that category.
  * The effective budget for a month prefers the exact-month row over the default.
- * Rows are written by replacing the whole scope in a transaction, so the
- * uniqueness of the scope is guaranteed by construction (see saveBudgets).
+ * Budget scopes are intentionally replaced with sequential DELETE + INSERT statements
+ * rather than a database transaction because the application's neon-http driver does
+ * not provide transaction support for this path. The accepted non-atomic failure mode
+ * is documented in SPEC.md §6.7.
  */
 export const budgets = pgTable(
   "budgets",
