@@ -40,8 +40,11 @@ export function monthKeyInIST(date: Date = new Date()): string {
 
 /** Group label per §6.4: "Today" | "Yesterday" | "12 Aug 2026". */
 export function dateGroupLabel(dateStr: string): string {
-  const today = todayInIST();
-  const yesterday = formatInTimeZone(Date.now() - 86_400_000, APP_TIMEZONE, "yyyy-MM-dd");
+  const now = new Date();
+  const today = formatInTimeZone(now, APP_TIMEZONE, "yyyy-MM-dd");
+  const [year, month, day] = today.split("-").map(Number);
+  const yesterdayDate = new Date(Date.UTC(year, month - 1, day - 1));
+  const yesterday = formatInTimeZone(yesterdayDate, APP_TIMEZONE, "yyyy-MM-dd");
   if (dateStr === today) return "Today";
   if (dateStr === yesterday) return "Yesterday";
   return format(new Date(`${dateStr}T00:00:00`), "d MMM yyyy");
