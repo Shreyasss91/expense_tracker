@@ -27,6 +27,8 @@ jobs:
       - run: npm run build
       - name: CSV quoting (DB-free serializer regression)
         run: npm run test:csv-quoting
+      - name: Live CSV parser (DB-free verification regression)
+        run: npm run test:csv-parser
       - name: Ledger URL composition (DB-free filter regression)
         run: npm run test:ledger-url
       - name: Semantic validation (DB-free date/time/month regression)
