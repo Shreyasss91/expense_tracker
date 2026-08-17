@@ -14,24 +14,11 @@ import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
 
-/**
- * §7.1 createTransaction — every mutating action must, before any write:
- *  1. Parse its payload with Zod (including the type/tag discriminated union).
- *  2. Verify the member exists in `members` (§3.2.1 — data integrity, not auth).
- *  3. Convert amounts at the paise boundary (§5.8).
- *  The member is read from the active_member_id cookie (§6.2 step 5) — the
- *  SOLE source, with no client-supplied fallback. The cookie value is
- *  validated as a UUID and the member verified to exist (§3.2.1).
- */
 export async function createTransaction(raw: TransactionInput) {
   const parsed = transactionSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid transaction data" };
 
   const data = parsed.data;
-
-  // §3.2 / §6.2 step 5 — active_member_id is the sole source of the creating
-  // member. No `activeMemberId ?? data.memberId` fallback. A missing or
-  // malformed cookie is a clear, explicit error.
   const cookieStore = await cookies();
   const activeMemberId = cookieStore.get("active_member_id")?.value;
   const memberIdCheck = idSchema.safeParse(activeMemberId);
@@ -51,15 +38,15 @@ export async function createTransaction(raw: TransactionInput) {
   const [row] = await db
     .insert(transactions)
     .values({
-      id: randomUUID(), // Quick Add: random v4 (§8.1)
+      id: randomUUID(),
       memberId,
       categoryId: data.categoryId,
       type: data.type,
       tag: data.type === "expense" ? data.tag : null,
-      amount: paiseToDbString(paise), // §5.8 paise → fixed-2-decimal string
+      amount: paiseToDbString(paise),
       note: data.note ?? null,
       date: data.date,
-      time: `${data.time}:00`, // §5.6 HH:MM → HH:MM:00 at the write boundary
+      time: `${data.time}:00`,
     })
     .returning();
 
@@ -67,8 +54,6 @@ export async function createTransaction(raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  // §6.7 — after an expense lands, check whether it left the month or its
-  // category over budget; the client surfaces this as a toast.
   const alert: BudgetAlert | null =
     data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
 
@@ -76,7 +61,6 @@ export async function createTransaction(raw: TransactionInput) {
 }
 
 export async function updateTransaction(id: string, raw: TransactionInput) {
-  // §7.1 — the mutation id is validated at the action boundary, before any DB access.
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
 
@@ -104,38 +88,34 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
     .where(eq(transactions.id, idCheck.data))
     .returning();
 
-  // §7.1 — a valid UUID that matches no transaction is still a failed update:
-  // the UPDATE affected zero rows, so the caller must not see `ok: true`.
   if (!row) return { ok: false as const, error: "Transaction not found" };
 
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  // §6.7 — same over-budget check after an edit.
   const alert: BudgetAlert | null =
     data.type === "expense" ? await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId) : null;
 
   return { ok: true as const, id: row.id, alert };
 }
 
-/** §6.4.1 hard delete — no soft delete, no tombstones. */
 export async function deleteTransaction(id: string) {
-  // §7.1 — the mutation id is validated at the action boundary, before any DB access.
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
 
-  await db.delete(transactions).where(eq(transactions.id, idCheck.data));
+  const [row] = await db
+    .delete(transactions)
+    .where(eq(transactions.id, idCheck.data))
+    .returning({ id: transactions.id });
+  if (!row) return { ok: false as const, error: "Transaction not found" };
+
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidateTag("transactions");
   return { ok: true as const };
 }
 
-/**
- * §7.3 keyset pagination for infinite scroll. Fetches PAGE_SIZE + 1 rows to
- * detect whether another page exists; filters and search compose in SQL.
- */
 export async function getTransactionsPage(args: {
   cursor: Cursor | null;
   filters: TransactionListFilters;
@@ -180,7 +160,6 @@ export async function getTransactionsPage(args: {
   };
 }
 
-/** §6.6 canonical CSV export — 8 columns, seed.csv order, date ASC / created_at ASC. */
 export async function exportCsv(): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
   const rows = await db
     .select({
@@ -212,6 +191,5 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
   );
 
   const csv = [CSV_HEADER, ...lines].join("\n") + "\n";
-  // §5.7 — the filename date is a calendar artifact derived in APP_TIMEZONE, never UTC.
   return { ok: true, csv, filename: `family-ledger-export-${todayInIST()}.csv` };
 }
