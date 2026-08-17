@@ -5,12 +5,12 @@
  * double quote or newline is quoted; embedded quotes are doubled) round-trips
  * through a REAL RFC 4180-style parser — never a naive split(",").
  *
- * The shared parser is proven against hand-written CSV strings first, so the
- * parser itself is validated before the serializer is tested against it.
+ * The parser is written by hand and asserted against hand-written CSV strings
+ * first, so the parser itself is proven before the serializer is tested
+ * against it (no circularity).
  */
 import { csvField, csvRow } from "./csv";
 import { formatCsvLine, type CsvExportRow } from "./csv-export";
-import { parseCsv } from "./csv-parser";
 
 function fail(msg: string): never {
   console.error(`✗ ${msg}`);
@@ -21,10 +21,60 @@ function ok(msg: string) {
   console.log(`✓ ${msg}`);
 }
 
-// ---------------------------------------------------------------------------
-// 1. Parser correctness against hand-written RFC 4180 CSV (proves the parser
-//    is a real quoted-field parser, not a line splitter).
-// ---------------------------------------------------------------------------
+/**
+ * Minimal RFC 4180-style parser: quoted fields, "" escape, LF or CRLF row
+ * terminators, commas and newlines inside quotes. Returns rows of fields.
+ */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i += 1;
+        }
+      } else {
+        field += ch;
+        i += 1;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i += 1;
+      } else if (ch === ",") {
+        row.push(field);
+        field = "";
+        i += 1;
+      } else if (ch === "\n") {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = "";
+        i += 1;
+      } else if (ch === "\r") {
+        i += 1;
+      } else {
+        field += ch;
+        i += 1;
+      }
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
+
 const parserCases: { csv: string; expected: string[][] }[] = [
   {
     csv: `"a,b","say ""hi""",plain`,
@@ -54,9 +104,6 @@ for (const { csv, expected } of parserCases) {
 }
 ok('parser: quoted fields, double-quote escape, CRLF rows, quoted newlines, empty fields');
 
-// ---------------------------------------------------------------------------
-// 2. csvField / csvRow unit behavior.
-// ---------------------------------------------------------------------------
 const fieldCases: [string, string][] = [
   ["Fuel", "Fuel"],
   ["a,b", '"a,b"'],
@@ -71,10 +118,6 @@ for (const [input, expected] of fieldCases) {
 if (csvRow(["a", "b,c"]) !== 'a,"b,c"') fail(`csvRow join failed: ${csvRow(["a", "b,c"])}`);
 ok("csvField/csvRow: plain passthrough, comma/quote/newline quoting, quote doubling, join");
 
-// ---------------------------------------------------------------------------
-// 3. Serializer emits exactly the hand-written RFC 4180 lines for adversarial
-//    rows (proves formatCsvLine quoting against known-correct CSV).
-// ---------------------------------------------------------------------------
 const rows: CsvExportRow[] = [
   {
     date: "2026-08-15",
@@ -122,12 +165,6 @@ for (let i = 0; i < rows.length; i++) {
 }
 ok("formatCsvLine: adversarial member/note/category fields serialize to correct RFC 4180 lines");
 
-// ---------------------------------------------------------------------------
-// 4. Full round-trip: serialize ALL rows with the ACTUAL serializer (CRLF
-//    records per RFC 4180), then parse with the shared parser and compare every
-//    field. This is the genuine serializer → CSV document → parser → fields
-//    path; section 3 above is the independent known-answer check.
-// ---------------------------------------------------------------------------
 const csv = rows.map(formatCsvLine).join("\r\n") + "\r\n";
 const parsed = parseCsv(csv);
 const expectedFields = [
