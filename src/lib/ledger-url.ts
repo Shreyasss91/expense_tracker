@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { TRANSACTION_TAGS } from "./constants";
+import { monthKeySchema } from "./validations";
 import type { TransactionListFilters } from "./query";
 
 /** The filter state as carried by the ledger URL. `q` is the search text. */
@@ -42,7 +43,6 @@ export function parseLedgerSearchParams(
 ): { filters: TransactionListFilters; ledgerFilters: LedgerFilters } {
   const read = (v: string | string[] | undefined) => (typeof v === "string" ? v : undefined);
   const uuid = z.string().uuid();
-  const monthRe = /^\d{4}-\d{2}$/;
 
   const rawTag = read(sp.tag);
   const filters: TransactionListFilters = {
@@ -61,7 +61,7 @@ export function parseLedgerSearchParams(
     })(),
     month: (() => {
       const v = read(sp.month);
-      return v && monthRe.test(v) ? v : undefined;
+      return v && monthKeySchema.safeParse(v).success ? v : undefined;
     })(),
     search: read(sp.q)?.slice(0, 100),
   };
