@@ -12,8 +12,8 @@
  * multiset equality). Fails loudly on any drift.
  *
  * Env:
- *   PROD_URL          default https://tokenscript.vercel.app
- *   MASTER_PASSWORD   override; falls back to FAMILY_MASTER_PASSWORD in .env.local
+ *   PROD_URL                 default https://kharchubook.vercel.app
+ *   FAMILY_MASTER_PASSWORD   production login password
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -21,12 +21,13 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { login } from "./lib/live.mjs";
+import { parseCsv } from "../src/lib/csv-parser.ts";
 
 const require = createRequire(import.meta.url);
 const { encodeReply } = require("next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.node.unbundled.development.js");
 
-const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
-const PASSWORD = process.env.MASTER_PASSWORD ?? process.env.FAMILY_MASTER_PASSWORD ?? "";
+const BASE = process.env.PROD_URL ?? "https://kharchubook.vercel.app";
+const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
 
 let failures = 0;
 function check(cond, msg) {
@@ -39,7 +40,7 @@ function check(cond, msg) {
 
 async function main() {
   if (!PASSWORD) {
-    throw new Error("no master password — set MASTER_PASSWORD or FAMILY_MASTER_PASSWORD in .env.local");
+    throw new Error("no family master password — set FAMILY_MASTER_PASSWORD in .env.local");
   }
 
   const client = await login(BASE, PASSWORD);
@@ -52,9 +53,6 @@ async function main() {
   for (const u of chunkUrls) {
     const res = await client.fetch(u);
     const src = await res.text();
-    // [^)]*? keeps the match inside a single createServerReference call — the
-    // middle args (callServer, findSourceMapURL, …) never contain a paren, so
-    // this can't accidentally latch onto an earlier registration's id.
     const m = src.match(/createServerReference\)\("([0-9a-f]{40,})"[^)]*?"exportCsv"\)/);
     if (m) {
       actionId = m[1];
@@ -79,22 +77,29 @@ async function main() {
   check(m !== null, "parsed CSV out of the Flight response");
   if (!m) throw new Error(`unexpected action response: ${text.slice(0, 120)}`);
   const csv = m[2].slice(0, parseInt(m[1], 16));
-  check(csv.startsWith("date,time,member,type,item,amount,category,tag\n"), "CSV starts with the canonical header");
+  const parsedExport = parseCsv(csv);
+  check(parsedExport.length > 0, "CSV contains at least a header row");
+  check(
+    JSON.stringify(parsedExport[0]) === JSON.stringify(["date", "time", "member", "type", "item", "amount", "category", "tag"]),
+    "CSV starts with the canonical header",
+  );
 
   // 4. Compare with seed.csv in canonical form (multiset, amounts → 2 dp).
-  const seedLines = readFileSync(join(process.cwd(), "seed_data", "seed.csv"), "utf8")
-    .split("\n")
-    .slice(1)
-    .filter((l) => l.length > 0);
-  const exportLines = csv.split("\n").slice(1).filter((l) => l.length > 0);
-  check(exportLines.length === seedLines.length, `row count matches seed.csv (${exportLines.length})`);
+  const seedCsv = readFileSync(join(process.cwd(), "seed_data", "seed.csv"), "utf8");
+  const parsedSeed = parseCsv(seedCsv);
+  check(parsedSeed.length > 0, "seed.csv contains a header row");
+  const seedRows = parsedSeed.slice(1);
+  const exportRows = parsedExport.slice(1);
+  check(exportRows.length === seedRows.length, `row count matches seed.csv (${exportRows.length})`);
 
   const canonical = (f) => [...f.slice(0, 5), Number(f[5]).toFixed(2), ...f.slice(6)];
   const key = (f) => canonical(f).join("\u001F");
-  const seedSorted = seedLines.map((l) => key(l.split(","))).sort();
-  const exportSorted = exportLines.map((l) => {
-    const f = l.split(",");
-    if (f.length !== 8) throw new Error(`export line has ${f.length} fields: ${l.slice(0, 60)}`);
+  const seedSorted = seedRows.map((f) => {
+    if (f.length !== 8) throw new Error(`seed row has ${f.length} fields`);
+    return key(f);
+  }).sort();
+  const exportSorted = exportRows.map((f) => {
+    if (f.length !== 8) throw new Error(`export row has ${f.length} fields`);
     return key(f);
   }).sort();
   const same = JSON.stringify(seedSorted) === JSON.stringify(exportSorted);
@@ -107,9 +112,8 @@ async function main() {
     }
   }
 
-  // 5. Format spot-checks on the export (dates, times, amounts).
-  for (const l of exportLines) {
-    const f = l.split(",");
+  // 5. Format spot-checks on the parsed export (dates, times, amounts).
+  for (const f of exportRows) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f[0])) throw new Error(`bad date: ${f[0]}`);
     if (!/^\d{2}:\d{2}$/.test(f[1])) throw new Error(`bad time: ${f[1]}`);
     if (!["income", "expense"].includes(f[3])) throw new Error(`bad type: ${f[3]}`);
@@ -117,7 +121,7 @@ async function main() {
   }
   check(true, "format spot-checks pass (dates, HH:MM times, types, amounts)");
 
-  const dates = exportLines.map((l) => l.split(",")[0]);
+  const dates = exportRows.map((f) => f[0]);
   const sorted = dates.every((d, i) => i === 0 || dates[i - 1] <= d);
   check(sorted, "export is ordered by date ASC");
 
@@ -125,7 +129,7 @@ async function main() {
     console.error(`✗ Live export verification FAILED (${failures} check(s) failed)`);
     process.exitCode = 1;
   } else {
-    console.log(`✓ Live export OK — ${BASE} exported ${exportLines.length} rows matching seed.csv (canonical form).`);
+    console.log(`✓ Live export OK — ${BASE} exported ${exportRows.length} rows matching seed.csv (canonical form).`);
   }
 }
 
