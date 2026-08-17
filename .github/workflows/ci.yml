@@ -29,6 +29,8 @@ jobs:
         run: npm run test:csv-quoting
       - name: Ledger URL composition (DB-free filter regression)
         run: npm run test:ledger-url
+      - name: Semantic validation (DB-free date/time/month regression)
+        run: npm run test:validation
 
   # DB-backed invariants (seed, rename, budget round-trip + semantics). Point
   # DATABASE_URL at a disposable Neon branch; the tests are self-healing
