@@ -8,12 +8,11 @@ import type { NeonHttpDatabase } from "drizzle-orm/neon-http";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { budgets, categories, transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
+import { monthKeySchema } from "@/lib/validations";
 import type { BudgetAlert } from "@/lib/budget-alert";
 
-/** The app's real connection — passed explicitly by callers; tests pass their own. */
 type BudgetDb = NeonHttpDatabase<Record<string, unknown>>;
 
-/** A budgets row as fetched for a month — the subset the app reasons with. */
 export interface BudgetRow {
   month: string | null;
   categoryId: string | null;
@@ -23,24 +22,20 @@ export interface BudgetRow {
   categoryColor: string | null;
 }
 
-/**
- * §6.7 — effective budget for a scope in a month: the exact-month row wins,
- * otherwise the every-month default applies. `categoryId === null` resolves
- * the total monthly budget.
- */
 export function resolveEffectiveBudget(
   rows: BudgetRow[],
   monthKey: string,
   categoryId: string | null,
 ): BudgetRow | undefined {
+  const month = monthKeySchema.parse(monthKey);
   return (
-    rows.find((b) => b.month === monthKey && b.categoryId === categoryId) ??
+    rows.find((b) => b.month === month && b.categoryId === categoryId) ??
     rows.find((b) => b.month === null && b.categoryId === categoryId)
   );
 }
 
-/** The budgets relevant to one month: exact-month rows plus the defaults. */
 export function budgetsForMonth(db: BudgetDb, monthKey: string) {
+  const month = monthKeySchema.parse(monthKey);
   return db
     .select({
       month: budgets.month,
@@ -52,27 +47,28 @@ export function budgetsForMonth(db: BudgetDb, monthKey: string) {
     })
     .from(budgets)
     .leftJoin(categories, eq(budgets.categoryId, categories.id))
-    .where(or(eq(budgets.month, monthKey), isNull(budgets.month)));
+    .where(or(eq(budgets.month, month), isNull(budgets.month)));
 }
 
-/**
- * §6.7 — spent-vs-budget for a month's total, for the ledger month strip: the
- * month's total expense against the effective total budget (exact month wins,
- * else the every-month default). When the global "exclude bills" setting is
- * on, the month's recurring spend is subtracted from the spent side (bills are
- * committed costs, not discretionary budget). Returns null when no total
- * budget is set for the month — the strip then shows no bar.
- */
+function monthBounds(monthKey: string): { start: string; end: string } {
+  const month = monthKeySchema.parse(monthKey);
+  const [y, m] = month.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return {
+    start: `${month}-01`,
+    end: `${month}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
 export async function getMonthBudgetStatus(
   db: BudgetDb,
   monthKey: string,
 ): Promise<{ spentPaise: number; budgetPaise: number; billsPaise: number; excludeBills: boolean } | null> {
-  const start = `${monthKey}-01`;
-  const [y, m] = monthKey.split("-").map(Number);
-  const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+  const { start, end } = monthBounds(monthKey);
+  const validatedMonth = monthKeySchema.parse(monthKey);
 
   const [budgetRows, excludeBills, rows] = await Promise.all([
-    budgetsForMonth(db, monthKey),
+    budgetsForMonth(db, validatedMonth),
     getExcludeBillsEnabled(db),
     db
       .select({
@@ -83,7 +79,7 @@ export async function getMonthBudgetStatus(
       .where(and(gte(transactions.date, start), lte(transactions.date, end))),
   ]);
 
-  const totalBudget = resolveEffectiveBudget(budgetRows, monthKey, null);
+  const totalBudget = resolveEffectiveBudget(budgetRows, validatedMonth, null);
   if (!totalBudget) return null;
 
   const billsPaise = rupeesToPaise(rows[0].recurring);
@@ -96,20 +92,12 @@ export async function getMonthBudgetStatus(
   };
 }
 
-/**
- * §6.7 over-budget check, run by the create/update Server Actions after an
- * expense write. Compares the month total and the affected category's total
- * (both post-write, so the new row is included) against the effective budgets.
- * Returns the total alert if the month is over, else the category alert, else
- * null — one warning per write, the more important scope wins.
- */
 export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId: string): Promise<BudgetAlert | null> {
-  const start = `${monthKey}-01`;
-  const [y, m] = monthKey.split("-").map(Number);
-  const end = `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
+  const validatedMonth = monthKeySchema.parse(monthKey);
+  const { start, end } = monthBounds(validatedMonth);
 
   const [budgetRows, excludeBills, totals] = await Promise.all([
-    budgetsForMonth(db, monthKey),
+    budgetsForMonth(db, validatedMonth),
     getExcludeBillsEnabled(db),
     db
       .select({
@@ -121,9 +109,7 @@ export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId:
       .where(and(gte(transactions.date, start), lte(transactions.date, end))),
   ]);
 
-  const totalBudget = resolveEffectiveBudget(budgetRows, monthKey, null);
-  // §6.7 — when exclude-bills is on, the total comparison ignores recurring spend;
-  // the category comparison below always counts everything (owner decision).
+  const totalBudget = resolveEffectiveBudget(budgetRows, validatedMonth, null);
   const totalPaise = rupeesToPaise(totals[0].total) - (excludeBills ? rupeesToPaise(totals[0].recurring) : 0);
   if (totalBudget && totalPaise > rupeesToPaise(totalBudget.amount)) {
     return {
@@ -134,7 +120,7 @@ export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId:
     };
   }
 
-  const categoryBudget = resolveEffectiveBudget(budgetRows, monthKey, categoryId);
+  const categoryBudget = resolveEffectiveBudget(budgetRows, validatedMonth, categoryId);
   const categoryPaise = rupeesToPaise(totals[0].category);
   if (categoryBudget && categoryPaise > rupeesToPaise(categoryBudget.amount)) {
     const row = budgetRows.find((b) => b.categoryId === categoryId);
