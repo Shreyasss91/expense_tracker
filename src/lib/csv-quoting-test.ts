@@ -5,12 +5,12 @@
  * double quote or newline is quoted; embedded quotes are doubled) round-trips
  * through a REAL RFC 4180-style parser — never a naive split(",").
  *
- * The parser is written by hand and asserted against hand-written CSV strings
- * first, so the parser itself is proven before the serializer is tested
- * against it (no circularity).
+ * The shared parser is proven against hand-written CSV strings first, so the
+ * parser itself is validated before the serializer is tested against it.
  */
 import { csvField, csvRow } from "./csv";
 import { formatCsvLine, type CsvExportRow } from "./csv-export";
+import { parseCsv } from "./csv-parser";
 
 function fail(msg: string): never {
   console.error(`✗ ${msg}`);
@@ -19,61 +19,6 @@ function fail(msg: string): never {
 
 function ok(msg: string) {
   console.log(`✓ ${msg}`);
-}
-
-/**
- * Minimal RFC 4180-style parser: quoted fields, "" escape, LF or CRLF row
- * terminators, commas and newlines inside quotes. Returns rows of fields.
- */
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let inQuotes = false;
-  let i = 0;
-  while (i < text.length) {
-    const ch = text[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (text[i + 1] === '"') {
-          field += '"';
-          i += 2;
-        } else {
-          inQuotes = false;
-          i += 1;
-        }
-      } else {
-        field += ch;
-        i += 1;
-      }
-    } else {
-      if (ch === '"') {
-        inQuotes = true;
-        i += 1;
-      } else if (ch === ",") {
-        row.push(field);
-        field = "";
-        i += 1;
-      } else if (ch === "\n") {
-        row.push(field);
-        rows.push(row);
-        row = [];
-        field = "";
-        i += 1;
-      } else if (ch === "\r") {
-        i += 1; // CRLF: the \n terminates the row
-      } else {
-        field += ch;
-        i += 1;
-      }
-    }
-  }
-  // Final unterminated row (seed.csv convention: no trailing newline).
-  if (field !== "" || row.length > 0) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,10 +91,10 @@ const rows: CsvExportRow[] = [
     time: "09:15:00",
     member: "Mom",
     type: "income",
-    note: "Refund\nreceived", // newline inside a field
+    note: "Refund\nreceived",
     amount: "500.00",
     category: "Misc",
-    tag: null, // income rows export an empty tag (§6.6)
+    tag: null,
   },
   {
     date: "2026-08-13",
@@ -179,7 +124,7 @@ ok("formatCsvLine: adversarial member/note/category fields serialize to correct 
 
 // ---------------------------------------------------------------------------
 // 4. Full round-trip: serialize ALL rows with the ACTUAL serializer (CRLF
-//    records per RFC 4180), then parse with the real parser and compare every
+//    records per RFC 4180), then parse with the shared parser and compare every
 //    field. This is the genuine serializer → CSV document → parser → fields
 //    path; section 3 above is the independent known-answer check.
 // ---------------------------------------------------------------------------
