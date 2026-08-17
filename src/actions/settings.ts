@@ -9,8 +9,18 @@ import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations
 import { categories, members, transactions } from "@/db/schema";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { rupeesToPaise } from "@/lib/money";
-import { saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
+import { monthKeySchema, saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
 import { z } from "zod";
+
+function validateCompleteUniqueIds(ids: string[], expectedIds: string[]): string[] | null {
+  const parsed = z.array(z.string().uuid()).safeParse(ids);
+  if (!parsed.success) return null;
+  const unique = new Set(parsed.data);
+  const expected = new Set(expectedIds);
+  if (unique.size !== parsed.data.length || unique.size !== expected.size) return null;
+  if (parsed.data.some((id) => !expected.has(id))) return null;
+  return parsed.data;
+}
 
 /**
  * §6.5 — categories: rename, emoji, reorder ONLY.
@@ -19,7 +29,12 @@ import { z } from "zod";
 export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) {
   const parsed = updateCategorySchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid category data" };
-  await renameCategory(db, parsed.data);
+  const [row] = await db
+    .update(categories)
+    .set({ name: parsed.data.name, emoji: parsed.data.emoji, sortOrder: parsed.data.sortOrder })
+    .where(eq(categories.id, parsed.data.id))
+    .returning({ id: categories.id });
+  if (!row) return { ok: false as const, error: "Category not found" };
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidatePath("/settings");
@@ -29,11 +44,12 @@ export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) 
 }
 
 export async function reorderCategories(ids: string[]) {
-  const parsed = z.array(z.string().uuid()).safeParse(ids);
-  if (!parsed.success) return { ok: false as const, error: "Invalid order" };
+  const existing = await db.select({ id: categories.id }).from(categories);
+  const parsed = validateCompleteUniqueIds(ids, existing.map((row) => row.id));
+  if (!parsed) return { ok: false as const, error: "Invalid category order" };
   // Plain sequential updates — the neon-http driver has no transaction support.
-  for (let i = 0; i < parsed.data.length; i++) {
-    await db.update(categories).set({ sortOrder: i + 1 }).where(eq(categories.id, parsed.data[i]));
+  for (let i = 0; i < parsed.length; i++) {
+    await db.update(categories).set({ sortOrder: i + 1 }).where(eq(categories.id, parsed[i]));
   }
   revalidatePath("/transactions");
   revalidatePath("/settings");
@@ -48,10 +64,12 @@ export async function reorderCategories(ids: string[]) {
 export async function updateMember(raw: z.infer<typeof updateMemberSchema>) {
   const parsed = updateMemberSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid member data" };
-  await db
+  const [row] = await db
     .update(members)
     .set({ name: parsed.data.name, emoji: parsed.data.emoji, color: parsed.data.color, sortOrder: parsed.data.sortOrder })
-    .where(eq(members.id, parsed.data.id));
+    .where(eq(members.id, parsed.data.id))
+    .returning({ id: members.id });
+  if (!row) return { ok: false as const, error: "Member not found" };
   revalidatePath("/");
   revalidatePath("/transactions");
   revalidatePath("/settings");
@@ -61,11 +79,12 @@ export async function updateMember(raw: z.infer<typeof updateMemberSchema>) {
 }
 
 export async function reorderMembers(ids: string[]) {
-  const parsed = z.array(z.string().uuid()).safeParse(ids);
-  if (!parsed.success) return { ok: false as const, error: "Invalid order" };
+  const existing = await db.select({ id: members.id }).from(members);
+  const parsed = validateCompleteUniqueIds(ids, existing.map((row) => row.id));
+  if (!parsed) return { ok: false as const, error: "Invalid member order" };
   // Plain sequential updates — the neon-http driver has no transaction support.
-  for (let i = 0; i < parsed.data.length; i++) {
-    await db.update(members).set({ sortOrder: i + 1 }).where(eq(members.id, parsed.data[i]));
+  for (let i = 0; i < parsed.length; i++) {
+    await db.update(members).set({ sortOrder: i + 1 }).where(eq(members.id, parsed[i]));
   }
   revalidatePath("/");
   revalidatePath("/settings");
@@ -85,6 +104,19 @@ export async function saveBudgets(raw: z.infer<typeof saveBudgetsSchema>) {
   const parsed = saveBudgetsSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid budget data" };
   const { month, totalPaise, categories: categoryLimits } = parsed.data;
+
+  const categoryIds = categoryLimits.map((item) => item.categoryId);
+  const uniqueCategoryIds = new Set(categoryIds);
+  if (uniqueCategoryIds.size !== categoryIds.length) {
+    return { ok: false as const, error: "Duplicate category budget" };
+  }
+  if (categoryIds.length > 0) {
+    const existing = await db.select({ id: categories.id }).from(categories);
+    const existingIds = new Set(existing.map((row) => row.id));
+    if (categoryIds.some((id) => !existingIds.has(id))) {
+      return { ok: false as const, error: "Unknown budget category" };
+    }
+  }
 
   // null total means "no total limit" — replaceBudgetScope treats 0 the same.
   await replaceBudgetScope(db, month, totalPaise ?? 0, categoryLimits);
@@ -139,9 +171,9 @@ export async function setExcludeBills(raw: z.infer<typeof setExcludeBillsSchema>
  * remaining can be negative (over budget).
  */
 export async function getCategoryBudgetStatus(monthKey: string) {
-  const month = z.string().regex(/^\d{4}-\d{2}$/).safeParse(monthKey);
-  if (!month.success) return { ok: false as const, error: "Invalid month" };
-  const key = month.data;
+  const parsedMonth = monthKeySchema.safeParse(monthKey);
+  if (!parsedMonth.success) return { ok: false as const, error: "Invalid month" };
+  const key = parsedMonth.data;
 
   const [budgetRows, spentRows] = await Promise.all([
     budgetsForMonth(db, key),
@@ -156,7 +188,7 @@ export async function getCategoryBudgetStatus(monthKey: string) {
   ]);
 
   const spent = new Map(spentRows.map((r) => [r.categoryId, rupeesToPaise(r.total)]));
-  const categories = budgetRows
+  const categoryStatuses = budgetRows
     .filter((b) => b.categoryId !== null)
     .map((b) => b.categoryId!)
     .filter((id, i, self) => self.indexOf(id) === i)
@@ -166,11 +198,11 @@ export async function getCategoryBudgetStatus(monthKey: string) {
       return { categoryId, remainingPaise: limitPaise - (spent.get(categoryId) ?? 0) };
     });
 
-  return { ok: true as const, categories };
+  return { ok: true as const, categories: categoryStatuses };
 }
 
 function monthEnd(monthKey: string): string {
-  const [y, m] = monthKey.split("-").map(Number);
+  const [y, m] = monthKeySchema.parse(monthKey).split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
 }
