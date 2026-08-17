@@ -21,13 +21,60 @@ import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { login } from "./lib/live.mjs";
-import { parseCsv } from "../src/lib/csv-parser.ts";
 
 const require = createRequire(import.meta.url);
 const { encodeReply } = require("next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.node.unbundled.development.js");
 
 const BASE = process.env.PROD_URL ?? "https://kharchubook.vercel.app";
 const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i += 1;
+        }
+      } else {
+        field += ch;
+        i += 1;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+      i += 1;
+    } else if (ch === ",") {
+      row.push(field);
+      field = "";
+      i += 1;
+    } else if (ch === "\n") {
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = "";
+      i += 1;
+    } else if (ch === "\r") {
+      i += 1;
+    } else {
+      field += ch;
+      i += 1;
+    }
+  }
+  if (field !== "" || row.length > 0) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows;
+}
 
 let failures = 0;
 function check(cond, msg) {
