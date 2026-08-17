@@ -2,7 +2,7 @@
  * Production smoke test — `npm run smoke:prod`.
  *
  * Checks the deployed app end to end over real HTTP:
- *   1. middleware redirects `/` → `/login`
+ *   1. middleware redirects `/` → `/login` on the SAME origin
  *   2. login page renders
  *   3. credentials login succeeds (session cookie issued)
  *   4. dashboard renders all its sections
@@ -11,8 +11,8 @@
  *      drifts from the audited baseline (not seeded, or new transactions).
  *
  * Env:
- *   PROD_URL          default https://tokenscript.vercel.app
- *   MASTER_PASSWORD   override; falls back to FAMILY_MASTER_PASSWORD in .env.local
+ *   PROD_URL                 default https://kharchubook.vercel.app
+ *   FAMILY_MASTER_PASSWORD   production login password
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -21,8 +21,8 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import { login } from "./lib/live.mjs";
 
-const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
-const PASSWORD = process.env.MASTER_PASSWORD ?? process.env.FAMILY_MASTER_PASSWORD ?? "";
+const BASE = process.env.PROD_URL ?? "https://kharchubook.vercel.app";
+const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
 // Per-request budget in ms. Generous on purpose: the first hit after idle is a
 // Vercel cold start (x-vercel-cache: MISS), which legitimately takes seconds.
 // Only a genuinely unhealthy site exceeds this.
@@ -60,7 +60,7 @@ function stripReactComments(html) {
 
 async function main() {
   if (!PASSWORD) {
-    throw new Error("no master password — set MASTER_PASSWORD or FAMILY_MASTER_PASSWORD in .env.local");
+    throw new Error("no family master password — set FAMILY_MASTER_PASSWORD");
   }
 
   // Expected baseline derived from the canonical seed.csv (§8).
@@ -82,7 +82,17 @@ async function main() {
   const home = await timed("GET / (redirect)", () => fetch(`${BASE}/`, { redirect: "manual", signal: AbortSignal.timeout(60000) }));
   check(home.status === 307, `GET / → ${home.status} (redirect)`);
   const loc = home.headers.get("location") ?? "";
-  check(loc.includes("/login"), `redirect target is /login (${loc.slice(0, 60)})`);
+  let redirectUrl;
+  try {
+    redirectUrl = new URL(loc, BASE);
+  } catch {
+    redirectUrl = null;
+  }
+  const baseUrl = new URL(BASE);
+  check(
+    redirectUrl !== null && redirectUrl.origin === baseUrl.origin && redirectUrl.pathname === "/login",
+    `redirect target is same-origin /login (${loc.slice(0, 120)})`,
+  );
 
   // 2. login page
   const loginPage = await timed("GET /login", () => fetch(`${BASE}/login`, { signal: AbortSignal.timeout(60000) }));
