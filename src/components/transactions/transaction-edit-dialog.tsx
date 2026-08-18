@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -21,7 +20,7 @@ import { budgetAlertMessage } from "@/lib/budget-alert";
 import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
-import { AmountField, CategoryGrid, TagSelector, type TransactionTag } from "./transaction-fields";
+import { AmountField, CategoryGrid, DateTimeField, TagSelector, type TransactionTag } from "./transaction-fields";
 
 export function TransactionEditDialog({
   row,
@@ -155,35 +154,34 @@ export function TransactionEditDialog({
           }}
           className="space-y-4"
         >
+          {/* date/time first, mirroring the Quick Add sheet (§6.2) */}
+          <DateTimeField
+            date={date}
+            time={time}
+            onDateChange={setDate}
+            onTimeChange={setTime}
+            dateId="ed-date"
+            timeId="ed-time"
+          />
+
           <AmountField id="ed-amount" value={amount} onChange={setAmount} />
 
           <TagSelector value={tag} onChange={setTag} />
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Member</Label>
-              <Select value={memberId} onValueChange={setMemberId}>
-                <SelectTrigger className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {members.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.emoji} {m.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ed-date" className="text-xs text-muted-foreground">Date</Label>
-              <Input id="ed-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10" />
-            </div>
-          </div>
-
           <div className="space-y-1.5">
-            <Label htmlFor="ed-time" className="text-xs text-muted-foreground">Time</Label>
-            <Input id="ed-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
+            <Label className="text-xs text-muted-foreground">Member</Label>
+            <Select value={memberId} onValueChange={setMemberId}>
+              <SelectTrigger className="h-10">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {members.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.emoji} {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-1.5">
