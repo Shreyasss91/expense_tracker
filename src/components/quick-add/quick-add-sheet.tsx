@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,40 @@ import { emitLedgerMutation } from "@/lib/events";
 import { paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
-import { APP_TIMEZONE } from "@/lib/constants";
+import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
 import { AmountField, CategoryGrid, DateTimeField, TagSelector, type TransactionTag } from "@/components/transactions/transaction-fields";
+
+// §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
+// tag + note already filled in; the amount, category, date and time never repeat.
+const LAST_ENTRY_KEY = "quick-add:last-entry";
+
+function loadLastEntry(): { tag: TransactionTag; note: string } {
+  const fallback = { tag: "lifestyle" as const, note: "" };
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = window.localStorage.getItem(LAST_ENTRY_KEY);
+    if (!raw) return fallback;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return fallback;
+    const { tag, note } = parsed as { tag?: unknown; note?: unknown };
+    return {
+      tag: typeof tag === "string" && TRANSACTION_TAGS.some((t) => t === tag) ? (tag as TransactionTag) : "lifestyle",
+      note: typeof note === "string" ? note : "",
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveLastEntry(entry: { tag: TransactionTag; note: string }) {
+  try {
+    window.localStorage.setItem(LAST_ENTRY_KEY, JSON.stringify(entry));
+  } catch {
+    // storage unavailable (private mode, quota) — remembering is best-effort
+  }
+}
 
 export function QuickAddSheet({
   open,
@@ -51,7 +81,17 @@ export function QuickAddSheet({
   const [cats, setCats] = useState(categories);
   // §6.7 — remaining budget per category for the current date's month (expense only)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
+  // §6.2 — the last committed tag + note, restored on open and updated on save
+  const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
   const router = useRouter();
+
+  // Hydrate the remembered tag/note after mount (never during SSR, so the
+  // server-rendered defaults stay consistent with the client's first paint).
+  useEffect(() => {
+    lastEntryRef.current = loadLastEntry();
+    setTag(lastEntryRef.current.tag);
+    setNote(lastEntryRef.current.note);
+  }, []);
 
   // Keep the local category copy in sync with server-provided data when not mid-edit,
   // so renames done elsewhere (Settings) also land in this picker.
@@ -85,9 +125,9 @@ export function QuickAddSheet({
 
   function reset() {
     setAmount("");
-    setTag("lifestyle");
+    setTag(lastEntryRef.current.tag);
     setSelectedCategoryId("");
-    setNote("");
+    setNote(lastEntryRef.current.note);
     setError(null);
     setDate(formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
@@ -151,6 +191,9 @@ export function QuickAddSheet({
       toast.success("Transaction added");
       // §6.7 — warn when this expense pushed the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
+      // §6.2 — remember the committed tag/note so the next repeat entry starts filled in
+      lastEntryRef.current = { tag, note };
+      saveLastEntry(lastEntryRef.current);
       reset();
       onClose();
     } else {
