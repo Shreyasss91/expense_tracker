@@ -15,6 +15,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus } from "@/actions/settings";
+import { useCategoryUsage } from "@/lib/category-usage";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { emitLedgerMutation } from "@/lib/events";
@@ -63,6 +64,8 @@ export function TransactionEditDialog({
   }
 
   const paise = rupeesToPaise(amount);
+  // §6.2 — recently used categories float to the top, same as the Quick Add grid
+  const { orderedCategories, touchCategory } = useCategoryUsage(categories);
 
   // §6.7 — fetch remaining budget per category for the row's month; debounced so
   // per-keystroke amount edits don't spam the server action (same as Quick Add).
@@ -131,6 +134,8 @@ export function TransactionEditDialog({
       toast.success("Transaction updated");
       // §6.7 — warn when the edited expense left the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
+      // §6.2 — record the category as used so recently used ones float to the top
+      touchCategory(category.id);
     } else {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
       toast.error(res.error ?? "Could not save");
@@ -203,7 +208,7 @@ export function TransactionEditDialog({
           </div>
 
           <CategoryGrid
-            categories={categories}
+            categories={orderedCategories}
             selectedId={categoryId}
             onSelect={setCategoryId}
             budgetRemaining={budgetRemaining}
