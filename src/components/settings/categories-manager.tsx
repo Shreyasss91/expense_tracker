@@ -76,22 +76,26 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
           <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Recently created</p>
           <div className="flex flex-wrap gap-1.5">
             {recentItems.map((c) => (
-              <span
+              <button
                 key={c.id}
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                type="button"
+                onClick={() => {
+                  document.getElementById(`cat-${c.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors hover:bg-accent"
                 style={{ borderColor: c.color }}
               >
                 <span>{c.emoji}</span>
                 {c.name}
                 <span className="rounded-full bg-primary px-1.5 py-px text-[9px] font-semibold text-primary-foreground">NEW</span>
-              </span>
+              </button>
             ))}
           </div>
         </div>
       )}
       <ul className="space-y-2">
       {items.map((c, i) => (
-        <li key={c.id} className="flex items-center gap-2">
+        <li key={c.id} id={`cat-${c.id}`} className="flex items-center gap-2">
           <Input
             aria-label="Emoji"
             className="h-9 w-12 text-center text-base"
