@@ -166,9 +166,7 @@ export function TransactionEditDialog({
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span>{row?.category.emoji ?? "📝"}</span> Edit transaction
-          </DialogTitle>
+          <DialogTitle>Edit transaction</DialogTitle>
         </DialogHeader>
 
         {/* a real <form> so Enter submits from any input (same as Quick Add) */}

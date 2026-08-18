@@ -53,7 +53,7 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
     const res = await updateCategory({
       id: item.id,
       name: item.name.trim() || item.name,
-      emoji: item.emoji.trim() || "📦",
+      emoji: item.emoji || "📦",
       sortOrder: index + 1,
     });
     if (res.ok) {
@@ -82,10 +82,9 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
                 onClick={() => {
                   document.getElementById(`cat-${c.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
                 }}
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-colors hover:bg-accent"
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors hover:bg-accent"
                 style={{ borderColor: c.color }}
               >
-                <span>{c.emoji}</span>
                 {c.name}
                 <span className="rounded-full bg-primary px-1.5 py-px text-[9px] font-semibold text-primary-foreground">NEW</span>
               </button>
@@ -96,12 +95,6 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
       <ul className="space-y-2">
       {items.map((c, i) => (
         <li key={c.id} id={`cat-${c.id}`} className="flex items-center gap-2">
-          <Input
-            aria-label="Emoji"
-            className="h-9 w-12 text-center text-base"
-            value={c.emoji}
-            onChange={(e) => patch(i, "emoji", e.target.value)}
-          />
           <Input
             aria-label="Category name"
             className="h-9 flex-1"
