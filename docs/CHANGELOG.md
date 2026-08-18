@@ -28,6 +28,12 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   remaining-budget hints (§6.7, fetched against the chosen date's month), inline
   category rename, and default date/time in `Asia/Kolkata` (§5.7). The Server Action,
   schema, and `createTransaction` contract are unchanged.
+- **Edit dialog aligned + Enter-to-submit (same day):** the edit-transaction dialog
+  now shares the Quick Add form treatment — a large amount input with a live `≈ ₹`
+  preview, check-mark tag chips, a tap-to-select category grid with the same §6.7
+  remaining-budget hints (debounced `getCategoryBudgetStatus`), and a real `<form>`
+  in both sheets so **Enter** submits from any field (`Cmd/Ctrl+Enter` in the note).
+  Member remains a dropdown in edit, since editing may reassign the member (§6.4).
 - **Supersedes:** Amendment 2's normative **Amount → Details → Category** sequence
   (category tap = commit) and the §6.2 one-tap bill shortcut wording from the 16 Aug
   2026 amendment.
