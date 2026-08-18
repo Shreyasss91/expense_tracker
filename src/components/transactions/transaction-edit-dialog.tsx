@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,13 +16,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus } from "@/actions/settings";
-import { formatINR, paiseToDbString, rupeesToPaise } from "@/lib/money";
+import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
-import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
 import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
-import { cn } from "@/lib/utils";
+import { AmountField, CategoryGrid, TagSelector, type TransactionTag } from "./transaction-fields";
 
 export function TransactionEditDialog({
   row,
@@ -40,7 +38,7 @@ export function TransactionEditDialog({
   onOpenChange: (o: boolean) => void;
   onRequestDelete: (row: TransactionListRow) => void;
 }) {
-  const [tag, setTag] = useState<string>("lifestyle");
+  const [tag, setTag] = useState<TransactionTag>("lifestyle");
   const [categoryId, setCategoryId] = useState("");
   const [memberId, setMemberId] = useState("");
   const [amount, setAmount] = useState("");
@@ -55,7 +53,7 @@ export function TransactionEditDialog({
   const [lastKey, setLastKey] = useState<string | null>(null);
   if (row && row.id !== lastKey) {
     setLastKey(row.id);
-    setTag(row.tag ?? "lifestyle");
+    setTag((row.tag ?? "lifestyle") as TransactionTag);
     setCategoryId(row.categoryId);
     setMemberId(row.memberId);
     setAmount(Number(row.amount).toString());
@@ -157,40 +155,9 @@ export function TransactionEditDialog({
           }}
           className="space-y-4"
         >
-          {/* amount — same treatment as Quick Add */}
-          <div className="space-y-1.5">
-            <Label htmlFor="ed-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
-            <Input
-              id="ed-amount"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="h-12 text-2xl font-semibold tabular-nums"
-            />
-            {paise > 0 && <p className="text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>}
-          </div>
+          <AmountField id="ed-amount" value={amount} onChange={setAmount} />
 
-          {/* tag selector — same chips as Quick Add */}
-          <div>
-            <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {TRANSACTION_TAGS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTag(t)}
-                  className={cn(
-                    "flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-medium",
-                    tag === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {tag === t && <Check className="h-3.5 w-3.5" />}
-                  {TRANSACTION_TAG_LABELS[t]}
-                </button>
-              ))}
-            </div>
-          </div>
+          <TagSelector value={tag} onChange={setTag} />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -237,43 +204,12 @@ export function TransactionEditDialog({
             />
           </div>
 
-          {/* category grid — tap to select, same as Quick Add */}
-          <div>
-            <Label className="mb-2 text-xs text-muted-foreground">Category</Label>
-            <p className="mb-2 text-[11px] text-muted-foreground">Tap a category to select it</p>
-            <div className="grid grid-cols-3 gap-2">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setCategoryId(c.id)}
-                  className={cn(
-                    "relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95",
-                    categoryId === c.id && "ring-2 ring-primary",
-                  )}
-                  style={{ borderColor: c.color }}
-                >
-                  {categoryId === c.id && (
-                    <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
-                      <Check className="h-3 w-3" />
-                    </span>
-                  )}
-                  <span className="text-2xl">{c.emoji}</span>
-                  <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
-                  {/* §6.7 — remaining budget hint, when this category has one for the month */}
-                  {budgetRemaining?.get(c.id) !== undefined && (
-                    <span
-                      className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
-                    >
-                      {(budgetRemaining.get(c.id) ?? 0) < 0
-                        ? `${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
-                        : `${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
+          <CategoryGrid
+            categories={categories}
+            selectedId={categoryId}
+            onSelect={setCategoryId}
+            budgetRemaining={budgetRemaining}
+          />
 
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 

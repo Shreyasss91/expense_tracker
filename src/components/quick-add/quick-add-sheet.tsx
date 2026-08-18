@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,15 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
-import { formatINR, paiseToDbString } from "@/lib/money";
+import { paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
-import { APP_TIMEZONE, TRANSACTION_TAGS, TRANSACTION_TAG_LABELS } from "@/lib/constants";
+import { APP_TIMEZONE } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
-import { cn } from "@/lib/utils";
-
-type Tag = (typeof TRANSACTION_TAGS)[number];
+import { AmountField, CategoryGrid, TagSelector, type TransactionTag } from "@/components/transactions/transaction-fields";
 
 export function QuickAddSheet({
   open,
@@ -38,7 +35,7 @@ export function QuickAddSheet({
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
-  const [tag, setTag] = useState<Tag>("lifestyle");
+  const [tag, setTag] = useState<TransactionTag>("lifestyle");
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [date, setDate] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
   const [time, setTime] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
@@ -231,40 +228,9 @@ export function QuickAddSheet({
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="qa-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
-            <Input
-              id="qa-amount"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className="h-12 text-2xl font-semibold tabular-nums"
-              autoFocus
-            />
-            {paise > 0 && <p className="text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>}
-          </div>
+          <AmountField id="qa-amount" value={amount} onChange={setAmount} autoFocus />
 
-          {/* tag selector */}
-          <div>
-            <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {TRANSACTION_TAGS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setTag(t)}
-                  className={cn(
-                    "flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-medium",
-                    tag === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {tag === t && <Check className="h-3.5 w-3.5" />}
-                  {TRANSACTION_TAG_LABELS[t]}
-                </button>
-              ))}
-            </div>
-          </div>
+          <TagSelector value={tag} onChange={setTag} />
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -295,115 +261,25 @@ export function QuickAddSheet({
             />
           </div>
 
-          {/* category grid — tap selects; Add commits */}
-          <div>
-            <div className="mb-2 flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">Category</Label>
-              {editMode ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                  onClick={() => { setEditMode(false); setRenamingId(null); }}
-                >
-                  <Check className="h-3 w-3" /> Done
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                  onClick={() => setEditMode(true)}
-                >
-                  <Pencil className="h-3 w-3" /> Rename categories
-                </Button>
-              )}
-            </div>
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              {editMode ? "Tap a category to rename" : "Tap a category to select it"}
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {cats.map((c) =>
-                renamingId === c.id ? (
-                  <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
-                    <div className="flex gap-1">
-                      <Input
-                        value={renameEmoji}
-                        onChange={(e) => setRenameEmoji(e.target.value)}
-                        className="h-8 w-10 shrink-0 px-1 text-center text-base"
-                        aria-label="Category emoji"
-                        maxLength={4}
-                      />
-                      <Input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          // preventDefault stops Enter/Escape from also submitting the form
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void saveRename(c);
-                          }
-                          if (e.key === "Escape") {
-                            e.preventDefault();
-                            cancelRename();
-                          }
-                        }}
-                        className="h-8 min-w-0 flex-1 text-center text-xs"
-                        aria-label="Category name"
-                        maxLength={50}
-                      />
-                    </div>
-                    <div className="flex justify-center gap-1">
-                      <Button type="button" size="icon" className="h-6 w-6" disabled={renaming} onClick={() => void saveRename(c)} aria-label="Save name and emoji">
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={cancelRename} aria-label="Cancel rename">
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    key={c.id}
-                    type="button"
-                    disabled={renaming}
-                    onClick={() => void (editMode ? startRename(c) : setSelectedCategoryId(c.id))}
-                    className={cn(
-                      "relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95 disabled:opacity-60",
-                      !editMode && selectedCategoryId === c.id && "ring-2 ring-primary",
-                    )}
-                    style={{ borderColor: c.color }}
-                  >
-                    {!editMode && selectedCategoryId === c.id && (
-                      <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
-                        <Check className="h-3 w-3" />
-                      </span>
-                    )}
-                    {editMode && (
-                      <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground" aria-hidden>
-                        <Pencil className="h-2.5 w-2.5" />
-                      </span>
-                    )}
-                    <span className="text-2xl">{c.emoji}</span>
-                    <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
-                    {/* §6.7 — remaining budget hint, when this category has one for the month */}
-                    {!editMode && budgetRemaining?.get(c.id) !== undefined && (
-                      <span
-                        className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
-                      >
-                        {(budgetRemaining.get(c.id) ?? 0) < 0
-                          ? `${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
-                          : `${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
-                      </span>
-                    )}
-                  </button>
-                )
-              )}
-            </div>
-          </div>
+          <CategoryGrid
+            categories={cats}
+            selectedId={selectedCategoryId}
+            onSelect={setSelectedCategoryId}
+            budgetRemaining={budgetRemaining}
+            showBudgetHints={!editMode}
+            editMode={editMode}
+            onToggleEditMode={() => setEditMode(true)}
+            onExitEditMode={() => { setEditMode(false); setRenamingId(null); }}
+            renamingId={renamingId}
+            renameValue={renameValue}
+            renameEmoji={renameEmoji}
+            renaming={renaming}
+            onRenameValueChange={setRenameValue}
+            onRenameEmojiChange={setRenameEmoji}
+            onStartRename={startRename}
+            onSaveRename={(c) => void saveRename(c)}
+            onCancelRename={cancelRename}
+          />
         </div>
 
         <div className="border-t border-muted-foreground/10 pt-3">
