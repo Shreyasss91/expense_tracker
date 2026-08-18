@@ -105,6 +105,7 @@ export function QuickAddSheet({
   const [renameEmoji, setRenameEmoji] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [cats, setCats] = useState(categories);
+  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
   // §6.7 — remaining budget per category for the current date's month (expense only)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // §6.2 — the last committed tag + note, restored on open and updated on save
@@ -128,6 +129,11 @@ export function QuickAddSheet({
     if (!editMode && !renamingId) setCats(categories);
   }, [categories, editMode, renamingId]);
 
+  // §6.9 — reset "show all" whenever the note changes so fresh input shows suggestions
+  useEffect(() => {
+    setShowAllSuggestions(false);
+  }, [note]);
+
   const paise = useMemo(() => Math.round(parseFloat(amount || "0") * 100) || 0, [amount]);
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
   // §6.2 — recently used categories float to the top of the grid
@@ -136,17 +142,24 @@ export function QuickAddSheet({
   // §6.2 — when a note is typed, show up to 6 suggested categories instead of the
   // full grid; fall back to the full grid when nothing matches. The already
   // selected category stays pinned at the top so the selection never vanishes.
+  // §6.9 — "Show all" button lets the user expand suggestions to the full grid.
   const noteTrimmed = note.trim();
-  const { shownCategories, suggestionsActive } = useMemo(() => {
-    if (editMode || !noteTrimmed) return { shownCategories: orderedCategories, suggestionsActive: false };
+  const { shownCategories, suggestionsActive, hasMoreCategories } = useMemo(() => {
+    if (editMode || !noteTrimmed)
+      return { shownCategories: orderedCategories, suggestionsActive: false, hasMoreCategories: false };
     const suggestions = suggestCategories(noteTrimmed, orderedCategories);
-    if (suggestions.length === 0) return { shownCategories: orderedCategories, suggestionsActive: false };
+    if (suggestions.length === 0)
+      return { shownCategories: orderedCategories, suggestionsActive: false, hasMoreCategories: false };
+    if (showAllSuggestions)
+      return { shownCategories: orderedCategories, suggestionsActive: false, hasMoreCategories: false };
+    const hasMore = suggestions.length < orderedCategories.length;
     if (selectedCategoryId && !suggestions.some((c) => c.id === selectedCategoryId)) {
       const selected = orderedCategories.find((c) => c.id === selectedCategoryId);
-      if (selected) return { shownCategories: [selected, ...suggestions], suggestionsActive: true };
+      if (selected)
+        return { shownCategories: [selected, ...suggestions], suggestionsActive: true, hasMoreCategories: hasMore };
     }
-    return { shownCategories: suggestions, suggestionsActive: true };
-  }, [noteTrimmed, orderedCategories, editMode, selectedCategoryId]);
+    return { shownCategories: suggestions, suggestionsActive: true, hasMoreCategories: hasMore };
+  }, [noteTrimmed, orderedCategories, editMode, selectedCategoryId, showAllSuggestions]);
 
   // §6.2 — inline "add a new category" flow (shared with the edit dialog)
   const { open: openAddCategory, cancel: cancelAddCategory, addForm } = useCreateCategory(
@@ -190,6 +203,7 @@ export function QuickAddSheet({
     setRenameValue("");
     setRenameEmoji("");
     setShowDatePicker(dateTimeExpandedRef.current);
+    setShowAllSuggestions(false);
     cancelAddCategory();
   }
 
@@ -382,6 +396,17 @@ export function QuickAddSheet({
               suggestionsActive
                 ? "Suggested from your note — tap to select"
                 : "Tap a category to select it"
+            }
+            showAllLink={
+              suggestionsActive && hasMoreCategories ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllSuggestions(true)}
+                  className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Show all categories
+                </button>
+              ) : undefined
             }
             editMode={editMode}
             onToggleEditMode={() => setEditMode(true)}

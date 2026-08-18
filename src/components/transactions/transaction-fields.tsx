@@ -186,6 +186,8 @@ export function CategoryGrid({
   onStartRename,
   onSaveRename,
   onCancelRename,
+  // show-all link (optional — shown between hint and grid when suggestions are active)
+  showAllLink,
   // add-new-category (optional — Quick Add only)
   onAddCategory,
   addForm,
@@ -208,6 +210,7 @@ export function CategoryGrid({
   onStartRename?: (c: CategoryOption) => void;
   onSaveRename?: (c: CategoryOption) => void;
   onCancelRename?: () => void;
+  showAllLink?: React.ReactNode;
   onAddCategory?: () => void;
   addForm?: AddCategoryForm;
 }) {
@@ -241,10 +244,11 @@ export function CategoryGrid({
             </Button>
           ))}
       </div>
-      <p className="mb-2 text-[11px] text-muted-foreground">
-        {hint ?? (editMode ? "Tap a category to rename" : "Tap a category to select it")}
-      </p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="mb-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+        <p>{hint ?? (editMode ? "Tap a category to rename" : "Tap a category to select it")}</p>
+        {showAllLink}
+      </div>
+      <div className="flex flex-wrap gap-2">
         {categories.map((c) =>
           renamingId === c.id && canRename ? (
             <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
@@ -292,10 +296,10 @@ export function CategoryGrid({
               disabled={renaming}
               onClick={() => (editMode && canRename ? onStartRename?.(c) : onSelect(c.id))}
               className={cn(
-                "relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95 disabled:opacity-60",
-                !editMode && selectedId === c.id && "ring-2 ring-primary",
+                "relative inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium active:scale-95 disabled:opacity-60",
+                !editMode && selectedId === c.id && "bg-primary text-primary-foreground",
               )}
-              style={{ borderColor: c.color }}
+              style={!editMode && selectedId === c.id ? undefined : { borderColor: c.color }}
             >
               {!editMode && selectedId === c.id && (
                 <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
@@ -307,7 +311,6 @@ export function CategoryGrid({
                   <Pencil className="h-2.5 w-2.5" />
                 </span>
               )}
-              <span className="text-2xl">{c.emoji}</span>
               <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
               {/* §6.7 — remaining budget hint, when this category has one for the month */}
               {showBudgetHints && budgetRemaining?.get(c.id) !== undefined && (
@@ -373,10 +376,9 @@ export function CategoryGrid({
               key="__add"
               type="button"
               onClick={onAddCategory}
-              className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed p-3 text-muted-foreground active:scale-95"
+              className="inline-flex items-center justify-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium text-muted-foreground active:scale-95"
             >
-              <Plus className="h-6 w-6" />
-              <span className="text-center text-xs font-medium leading-tight">Add category</span>
+              <Plus className="h-3 w-3" /> Add
             </button>
           ))}
       </div>
