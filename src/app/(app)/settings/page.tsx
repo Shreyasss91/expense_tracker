@@ -78,6 +78,7 @@ export default async function SettingsPage() {
           <CardDescription className="text-xs">
             Set a monthly spending limit — a total for the whole month and/or per category. Each month
             can have its own budget; the &ldquo;Every month&rdquo; default is used for months without their own.
+            Categories created in Quick Add appear here automatically.
           </CardDescription>
         </CardHeader>
         <CardContent>

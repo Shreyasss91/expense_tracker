@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Save } from "lucide-react";
@@ -80,6 +80,21 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   const [catInputs, setCatInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(categories.map((c) => [c.id, paiseToRupeesInput(effectivePaise("", c.id))])),
   );
+  // §6.7 — when the category list gains ids (a category created inline from Quick
+  // Add / the edit dialog), give each new category a clean input row. The id-set
+  // guard never touches values the user has already typed.
+  const catIdsRef = useRef(categories.map((c) => c.id).sort().join(","));
+  useEffect(() => {
+    const ids = categories.map((c) => c.id).sort().join(",");
+    if (ids !== catIdsRef.current) {
+      catIdsRef.current = ids;
+      setCatInputs((prev) => {
+        const next = { ...prev };
+        for (const c of categories) if (!(c.id in next)) next[c.id] = "";
+        return next;
+      });
+    }
+  }, [categories]);
 
   function switchScope(next: string) {
     const scopeKey = next === DEFAULT_SCOPE ? "" : next;
