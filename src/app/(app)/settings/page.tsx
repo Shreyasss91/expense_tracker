@@ -64,7 +64,7 @@ export default async function SettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Categories</CardTitle>
           <CardDescription className="text-xs">
-            Rename, change emoji, reorder. Deletion is not available — history always keeps its category.
+            Create from Quick Add, rename, change emoji, reorder. Deletion is not available — history always keeps its category.
           </CardDescription>
         </CardHeader>
         <CardContent>

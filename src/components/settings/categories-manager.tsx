@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Save } from "lucide-react";
@@ -13,6 +13,17 @@ import type { CategoryOption } from "@/components/quick-add/types";
 export function CategoriesManager({ categories }: { categories: CategoryOption[] }) {
   const router = useRouter();
   const [items, setItems] = useState(categories);
+  // §6.5 — live-sync when the server-side category set changes (e.g. a category
+  // created inline from Quick Add), so the list updates without a remount; the
+  // id-set guard leaves in-progress name/emoji edits untouched.
+  const syncedIdsRef = useRef(categories.map((c) => c.id).sort().join(","));
+  useEffect(() => {
+    const ids = categories.map((c) => c.id).sort().join(",");
+    if (ids !== syncedIdsRef.current) {
+      syncedIdsRef.current = ids;
+      setItems(categories);
+    }
+  }, [categories]);
 
   function move(index: number, delta: number) {
     const next = [...items];
