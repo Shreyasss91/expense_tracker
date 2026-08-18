@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { Delete, ChevronLeft, Check, Pencil, X, Zap } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,11 +18,9 @@ import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS, TRANSACTION_TAG_LABELS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
+import { cn } from "@/lib/utils";
 
-type Step = "amount" | "category" | "details";
 type Tag = (typeof TRANSACTION_TAGS)[number];
-
-const NUM_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ".", "0", "back"] as const;
 
 export function QuickAddSheet({
   open,
@@ -40,12 +37,13 @@ export function QuickAddSheet({
   activeMemberId: string;
   onClose: () => void;
 }) {
-  const [step, setStep] = useState<Step>("amount");
-  const [buf, setBuf] = useState("");
+  const [amount, setAmount] = useState("");
   const [tag, setTag] = useState<Tag>("lifestyle");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [date, setDate] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
   const [time, setTime] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
   const [note, setNote] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -63,31 +61,36 @@ export function QuickAddSheet({
     if (!editMode && !renamingId) setCats(categories);
   }, [categories, editMode, renamingId]);
 
-  const paise = useMemo(() => Math.round(parseFloat(buf || "0") * 100) || 0, [buf]);
+  const paise = useMemo(() => Math.round(parseFloat(amount || "0") * 100) || 0, [amount]);
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
 
   // §6.7 — fetch remaining budget per category for the transaction's month; only
-  // meaningful for expenses, and only once the amount is set (the category step).
+  // meaningful for expenses, and only once the amount is set. Debounced so the
+  // per-keystroke amount changes on the single page don't spam the server action.
   useEffect(() => {
-    if (paise <= 0 || step !== "category") {
+    if (paise <= 0) {
       setBudgetRemaining(null);
       return;
     }
     let cancelled = false;
-    void getCategoryBudgetStatus(date.slice(0, 7)).then((res) => {
-      if (cancelled) return;
-      setBudgetRemaining(res.ok ? new Map(res.categories.map((c) => [c.categoryId, c.remainingPaise])) : null);
-    });
+    const timer = setTimeout(() => {
+      void getCategoryBudgetStatus(date.slice(0, 7)).then((res) => {
+        if (cancelled) return;
+        setBudgetRemaining(res.ok ? new Map(res.categories.map((c) => [c.categoryId, c.remainingPaise])) : null);
+      });
+    }, 300);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
-  }, [paise, date, step]);
+  }, [paise, date]);
 
   function reset() {
-    setStep("amount");
-    setBuf("");
+    setAmount("");
     setTag("lifestyle");
+    setSelectedCategoryId("");
     setNote("");
+    setError(null);
     setDate(formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
     setEditMode(false);
@@ -96,27 +99,16 @@ export function QuickAddSheet({
     setRenameEmoji("");
   }
 
-  function handleKey(k: string) {
-    setBuf((prev) => {
-      if (k === "back") return prev.slice(0, -1);
-      if (k === ".") {
-        if (prev.includes(".")) return prev;
-        return prev === "" ? "0." : prev + ".";
-      }
-      const [intPart, decPart] = prev.split(".");
-      if (decPart !== undefined && decPart.length >= 2) return prev; // max 2 decimals
-      if (decPart === undefined && intPart.length >= 8) return prev; // max ₹99,99,999
-      return prev + k;
-    });
-  }
-
-  async function submit(catId: string) {
+  async function submit() {
     if (paise <= 0 || saving) return;
     const member = members.find((m) => m.id === activeMemberId) ?? members[0];
-    const category = cats.find((c) => c.id === catId);
-    if (!member || !category) return;
+    const category = cats.find((c) => c.id === selectedCategoryId);
+    if (!member || !category) {
+      setError("Pick a category");
+      return;
+    }
 
-    // §6.2 step 5 — fully optimistic: build the row locally and apply it to the
+    // §6.2 submit — fully optimistic: build the row locally and apply it to the
     // ledger immediately; the server action confirms (tempId → real id) or
     // reverts (row removed) when it resolves.
     const tempId = `temp-${crypto.randomUUID()}`;
@@ -138,7 +130,7 @@ export function QuickAddSheet({
     setSaving(true);
     const base = {
       memberId: activeMemberId, // server reads the cookie anyway (§6.2)
-      categoryId: catId,
+      categoryId: category.id,
       amount: paise,
       date,
       time,
@@ -213,19 +205,14 @@ export function QuickAddSheet({
     }
   }
 
-  const stepTitle = step === "amount" ? "How much?" : step === "category" ? "What was it?" : "Details";
+  const canSubmit = paise > 0 && selectedCategoryId !== "";
 
   return (
     <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { reset(); onClose(); } }}>
-      <SheetContent side="bottom" className="mx-auto max-w-2xl rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
-        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted" />
-        <div className="mb-2 flex items-center gap-2">
-          {step !== "amount" && (
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditMode(false); setRenamingId(null); setStep(step === "category" ? "details" : "amount"); }} aria-label="Back">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-          )}
-          <h2 className="text-base font-semibold">{stepTitle}</h2>
+      <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
+        <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
+        <div className="mb-1 flex items-center gap-2">
+          <h2 className="text-base font-semibold">Add transaction</h2>
           {activeMember && (
             <span className="ml-auto flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
               <span>{activeMember.emoji}</span>
@@ -234,101 +221,87 @@ export function QuickAddSheet({
           )}
         </div>
 
-        {step === "amount" && (
-          <div className="flex flex-col">
-            <div className="py-6 text-center">
-              <div className="truncate px-2 text-4xl font-bold tracking-tight tabular-nums sm:text-5xl">
-                {formatINR(paise)}
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">Enter amount</div>
-            </div>
-            {/* §6.2 — one-tap bill shortcut: pre-selects the recurring tag so
-                recharges, EMIs and rent don't need a trip through Details */}
-            <div className="mb-3 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setTag(tag === "recurring" ? "lifestyle" : "recurring")}
-                className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-medium transition-colors ${
-                  tag === "recurring" ? "bg-[#8b5cf6] text-white" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                <Zap className="h-3.5 w-3.5" />
-                {tag === "recurring" ? "Bill — recurring" : "It's a bill"}
-              </button>
-            </div>
+        {/* single scrollable page — all fields visible, Add commits (§6.2) */}
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="qa-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
+            <Input
+              id="qa-amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="h-12 text-2xl font-semibold tabular-nums"
+              autoFocus
+            />
+            {paise > 0 && <p className="text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>}
+          </div>
+
+          {/* tag selector */}
+          <div>
+            <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
             <div className="grid grid-cols-3 gap-2">
-              {NUM_KEYS.map((k) => (
+              {TRANSACTION_TAGS.map((t) => (
                 <button
-                  key={k}
+                  key={t}
                   type="button"
-                  onClick={() => handleKey(k)}
-                  className="flex h-14 items-center justify-center rounded-xl bg-muted text-2xl font-medium active:scale-95 active:bg-muted-foreground/20"
+                  onClick={() => setTag(t)}
+                  className={cn(
+                    "flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-medium",
+                    tag === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  )}
                 >
-                  {k === "back" ? <Delete className="h-6 w-6" /> : k}
+                  {tag === t && <Check className="h-3.5 w-3.5" />}
+                  {TRANSACTION_TAG_LABELS[t]}
                 </button>
               ))}
             </div>
-            <Button className="mt-4 h-12 text-base" disabled={paise <= 0} onClick={() => setStep("details")}>
-              Next
-            </Button>
           </div>
-        )}
 
-        {step === "category" && (
-          <div className="flex max-h-[min(72vh,32rem)] flex-col">
-            {/* confirm bar — category is the final step, so it previews the full entry */}
-            <div className="mb-3 rounded-xl bg-muted px-3 py-2.5">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-xl font-bold leading-tight tabular-nums">{formatINR(paise)}</div>
-                  <div className="mt-1 flex flex-wrap items-center gap-1">
-                    <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {TRANSACTION_TAG_LABELS[tag]}
-                    </span>
-                    {activeMember && (
-                      <span className="rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                        {activeMember.emoji} {activeMember.name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1 text-[11px] tabular-nums text-muted-foreground">
-                    {format(new Date(`${date}T00:00:00`), "d MMM yyyy")} · {time}
-                  </div>
-                  {note ? (
-                    <div className="mt-0.5 max-w-[15rem] truncate text-[11px] text-muted-foreground">“{note}”</div>
-                  ) : null}
-                </div>
-                <Button variant="outline" size="sm" className="h-8 shrink-0 gap-1 px-2.5 text-xs" onClick={() => setStep("details")}>
-                  <Pencil className="h-3.5 w-3.5" /> Edit
-                </Button>
-              </div>
-              <div className="mt-2 flex items-center justify-between border-t border-muted-foreground/10 pt-1.5">
-                <span className="text-[11px] text-muted-foreground">
-                  {editMode ? "Tap a category to rename" : "Tap a category to save"}
-                </span>
-                {editMode ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                    onClick={() => { setEditMode(false); setRenamingId(null); }}
-                  >
-                    <Check className="h-3 w-3" /> Done
-                  </Button>
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-                    onClick={() => setEditMode(true)}
-                  >
-                    <Pencil className="h-3 w-3" /> Rename categories
-                  </Button>
-                )}
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="qa-date" className="text-xs text-muted-foreground">Date</Label>
+              <Input id="qa-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10" />
             </div>
-            {/* grid scrolls internally; the confirm bar stays pinned above it */}
-            <div className="grid min-h-0 flex-1 grid-cols-3 gap-2 overflow-y-auto">
+            <div className="space-y-1.5">
+              <Label htmlFor="qa-time" className="text-xs text-muted-foreground">Time</Label>
+              <Input id="qa-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="qa-note" className="text-xs text-muted-foreground">Note (optional)</Label>
+            <Textarea id="qa-note" rows={2} placeholder="What was it for?" value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+
+          {/* category grid — tap selects; Add commits */}
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <Label className="text-xs text-muted-foreground">Category</Label>
+              {editMode ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                  onClick={() => { setEditMode(false); setRenamingId(null); }}
+                >
+                  <Check className="h-3 w-3" /> Done
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+                  onClick={() => setEditMode(true)}
+                >
+                  <Pencil className="h-3 w-3" /> Rename categories
+                </Button>
+              )}
+            </div>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              {editMode ? "Tap a category to rename" : "Tap a category to select it"}
+            </p>
+            <div className="grid grid-cols-3 gap-2">
               {cats.map((c) =>
                 renamingId === c.id ? (
                   <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
@@ -367,10 +340,18 @@ export function QuickAddSheet({
                     key={c.id}
                     type="button"
                     disabled={renaming}
-                    onClick={() => void (editMode ? startRename(c) : submit(c.id))}
-                    className="relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95 disabled:opacity-60"
+                    onClick={() => void (editMode ? startRename(c) : setSelectedCategoryId(c.id))}
+                    className={cn(
+                      "relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95 disabled:opacity-60",
+                      !editMode && selectedCategoryId === c.id && "ring-2 ring-primary",
+                    )}
                     style={{ borderColor: c.color }}
                   >
+                    {!editMode && selectedCategoryId === c.id && (
+                      <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
+                        <Check className="h-3 w-3" />
+                      </span>
+                    )}
                     {editMode && (
                       <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground" aria-hidden>
                         <Pencil className="h-2.5 w-2.5" />
@@ -393,50 +374,14 @@ export function QuickAddSheet({
               )}
             </div>
           </div>
-        )}
+        </div>
 
-        {step === "details" && (
-          <div className="space-y-4">
-
-            {/* tag selector */}
-            <div>
-                <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {TRANSACTION_TAGS.map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setTag(t)}
-                      className={`flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-medium ${tag === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}
-                    >
-                      {tag === t && <Check className="h-3.5 w-3.5" />}
-                      {TRANSACTION_TAG_LABELS[t]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="qa-date" className="text-xs text-muted-foreground">Date</Label>
-                <Input id="qa-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10" />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="qa-time" className="text-xs text-muted-foreground">Time</Label>
-                <Input id="qa-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="qa-note" className="text-xs text-muted-foreground">Note (optional)</Label>
-              <Textarea id="qa-note" rows={2} placeholder="What was it for?" value={note} onChange={(e) => setNote(e.target.value)} />
-            </div>
-
-            <Button className="h-12 w-full text-base" disabled={paise <= 0} onClick={() => setStep("category")}>
-              Next
-            </Button>
-          </div>
-        )}
+        <div className="border-t border-muted-foreground/10 pt-3">
+          {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+          <Button className="h-12 w-full text-base" disabled={!canSubmit || saving} onClick={() => void submit()}>
+            {saving ? "Adding…" : "Add transaction"}
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
   );
