@@ -56,7 +56,9 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   recency, so the categories the family actually spends in are visible without
   scrolling. Never-used categories keep the manual `sortOrder` from Settings as the
   stable fallback (new `useCategoryUsage` hook in `src/lib/category-usage.ts`,
-  hydrated after mount).
+  hydrated after mount). The edit-transaction dialog's category grid orders the
+  same way and records usage on each successful edit save, so "last used" reflects
+  every entry path.
 - **Date/Time collapsed choice persists (same day):** expanding the collapsed
   Date/Time summary (or collapsing it again) is remembered per device
   (`quick-add:date-time-expanded`), so the choice survives later visits.
