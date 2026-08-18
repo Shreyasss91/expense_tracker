@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createCategory } from "@/actions/settings";
+import { recordRecentCategory } from "@/lib/category-recents";
 import type { CategoryOption } from "@/components/quick-add/types";
 import type { AddCategoryForm } from "@/components/transactions/transaction-fields";
 
@@ -39,6 +40,7 @@ export function useCreateCategory(onCreated: (category: CategoryOption) => void)
     if (res.ok) {
       const c = res.category;
       onCreated({ id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder });
+      recordRecentCategory(c.id);
       cancel();
       toast.success("Category added");
       router.refresh();

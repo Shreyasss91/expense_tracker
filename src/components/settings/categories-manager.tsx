@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { updateCategory, reorderCategories } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
+import { loadRecentCategoryIds } from "@/lib/category-recents";
 import type { CategoryOption } from "@/components/quick-add/types";
 
 export function CategoriesManager({ categories }: { categories: CategoryOption[] }) {
@@ -24,6 +25,15 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
       setItems(categories);
     }
   }, [categories]);
+  // §6.5 — "Recently created" strip: ids recorded client-side when a category is
+  // created inline (Quick Add / edit dialog), hydrated after mount.
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  useEffect(() => {
+    setRecentIds(loadRecentCategoryIds());
+  }, []);
+  const recentItems = recentIds
+    .map((id) => items.find((c) => c.id === id))
+    .filter((c): c is CategoryOption => Boolean(c));
 
   function move(index: number, delta: number) {
     const next = [...items];
@@ -60,7 +70,26 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
   }
 
   return (
-    <ul className="space-y-2">
+    <>
+      {recentItems.length > 0 && (
+        <div className="mb-3">
+          <p className="mb-1.5 text-[11px] font-medium text-muted-foreground">Recently created</p>
+          <div className="flex flex-wrap gap-1.5">
+            {recentItems.map((c) => (
+              <span
+                key={c.id}
+                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+                style={{ borderColor: c.color }}
+              >
+                <span>{c.emoji}</span>
+                {c.name}
+                <span className="rounded-full bg-primary px-1.5 py-px text-[9px] font-semibold text-primary-foreground">NEW</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+      <ul className="space-y-2">
       {items.map((c, i) => (
         <li key={c.id} className="flex items-center gap-2">
           <Input
@@ -88,6 +117,7 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
           </div>
         </li>
       ))}
-    </ul>
+      </ul>
+    </>
   );
 }
