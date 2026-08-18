@@ -357,8 +357,8 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
 1. **Trigger:** Large Floating Action Button with `+`.
 2. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“ with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below.
 3. **Amount:** plain text input (mobile decimal keypad); the amount is captured as integer paise (§5.8). A live `≈ ₹` preview renders once a valid amount is typed.
-4. **Tag:** three-chip selector (defaults `lifestyle`; `recurring` flags bills — §5.2).
-5. **Note (optional).**
+4. **Tag:** three-chip selector (defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills).
+5. **Note (optional)** — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount, category, date and time are never remembered).
 6. **Category:** grid of categories (emoji + name) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits.
 7. **Submit:** the single **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. The fields live in a real `<form>`, so **Enter** submits once the form is valid (`Cmd/Ctrl+Enter` in the note); a small hint under the button announces the shortcut. The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
 

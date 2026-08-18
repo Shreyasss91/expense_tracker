@@ -45,6 +45,11 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   (collapsed on close). The edit-transaction dialog mirrors the Date/Time-first
   order, and both rows are rendered by the shared `DateTimeField` in
   `transaction-fields.tsx`.
+- **Last-entry memory (same day):** the Quick Add sheet remembers the last committed
+  **tag and note** in `localStorage` (`quick-add:last-entry`) and pre-fills them on
+  the next open, so repeat entries (recharges, EMIs, rent) start already filled in.
+  Hydrated after mount so server-rendered defaults stay consistent; updated only on
+  a successful commit; amount, category, date and time are never remembered.
 - **Shared field components (same day):** the amount field, tag chips, and category
   grid are extracted into `src/components/transactions/transaction-fields.tsx`
   (`AmountField` / `TagSelector` / `CategoryGrid`), used by both the Quick Add sheet
