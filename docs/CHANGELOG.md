@@ -71,6 +71,30 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   (category tap = commit) and the §6.2 one-tap bill shortcut wording from the 16 Aug
   2026 amendment.
 
+## v1.2 Amendment — 18 August 2026 (owner decision: suggested + creatable categories)
+
+### Amendment 8 — Note-based category suggestions and inline category creation (§6.2, §5.3, §6.5)
+
+- **Decision:** the owner asked for Quick Add to show **suggested categories** based on
+  the note ("what was it for?") instead of the full grid, plus an **option to add a new
+  category** inline.
+- **§6.2 step 6:** typing a note now narrows the grid to up to 6 suggestions scored
+  from the note's words — a curated keyword map per seed category slug (`src/lib/
+  category-suggestions.ts`) plus category-name word matching; the already-selected
+  category stays pinned; clearing the note or a no-match note falls back to the full
+  grid. A dashed **＋ Add category** tile at the end of the grid opens an inline
+  emoji + name form (Enter saves, Escape cancels — never submits the transaction).
+- **§6.5 / §5.3:** category **creation** is now permitted — previously "rename, emoji,
+  reorder only". The new `createCategory` Server Action slugifies the name (deduped
+  with a `-2`/`-3` suffix), picks a color deterministically from a palette, appends
+  the category at the end of the order, and returns the row so the sheet can select
+  it immediately; the slug stays immutable and unexposed, deletion remains out of
+  scope, and re-seeding stays idempotent (`onConflictDoNothing` on the 19 literal
+  slugs). Suggested categories work for user-created categories too (name-word
+  matching); they just have no curated keywords.
+- **Supersedes:** the §6.5 "rename, emoji, reorder only" wording (annotated in place)
+  and any earlier reading of §5.3 that fixed the category set at exactly 19 rows.
+
 ---
 
 ## v1.2 Amendment — 15 August 2026 (owner decisions)
