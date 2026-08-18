@@ -13,6 +13,18 @@ import { cn } from "@/lib/utils";
 
 export type TransactionTag = (typeof TRANSACTION_TAGS)[number];
 
+/** Inline "add a new category" form state, rendered as the last tile in the grid. */
+export interface AddCategoryForm {
+  emoji: string;
+  name: string;
+  saving: boolean;
+  error?: string | null;
+  onEmojiChange: (v: string) => void;
+  onNameChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
 /**
  * Amount field — large input with a live ₹ preview. Shared by the Quick Add
  * sheet and the edit-transaction dialog so both forms feel identical (§6.2).
@@ -197,16 +209,7 @@ export function CategoryGrid({
   onSaveRename?: (c: CategoryOption) => void;
   onCancelRename?: () => void;
   onAddCategory?: () => void;
-  addForm?: {
-    emoji: string;
-    name: string;
-    saving: boolean;
-    error?: string | null;
-    onEmojiChange: (v: string) => void;
-    onNameChange: (v: string) => void;
-    onSave: () => void;
-    onCancel: () => void;
-  };
+  addForm?: AddCategoryForm;
 }) {
   const canRename = Boolean(onToggleEditMode && onStartRename && onSaveRename && onCancelRename);
   const canAdd = Boolean(onAddCategory);

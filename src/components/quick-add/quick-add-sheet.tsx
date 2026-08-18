@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,10 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
-import { createCategory, getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
+import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
 import { useCategoryUsage } from "@/lib/category-usage";
 import { suggestCategories } from "@/lib/category-suggestions";
+import { useCreateCategory } from "@/lib/use-create-category";
 import { paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
@@ -104,12 +105,6 @@ export function QuickAddSheet({
   const [renameEmoji, setRenameEmoji] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [cats, setCats] = useState(categories);
-  // §6.2 — inline "add a new category" form state
-  const [addingCategory, setAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryEmoji, setNewCategoryEmoji] = useState("");
-  const [creatingCategory, setCreatingCategory] = useState(false);
-  const [newCategoryError, setNewCategoryError] = useState<string | null>(null);
   // §6.7 — remaining budget per category for the current date's month (expense only)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // §6.2 — the last committed tag + note, restored on open and updated on save
@@ -153,6 +148,14 @@ export function QuickAddSheet({
     return { shownCategories: suggestions, suggestionsActive: true };
   }, [noteTrimmed, orderedCategories, editMode, selectedCategoryId]);
 
+  // §6.2 — inline "add a new category" flow (shared with the edit dialog)
+  const { open: openAddCategory, cancel: cancelAddCategory, addForm } = useCreateCategory(
+    useCallback((c: CategoryOption) => {
+      setCats((list) => [...list, c]);
+      setSelectedCategoryId(c.id);
+    }, []),
+  );
+
   // §6.7 — fetch remaining budget per category for the transaction's month; only
   // meaningful for expenses, and only once the amount is set. Debounced so the
   // per-keystroke amount changes on the single page don't spam the server action.
@@ -187,10 +190,7 @@ export function QuickAddSheet({
     setRenameValue("");
     setRenameEmoji("");
     setShowDatePicker(dateTimeExpandedRef.current);
-    setAddingCategory(false);
-    setNewCategoryName("");
-    setNewCategoryEmoji("");
-    setNewCategoryError(null);
+    cancelAddCategory();
   }
 
   async function submit() {
@@ -256,34 +256,6 @@ export function QuickAddSheet({
     } else {
       emitLedgerMutation({ kind: "create-revert", tempId });
       toast.error(res.error ?? "Could not save");
-    }
-  }
-
-  function cancelAddCategory() {
-    setAddingCategory(false);
-    setNewCategoryName("");
-    setNewCategoryEmoji("");
-    setNewCategoryError(null);
-  }
-
-  async function createNewCategory() {
-    if (creatingCategory) return;
-    setCreatingCategory(true);
-    setNewCategoryError(null);
-    const res = await createCategory({ name: newCategoryName, emoji: newCategoryEmoji });
-    setCreatingCategory(false);
-    if (res.ok) {
-      const c = res.category;
-      setCats((list) => [
-        ...list,
-        { id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder },
-      ]);
-      setSelectedCategoryId(c.id);
-      cancelAddCategory();
-      toast.success("Category added");
-      router.refresh();
-    } else {
-      setNewCategoryError(res.error ?? "Could not add category");
     }
   }
 
@@ -423,21 +395,8 @@ export function QuickAddSheet({
             onStartRename={startRename}
             onSaveRename={(c) => void saveRename(c)}
             onCancelRename={cancelRename}
-            onAddCategory={() => setAddingCategory(true)}
-            addForm={
-              addingCategory
-                ? {
-                    emoji: newCategoryEmoji,
-                    name: newCategoryName,
-                    saving: creatingCategory,
-                    error: newCategoryError,
-                    onEmojiChange: setNewCategoryEmoji,
-                    onNameChange: setNewCategoryName,
-                    onSave: () => void createNewCategory(),
-                    onCancel: cancelAddCategory,
-                  }
-                : undefined
-            }
+            onAddCategory={openAddCategory}
+            addForm={addForm}
           />
         </div>
 

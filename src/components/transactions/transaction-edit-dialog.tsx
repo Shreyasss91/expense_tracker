@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus } from "@/actions/settings";
 import { useCategoryUsage } from "@/lib/category-usage";
+import { useCreateCategory } from "@/lib/use-create-category";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { emitLedgerMutation } from "@/lib/events";
@@ -48,6 +49,12 @@ export function TransactionEditDialog({
   const [error, setError] = useState<string | null>(null);
   // §6.7 — remaining budget per category for the row's month (mirrors Quick Add)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
+  // local category list — syncs from the server prop so a category created inline
+  // (or in Quick Add) shows up without remounting the dialog
+  const [cats, setCats] = useState(categories);
+  useEffect(() => {
+    setCats(categories);
+  }, [categories]);
 
   // (Re)initialise the form whenever a different row is opened.
   const [lastKey, setLastKey] = useState<string | null>(null);
@@ -65,7 +72,14 @@ export function TransactionEditDialog({
 
   const paise = rupeesToPaise(amount);
   // §6.2 — recently used categories float to the top, same as the Quick Add grid
-  const { orderedCategories, touchCategory } = useCategoryUsage(categories);
+  const { orderedCategories, touchCategory } = useCategoryUsage(cats);
+  // §6.2/§6.5 — inline "add a new category" flow, same as Quick Add
+  const { open: openAddCategory, cancel: cancelAddCategory, addForm } = useCreateCategory(
+    useCallback((c: CategoryOption) => {
+      setCats((list) => [...list, c]);
+      setCategoryId(c.id);
+    }, []),
+  );
 
   // §6.7 — fetch remaining budget per category for the row's month; debounced so
   // per-keystroke amount edits don't spam the server action (same as Quick Add).
@@ -143,7 +157,13 @@ export function TransactionEditDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) cancelAddCategory();
+      }}
+    >
       <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -212,6 +232,8 @@ export function TransactionEditDialog({
             selectedId={categoryId}
             onSelect={setCategoryId}
             budgetRemaining={budgetRemaining}
+            onAddCategory={openAddCategory}
+            addForm={addForm}
           />
 
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
