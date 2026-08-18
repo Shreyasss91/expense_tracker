@@ -34,6 +34,16 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   remaining-budget hints (debounced `getCategoryBudgetStatus`), and a real `<form>`
   in both sheets so **Enter** submits from any field (`Cmd/Ctrl+Enter` in the note).
   Member remains a dropdown in edit, since editing may reassign the member (§6.4).
+- **Field order (same day, owner request):** the Quick Add sheet's **Date/Time**
+  inputs moved from the middle to the very top — their defaults are rarely changed,
+  so the frequently edited fields stay together below them in the order
+  **Amount → Tag → Note → Category**. A small "press Enter to add/save" hint under
+  each form's action button makes the Enter-to-submit shortcut discoverable.
+- **Shared field components (same day):** the amount field, tag chips, and category
+  grid are extracted into `src/components/transactions/transaction-fields.tsx`
+  (`AmountField` / `TagSelector` / `CategoryGrid`), used by both the Quick Add sheet
+  and the edit dialog so the two forms cannot drift apart; the inline category-rename
+  mode remains Quick Add-only, behind optional `CategoryGrid` callbacks.
 - **Supersedes:** Amendment 2's normative **Amount → Details → Category** sequence
   (category tap = commit) and the §6.2 one-tap bill shortcut wording from the 16 Aug
   2026 amendment.
