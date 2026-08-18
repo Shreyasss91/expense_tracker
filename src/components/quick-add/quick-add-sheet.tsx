@@ -228,10 +228,8 @@ export function QuickAddSheet({
           className="flex min-h-0 flex-1 flex-col gap-4"
         >
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
-          <AmountField id="qa-amount" value={amount} onChange={setAmount} autoFocus />
-
-          <TagSelector value={tag} onChange={setTag} />
-
+          {/* date/time sit at the top — their defaults are rarely changed, so the
+              frequently edited fields (Amount → Tag → Note → Category) stay together */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="qa-date" className="text-xs text-muted-foreground">Date</Label>
@@ -242,6 +240,10 @@ export function QuickAddSheet({
               <Input id="qa-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
             </div>
           </div>
+
+          <AmountField id="qa-amount" value={amount} onChange={setAmount} autoFocus />
+
+          <TagSelector value={tag} onChange={setTag} />
 
           <div className="space-y-1.5">
             <Label htmlFor="qa-note" className="text-xs text-muted-foreground">Note (optional)</Label>
@@ -284,6 +286,9 @@ export function QuickAddSheet({
 
         <div className="border-t border-muted-foreground/10 pt-3">
           {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+          {canSubmit && !saving && (
+            <p className="mb-1.5 text-center text-[11px] text-muted-foreground">Tip: press Enter ↵ to add</p>
+          )}
           <Button type="submit" className="h-12 w-full text-base" disabled={!canSubmit || saving}>
             {saving ? "Adding…" : "Add transaction"}
           </Button>

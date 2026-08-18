@@ -213,6 +213,8 @@ export function TransactionEditDialog({
 
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
+          <p className="text-center text-[11px] text-muted-foreground">Tip: press Enter ↵ to save</p>
+
           <DialogFooter className="gap-2 sm:justify-between">
             <Button
               type="button"
