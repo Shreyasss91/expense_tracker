@@ -92,6 +92,12 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   scope, and re-seeding stays idempotent (`onConflictDoNothing` on the 19 literal
   slugs). Suggested categories work for user-created categories too (name-word
   matching); they just have no curated keywords.
+- **Same-day additions:** the edit-transaction dialog offers the same **＋ Add
+  category** tile via the shared `useCreateCategory` hook (`src/lib/
+  use-create-category.ts`, which also owns the Quick Add flow), and Settings'
+  category list **live-syncs** when the server-side category set changes (an
+  id-set guard preserves in-progress name/emoji edits), so a category created
+  inline from Quick Add appears there immediately without a remount.
 - **Supersedes:** the §6.5 "rename, emoji, reorder only" wording (annotated in place)
   and any earlier reading of §5.3 that fixed the category set at exactly 19 rows.
 
