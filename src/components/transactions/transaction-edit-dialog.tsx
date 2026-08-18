@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
+import { getCategoryBudgetStatus } from "@/actions/settings";
 import { formatINR, paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
@@ -46,6 +48,8 @@ export function TransactionEditDialog({
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // §6.7 — remaining budget per category for the row's month (mirrors Quick Add)
+  const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
 
   // (Re)initialise the form whenever a different row is opened.
   const [lastKey, setLastKey] = useState<string | null>(null);
@@ -61,9 +65,30 @@ export function TransactionEditDialog({
     setError(null);
   }
 
+  const paise = rupeesToPaise(amount);
+
+  // §6.7 — fetch remaining budget per category for the row's month; debounced so
+  // per-keystroke amount edits don't spam the server action (same as Quick Add).
+  useEffect(() => {
+    if (!(paise > 0)) {
+      setBudgetRemaining(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      void getCategoryBudgetStatus(date.slice(0, 7)).then((res) => {
+        if (cancelled) return;
+        setBudgetRemaining(res.ok ? new Map(res.categories.map((c) => [c.categoryId, c.remainingPaise])) : null);
+      });
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [paise, date]);
+
   async function save() {
     if (!row) return;
-    const paise = rupeesToPaise(amount);
     if (!Number.isFinite(paise) || paise <= 0) {
       setError("Enter a valid amount");
       return;
@@ -124,31 +149,50 @@ export function TransactionEditDialog({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        {/* a real <form> so Enter submits from any input (same as Quick Add) */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void save();
+          }}
+          className="space-y-4"
+        >
+          {/* amount — same treatment as Quick Add */}
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
+            <Input
+              id="ed-amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              className="h-12 text-2xl font-semibold tabular-nums"
+            />
+            {paise > 0 && <p className="text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>}
+          </div>
+
+          {/* tag selector — same chips as Quick Add */}
           <div>
-              <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {TRANSACTION_TAGS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setTag(t)}
-                    className={cn(
-                      "h-9 rounded-lg text-xs font-medium",
-                      tag === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    {TRANSACTION_TAG_LABELS[t]}
-                  </button>
-                ))}
-              </div>
+            <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
+            <div className="grid grid-cols-3 gap-2">
+              {TRANSACTION_TAGS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTag(t)}
+                  className={cn(
+                    "flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-medium",
+                    tag === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {tag === t && <Check className="h-3.5 w-3.5" />}
+                  {TRANSACTION_TAG_LABELS[t]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="ed-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
-              <Input id="ed-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10" />
-            </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Member</Label>
               <Select value={memberId} onValueChange={setMemberId}>
@@ -164,66 +208,92 @@ export function TransactionEditDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Category</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger className="h-10">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.emoji} {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Date</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Time</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Preview</Label>
-              <div className="h-10 rounded-md border px-3 text-sm leading-10 tabular-nums text-muted-foreground">
-                {amount ? formatINR(rupeesToPaise(amount)) : "—"}
-              </div>
+              <Label htmlFor="ed-date" className="text-xs text-muted-foreground">Date</Label>
+              <Input id="ed-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10" />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ed-note" className="text-xs text-muted-foreground">Note</Label>
-            <Textarea id="ed-note" rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+            <Label htmlFor="ed-time" className="text-xs text-muted-foreground">Time</Label>
+            <Input id="ed-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ed-note" className="text-xs text-muted-foreground">Note (optional)</Label>
+            <Textarea
+              id="ed-note"
+              rows={2}
+              placeholder="What was it for?"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter in a textarea inserts a newline; Cmd/Ctrl+Enter submits
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void save();
+                }
+              }}
+            />
+          </div>
+
+          {/* category grid — tap to select, same as Quick Add */}
+          <div>
+            <Label className="mb-2 text-xs text-muted-foreground">Category</Label>
+            <p className="mb-2 text-[11px] text-muted-foreground">Tap a category to select it</p>
+            <div className="grid grid-cols-3 gap-2">
+              {categories.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategoryId(c.id)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-1 rounded-xl border p-3 active:scale-95",
+                    categoryId === c.id && "ring-2 ring-primary",
+                  )}
+                  style={{ borderColor: c.color }}
+                >
+                  {categoryId === c.id && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
+                      <Check className="h-3 w-3" />
+                    </span>
+                  )}
+                  <span className="text-2xl">{c.emoji}</span>
+                  <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
+                  {/* §6.7 — remaining budget hint, when this category has one for the month */}
+                  {budgetRemaining?.get(c.id) !== undefined && (
+                    <span
+                      className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
+                    >
+                      {(budgetRemaining.get(c.id) ?? 0) < 0
+                        ? `${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
+                        : `${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-        </div>
 
-        <DialogFooter className="gap-2 sm:justify-between">
-          <Button
-            variant="destructive"
-            className="mr-auto"
-            onClick={() => {
-              if (row) onRequestDelete(row);
-              onOpenChange(false);
-            }}
-          >
-            Delete
-          </Button>
-          <Button onClick={save}>
-            Save changes
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button
+              type="button"
+              variant="destructive"
+              className="mr-auto"
+              onClick={() => {
+                if (row) onRequestDelete(row);
+                onOpenChange(false);
+              }}
+            >
+              Delete
+            </Button>
+            <Button type="submit">
+              Save changes
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
