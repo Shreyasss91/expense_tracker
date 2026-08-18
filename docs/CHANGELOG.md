@@ -50,6 +50,16 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   the next open, so repeat entries (recharges, EMIs, rent) start already filled in.
   Hydrated after mount so server-rendered defaults stay consistent; updated only on
   a successful commit; amount, category, date and time are never remembered.
+- **Recently used categories float to the top (same day):** the Quick Add grid
+  records a per-category "last used" timestamp in `localStorage`
+  (`quick-add:category-usage`) on each successful commit and re-orders the grid by
+  recency, so the categories the family actually spends in are visible without
+  scrolling. Never-used categories keep the manual `sortOrder` from Settings as the
+  stable fallback (new `useCategoryUsage` hook in `src/lib/category-usage.ts`,
+  hydrated after mount).
+- **Date/Time collapsed choice persists (same day):** expanding the collapsed
+  Date/Time summary (or collapsing it again) is remembered per device
+  (`quick-add:date-time-expanded`), so the choice survives later visits.
 - **Shared field components (same day):** the amount field, tag chips, and category
   grid are extracted into `src/components/transactions/transaction-fields.tsx`
   (`AmountField` / `TagSelector` / `CategoryGrid`), used by both the Quick Add sheet
