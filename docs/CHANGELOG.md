@@ -98,6 +98,15 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   category list **live-syncs** when the server-side category set changes (an
   id-set guard preserves in-progress name/emoji edits), so a category created
   inline from Quick Add appears there immediately without a remount.
+- **Settings „Recently created“ strip + budget sync (same day):** categories
+  created inline are recorded per-device (`quick-add:recent-categories`,
+  `src/lib/category-recents.ts`) and shown as NEW-badged chips in a small
+  **„Recently created“** strip at the top of the Settings category list — a
+  convenience hint; the authoritative list always comes from the server. The
+  Budgets card's per-category list renders directly from the current category
+  set (it needs no re-fetch beyond the existing `revalidateTag("categories")` +
+  refresh), and its per-category input state now id-set-syncs so a new category
+  gets a clean input row without a remount.
 - **Supersedes:** the §6.5 "rename, emoji, reorder only" wording (annotated in place)
   and any earlier reading of §5.3 that fixed the category set at exactly 19 rows.
 

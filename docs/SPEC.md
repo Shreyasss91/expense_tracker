@@ -447,7 +447,7 @@ Swipe-left delete on a device that gets handed between family members makes acci
 **No soft delete.** No `deleted_at` column, no tombstones, no restore UI, no filtering of deleted rows from queries. The undo window lives entirely in client state before the write, which is precisely why it costs no schema, no query complexity, and no scope growth.
 
 ### 6.5 Settings
-- Manage categories: **create (inline from Quick Add or the edit dialog, §6.2), rename, emoji, reorder**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3). New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes. *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; see `CHANGELOG.md`.)*
+- Manage categories: **create (inline from Quick Add or the edit dialog, §6.2), rename, emoji, reorder**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3). New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; see `CHANGELOG.md`.)*
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized.
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
 - **Budgets (owner amendment, 16 Aug 2026):** a Budgets card edits monthly limits — total and/or per-category, scoped to one month or to "Every month" as the default (§6.7). The card also carries the global **"Exclude bills from budgets"** switch — recurring-tagged spend is then ignored by the total monthly limit (§6.7).
@@ -496,7 +496,10 @@ date,time,member,type,item,amount,category,tag
 default applies. Applied identically to the total and to each category.
 
 **Settings (§6.5):** the Budgets card edits one scope at a time — "Every month" or a single
-month — with a total limit input and per-category limit inputs. Empty inputs mean no limit.
+month — with a total limit input and per-category limit inputs. The per-category list renders
+directly from the current category set, so a category created inline (Quick Add / edit
+dialog, §6.2) appears there automatically after the cache revalidation. Empty inputs mean no
+limit.
 Saving replaces the whole scope by delete-then-insert — plain sequential statements, since the
 app's neon-http driver has no transaction support — so `budgets_scope_unique` can never be
 violated by the app. Replacement is **intentionally non-atomic**, a documented reliability
