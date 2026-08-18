@@ -16,6 +16,8 @@
 > is Amount → Details → Category** (§6.2); (3) the **family password is environment-managed**
 > with no in-app change facility (§6.5, §9). Each is recorded in `CHANGELOG.md`. No
 > implementation, schema, migration, or `seed.csv` change accompanied these amendments.
+> *(The Quick Add sequence bullet is superseded by the 18 August 2026 single-page
+> amendment — see below and `CHANGELOG.md`.)*
 >
 > **16 August 2026 — budgets authorized by the owner** (§6.7, §4.2, §11): monthly budgets
 > (total + per-category, per-month or as an every-month default) are a new v1.2 feature
@@ -24,6 +26,12 @@
 > spent-vs-budget bar under the ledger month strip, a global "exclude bills" toggle
 > (`app_settings`), a Bills summary card, and a one-tap "It's a bill" Quick Add
 > shortcut (§6.2–§6.7). All recorded in `CHANGELOG.md`.
+>
+> **18 August 2026 — Quick Add is a single page** (§6.2): the **Amount → Details →
+> Category** sequence is superseded by one scrollable sheet — amount text input, tag
+> chips, date/time, note, category grid (tap to select) and a single **Add transaction**
+> button. The one-tap "It's a bill" shortcut and the full-screen numpad are removed with
+> the multi-step flow. Recorded in `CHANGELOG.md`.
 
 ---
 
@@ -345,14 +353,16 @@ One representation, end to end. Mixing representations is the defect this sectio
 - **Theme:** Light by default; clean, minimal; shadcn/ui default palette. **Dark mode is permitted in v1.2** (owner amendment, 15 Aug 2026 — removed from the §11 exclusion list): a sun/moon toggle in the header switches between light and dark, the first visit defaults to the user's **system preference**, and the choice persists locally. The implementation is class-based (`next-themes` with a `.dark` variable block in `globals.css`); no redesign of the theme system is authorized.
 
 ### 6.2 The "Quick Add" Flow (Critical Path — optimize ruthlessly)
-One-handed mobile use, < 5 seconds:
+One-handed mobile use, < 5 seconds, **one bottom sheet**:
 1. **Trigger:** Large Floating Action Button with `+`.
-2. **Step 1 (Amount):** Full-screen numpad, large ₹ display, plus a one-tap **"It's a bill"** shortcut that pre-selects the `recurring` tag — recharges, EMIs and rent are flagged in one tap without visiting Details. The Details tag selector still lets the user change it.
-3. **Step 2 (Details, optional):** Expense/Income toggle, Tag selector (defaults `lifestyle`; hidden **and cleared to `NULL`** for income — §5.2), Date/Time picker (defaults to *now* **in `Asia/Kolkata`** — §5.7), Note input.
-4. **Step 3 (Category):** Grid of 19 categories (emoji + name) — the **final step**: single-tapping a category commits the entry (see Step 5).
-5. **Submit:** the category tap triggers the Server Action → optimistic UI update → toast confirmation. The amount is captured as integer paise (§5.8); the time is normalized `HH:MM` → `HH:MM:00` (§5.6); the `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
+2. **Amount:** plain text input at the top (mobile decimal keypad); the amount is captured as integer paise (§5.8). A live `≈ ₹` preview renders once a valid amount is typed.
+3. **Tag:** three-chip selector (defaults `lifestyle`; `recurring` flags bills — §5.2).
+4. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6).
+5. **Note (optional).**
+6. **Category:** grid of categories (emoji + name) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits.
+7. **Submit:** the single **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
 
-> **Sequence is normative — owner amendment, 15 Aug 2026.** The authoritative v1.2 sequence is **Amount → Details → Category** (category selection is the committing step). The earlier "Amount → Category → Details" wording is superseded; see `CHANGELOG.md`.
+> **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. See `CHANGELOG.md`.
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
@@ -524,11 +534,10 @@ budget, with "₹X left / ₹X over" (green/red), computed server-side via
 and ignores the ledger's other filters (member/category/tag/search), since budgets are
 per-month.
 
-**Quick Add hints (§6.2/§6.7):** on the category grid (the committing step), each category
-that has a budget for the transaction's month shows its **remaining** amount underneath
-(„₹X left" in green, „₹X over" in red). Computed client-side via the
-`getCategoryBudgetStatus` Server Action against the chosen date's month, so it stays
-correct when the user backdates.
+**Quick Add hints (§6.2/§6.7):** on the category grid, each category that has a budget for
+the transaction's month shows its **remaining** amount underneath („₹X left" in green,
+„₹X over" in red). Computed client-side via the `getCategoryBudgetStatus` Server Action
+against the chosen date's month, so it stays correct when the user backdates.
 
 **Over-budget toast (§6.7):** after an expense is created or edited, the Server Action
 checks the post-write month total and the affected category's total against the effective

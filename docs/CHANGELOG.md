@@ -7,6 +7,33 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## v1.2 Amendment — 18 August 2026 (owner decision: single-page Quick Add)
+
+### Amendment 7 — Quick Add is a single page (§6.2)
+
+- **Decision:** the owner asked to reduce the Quick Add flow to **one page** ("can we
+  reduce it to 1 page"). The three-step sequence **Amount → Details → Category** is
+  collapsed into a single scrollable bottom sheet: amount text input, tag chips,
+  date/time, note, category grid (tap to **select**), and a single **Add transaction**
+  button pinned at the bottom. The category tap no longer commits; the button does.
+- **§6.2** rewritten to the single-page flow; the 15 Aug 2026 normative-sequence
+  blockquote is annotated as superseded in place (audit trail preserved). The header
+  summary blockquote gains an 18 Aug 2026 entry, and the §6.7 Quick Add hints wording
+  drops the now-stale "committing step" phrasing.
+- **Removed with the multi-step flow:** the **full-screen numpad** (replaced by a plain
+  amount text input — owner choice) and the 16 Aug 2026 one-tap **"It's a bill"**
+  shortcut, whose purpose was to skip the Details step that no longer exists — the tag
+  chips are visible on the same page.
+- **Retained:** the optimistic create (tempId → confirm/revert), per-category
+  remaining-budget hints (§6.7, fetched against the chosen date's month), inline
+  category rename, and default date/time in `Asia/Kolkata` (§5.7). The Server Action,
+  schema, and `createTransaction` contract are unchanged.
+- **Supersedes:** Amendment 2's normative **Amount → Details → Category** sequence
+  (category tap = commit) and the §6.2 one-tap bill shortcut wording from the 16 Aug
+  2026 amendment.
+
+---
+
 ## v1.2 Amendment — 15 August 2026 (owner decisions)
 
 The Phase-0 v1.2 compliance audit (15 Aug 2026) returned **PHASE 0 — NOT CLEARED** with
