@@ -39,6 +39,12 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   so the frequently edited fields stay together below them in the order
   **Amount → Tag → Note → Category**. A small "press Enter to add/save" hint under
   each form's action button makes the Enter-to-submit shortcut discoverable.
+- **Collapsible Date/Time + edit-dialog reorder (same day):** the Quick Add sheet's
+  Date/Time row now collapses behind a compact summary („Today · 14:32“ with a
+  pencil); tapping it reveals the pickers and a Done button collapses it again
+  (collapsed on close). The edit-transaction dialog mirrors the Date/Time-first
+  order, and both rows are rendered by the shared `DateTimeField` in
+  `transaction-fields.tsx`.
 - **Shared field components (same day):** the amount field, tag chips, and category
   grid are extracted into `src/components/transactions/transaction-fields.tsx`
   (`AmountField` / `TagSelector` / `CategoryGrid`), used by both the Quick Add sheet

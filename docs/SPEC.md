@@ -355,14 +355,14 @@ One representation, end to end. Mixing representations is the defect this sectio
 ### 6.2 The "Quick Add" Flow (Critical Path — optimize ruthlessly)
 One-handed mobile use, < 5 seconds, **one bottom sheet**:
 1. **Trigger:** Large Floating Action Button with `+`.
-2. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top because their defaults are rarely changed — the frequently edited fields stay together below them.
+2. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“ with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below.
 3. **Amount:** plain text input (mobile decimal keypad); the amount is captured as integer paise (§5.8). A live `≈ ₹` preview renders once a valid amount is typed.
 4. **Tag:** three-chip selector (defaults `lifestyle`; `recurring` flags bills — §5.2).
 5. **Note (optional).**
 6. **Category:** grid of categories (emoji + name) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits.
 7. **Submit:** the single **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. The fields live in a real `<form>`, so **Enter** submits once the form is valid (`Cmd/Ctrl+Enter` in the note); a small hint under the button announces the shortcut. The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
 
-> **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. *(Same-day field order, owner request: **Date/Time** moved to the top, followed by **Amount → Tag → Note → Category**.)* See `CHANGELOG.md`.
+> **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. *(Same-day field order, owner request: **Date/Time** moved to the top — collapsed behind a „Today · 14:32“ summary in Quick Add, with a pencil revealing the pickers — followed by **Amount → Tag → Note → Category**; the edit-transaction dialog mirrors the same Date/Time-first order.)* See `CHANGELOG.md`.
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
