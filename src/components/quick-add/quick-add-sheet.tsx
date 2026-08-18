@@ -49,6 +49,27 @@ function saveLastEntry(entry: { tag: TransactionTag; note: string }) {
   }
 }
 
+// §6.2 — the Date/Time row's collapsed/expanded choice persists per device, so a
+// user who expands the pickers once keeps them expanded on later visits.
+const DATE_TIME_EXPANDED_KEY = "quick-add:date-time-expanded";
+
+function loadDateTimeExpanded(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(DATE_TIME_EXPANDED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveDateTimeExpanded(expanded: boolean) {
+  try {
+    window.localStorage.setItem(DATE_TIME_EXPANDED_KEY, expanded ? "1" : "0");
+  } catch {
+    // storage unavailable — remembering is best-effort
+  }
+}
+
 export function QuickAddSheet({
   open,
   onOpenChange,
@@ -72,8 +93,10 @@ export function QuickAddSheet({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // the date/time pickers stay collapsed behind their defaults until tapped
+  // the date/time pickers stay collapsed behind their defaults until tapped;
+  // the choice persists across sessions (dateTimeExpandedRef is the hydrated copy)
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateTimeExpandedRef = useRef(false);
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -86,12 +109,15 @@ export function QuickAddSheet({
   const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
   const router = useRouter();
 
-  // Hydrate the remembered tag/note after mount (never during SSR, so the
-  // server-rendered defaults stay consistent with the client's first paint).
+  // Hydrate the remembered tag/note and the date/time collapsed choice after mount
+  // (never during SSR, so the server-rendered defaults stay consistent with the
+  // client's first paint).
   useEffect(() => {
     lastEntryRef.current = loadLastEntry();
     setTag(lastEntryRef.current.tag);
     setNote(lastEntryRef.current.note);
+    dateTimeExpandedRef.current = loadDateTimeExpanded();
+    setShowDatePicker(dateTimeExpandedRef.current);
   }, []);
 
   // Keep the local category copy in sync with server-provided data when not mid-edit,
@@ -138,7 +164,7 @@ export function QuickAddSheet({
     setRenamingId(null);
     setRenameValue("");
     setRenameEmoji("");
-    setShowDatePicker(false);
+    setShowDatePicker(dateTimeExpandedRef.current);
   }
 
   async function submit() {
@@ -290,7 +316,12 @@ export function QuickAddSheet({
             timeId="qa-time"
             collapsible
             showPicker={showDatePicker}
-            onTogglePicker={() => setShowDatePicker((s) => !s)}
+            onTogglePicker={() => {
+              const next = !showDatePicker;
+              dateTimeExpandedRef.current = next;
+              saveDateTimeExpanded(next);
+              setShowDatePicker(next);
+            }}
           />
 
           <AmountField id="qa-amount" value={amount} onChange={setAmount} autoFocus />
