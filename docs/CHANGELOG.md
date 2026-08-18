@@ -7,6 +7,30 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## v1.2 Amendment — 18 August 2026 (owner decision: category UI refinement)
+
+### Amendment 9 — Name-only category chips and "Show all" expansion (§6.2)
+
+- **Decision:** the owner asked to remove emoji icons from category displays and add a
+  way to expand note-based suggestions to the full category list.
+- **§6.2 Quick Add category grid:** categories now render as **compact pill/chip buttons**
+  with just the name (no emoji icon). The grid layout changed from a fixed 3-column
+  grid to a flexible wrap layout. Selected state uses a filled primary background
+  instead of a ring. The `＋ Add category` tile is also simplified to a small pill.
+- **§6.2 "Show all categories" button:** when note-based suggestions are active and
+  there are more categories than shown, a **"Show all categories"** link appears next to
+  the hint text. Clicking it expands the grid to show all categories. The link resets
+  automatically when the note changes, so fresh input shows suggestions again.
+- **Edit dialog consistency:** the emoji icon is removed from the edit-transaction
+  dialog title (now just "Edit transaction" without the category emoji).
+- **Settings categories-manager:** the "Recently created" strip chips and category rows
+  no longer display or require emoji input — category rows now have only the name input
+  field with reorder/save buttons.
+- **Supersedes:** the §6.2 category grid emoji-tile rendering and the "＋ Add category"
+  tile layout from Amendment 8.
+
+---
+
 ## v1.2 Amendment — 18 August 2026 (owner decision: single-page Quick Add)
 
 ### Amendment 7 — Quick Add is a single page (§6.2)
