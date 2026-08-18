@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
+import { useCategoryUsage } from "@/lib/category-usage";
 import { paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
@@ -101,6 +102,8 @@ export function QuickAddSheet({
 
   const paise = useMemo(() => Math.round(parseFloat(amount || "0") * 100) || 0, [amount]);
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
+  // §6.2 — recently used categories float to the top of the grid
+  const { orderedCategories, touchCategory } = useCategoryUsage(cats);
 
   // §6.7 — fetch remaining budget per category for the transaction's month; only
   // meaningful for expenses, and only once the amount is set. Debounced so the
@@ -191,9 +194,11 @@ export function QuickAddSheet({
       toast.success("Transaction added");
       // §6.7 — warn when this expense pushed the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
-      // §6.2 — remember the committed tag/note so the next repeat entry starts filled in
+      // §6.2 — remember the committed tag/note and category usage so repeat entries
+      // start filled in and recently used categories float to the top of the grid
       lastEntryRef.current = { tag, note };
       saveLastEntry(lastEntryRef.current);
+      touchCategory(category.id);
       reset();
       onClose();
     } else {
@@ -311,7 +316,7 @@ export function QuickAddSheet({
           </div>
 
           <CategoryGrid
-            categories={cats}
+            categories={orderedCategories}
             selectedId={selectedCategoryId}
             onSelect={setSelectedCategoryId}
             budgetRemaining={budgetRemaining}
