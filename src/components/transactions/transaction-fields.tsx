@@ -1,11 +1,13 @@
 "use client";
 
+import { format, parse } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { Check, Pencil, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatINR, rupeesToPaise } from "@/lib/money";
-import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
+import { APP_TIMEZONE, TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
 import type { CategoryOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +43,77 @@ export function AmountField({
       />
       {paise > 0 && <p className="text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>}
     </div>
+  );
+}
+
+/**
+ * Date/Time row. In the collapsible variant (Quick Add) the defaults are shown
+ * as a compact summary — "Today · 14:32" with a pencil — and the pickers appear
+ * only after tapping it; the edit dialog renders the pickers directly.
+ */
+export function DateTimeField({
+  date,
+  time,
+  onDateChange,
+  onTimeChange,
+  dateId,
+  timeId,
+  collapsible = false,
+  showPicker = true,
+  onTogglePicker,
+}: {
+  date: string;
+  time: string;
+  onDateChange: (v: string) => void;
+  onTimeChange: (v: string) => void;
+  dateId: string;
+  timeId: string;
+  collapsible?: boolean;
+  showPicker?: boolean;
+  onTogglePicker?: () => void;
+}) {
+  if (!collapsible || showPicker) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor={dateId} className="text-xs text-muted-foreground">Date</Label>
+            <Input id={dateId} type="date" value={date} onChange={(e) => onDateChange(e.target.value)} className="h-10" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={timeId} className="text-xs text-muted-foreground">Time</Label>
+            <Input id={timeId} type="time" value={time} onChange={(e) => onTimeChange(e.target.value)} className="h-10" />
+          </div>
+        </div>
+        {collapsible && onTogglePicker && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
+            onClick={onTogglePicker}
+          >
+            <Check className="h-3 w-3" /> Done
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const isToday = date === formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd");
+  return (
+    <button
+      type="button"
+      aria-label="Change date and time"
+      onClick={onTogglePicker}
+      className="flex w-full items-center justify-between gap-2 rounded-lg bg-muted px-3 py-2.5 text-left"
+    >
+      <span className="text-xs text-muted-foreground">Date & time</span>
+      <span className="flex items-center gap-1.5 text-sm font-medium tabular-nums">
+        {isToday ? "Today" : format(parse(date, "yyyy-MM-dd", new Date()), "d MMM")} · {time}
+        <Pencil className="h-3 w-3 text-muted-foreground" />
+      </span>
+    </button>
   );
 }
 

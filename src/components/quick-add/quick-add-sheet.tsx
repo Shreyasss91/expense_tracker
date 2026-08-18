@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +16,7 @@ import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
-import { AmountField, CategoryGrid, TagSelector, type TransactionTag } from "@/components/transactions/transaction-fields";
+import { AmountField, CategoryGrid, DateTimeField, TagSelector, type TransactionTag } from "@/components/transactions/transaction-fields";
 
 export function QuickAddSheet({
   open,
@@ -42,6 +41,8 @@ export function QuickAddSheet({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // the date/time pickers stay collapsed behind their defaults until tapped
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -94,6 +95,7 @@ export function QuickAddSheet({
     setRenamingId(null);
     setRenameValue("");
     setRenameEmoji("");
+    setShowDatePicker(false);
   }
 
   async function submit() {
@@ -229,17 +231,19 @@ export function QuickAddSheet({
         >
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           {/* date/time sit at the top — their defaults are rarely changed, so the
-              frequently edited fields (Amount → Tag → Note → Category) stay together */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="qa-date" className="text-xs text-muted-foreground">Date</Label>
-              <Input id="qa-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className="h-10" />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="qa-time" className="text-xs text-muted-foreground">Time</Label>
-              <Input id="qa-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="h-10" />
-            </div>
-          </div>
+              frequently edited fields (Amount → Tag → Note → Category) stay together;
+              the pickers stay collapsed behind a summary until tapped */}
+          <DateTimeField
+            date={date}
+            time={time}
+            onDateChange={setDate}
+            onTimeChange={setTime}
+            dateId="qa-date"
+            timeId="qa-time"
+            collapsible
+            showPicker={showDatePicker}
+            onTogglePicker={() => setShowDatePicker((s) => !s)}
+          />
 
           <AmountField id="qa-amount" value={amount} onChange={setAmount} autoFocus />
 
