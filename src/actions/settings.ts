@@ -9,7 +9,7 @@ import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations
 import { categories, members, transactions } from "@/db/schema";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { rupeesToPaise } from "@/lib/money";
-import { monthKeySchema, saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
+import { createCategorySchema, monthKeySchema, saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
 import { z } from "zod";
 
 function validateCompleteUniqueIds(ids: string[], expectedIds: string[]): string[] | null {
@@ -22,8 +22,63 @@ function validateCompleteUniqueIds(ids: string[], expectedIds: string[]): string
   return parsed.data;
 }
 
+// §6.2 — palette for user-created categories (deterministic pick from the slug).
+const CATEGORY_COLORS = [
+  "#0ea5e9", "#f97316", "#8b5cf6", "#22c55e", "#ef4444",
+  "#eab308", "#14b8a6", "#6366f1", "#ec4899", "#10b981",
+] as const;
+
+function slugifyCategoryName(name: string): string {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").replace(/-{2,}/g, "-");
+  return slug || "category";
+}
+
+function categoryColor(slug: string): string {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = (h * 31 + slug.charCodeAt(i)) >>> 0;
+  return CATEGORY_COLORS[h % CATEGORY_COLORS.length];
+}
+
 /**
- * §6.5 — categories: rename, emoji, reorder ONLY.
+ * §6.2/§6.5 — create a category inline from Quick Add. The slug (§5.3) is
+ * generated from the name and is immutable; the color is picked deterministically
+ * and the new category is appended after the current last sortOrder.
+ */
+export async function createCategory(raw: z.infer<typeof createCategorySchema>) {
+  const parsed = createCategorySchema.safeParse(raw);
+  if (!parsed.success) return { ok: false as const, error: "Invalid category data" };
+  const { name, emoji } = parsed.data;
+
+  const existing = await db.select({ slug: categories.slug }).from(categories);
+  const taken = new Set(existing.map((r) => r.slug));
+  const base = slugifyCategoryName(name);
+  let slug = base;
+  for (let i = 2; taken.has(slug); i++) slug = `${base}-${i}`;
+
+  const [maxRow] = await db.select({ max: sql<number>`MAX(${categories.sortOrder})` }).from(categories);
+
+  const [row] = await db
+    .insert(categories)
+    .values({
+      slug,
+      name,
+      emoji: emoji || "🏷️",
+      color: categoryColor(slug),
+      sortOrder: (maxRow?.max ?? 0) + 1,
+    })
+    .returning();
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings");
+  revalidateTag("transactions");
+  revalidateTag("categories");
+  return { ok: true as const, category: row };
+}
+
+/**
+ * §6.5 — categories: rename, emoji, reorder ONLY (creation happens inline from
+ * Quick Add via createCategory above).
  * The slug (§5.3) is immutable and never touched here; deletion is not offered in v1.
  */
 export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) {

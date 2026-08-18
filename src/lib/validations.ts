@@ -56,6 +56,12 @@ export const updateCategorySchema = z.object({
   sortOrder: z.number().int(),
 });
 
+/** §6.2/§6.5 — inline category creation from Quick Add; emoji defaults to 🏷️ when omitted. */
+export const createCategorySchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  emoji: z.string().trim().max(8).optional(),
+});
+
 export const updateMemberSchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(50),

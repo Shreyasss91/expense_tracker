@@ -2,7 +2,7 @@
 
 import { format, parse } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { Check, Pencil, X } from "lucide-react";
+import { Check, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,6 +160,7 @@ export function CategoryGrid({
   onSelect,
   budgetRemaining,
   showBudgetHints = true,
+  hint,
   // rename mode (optional — Quick Add only)
   editMode = false,
   onToggleEditMode,
@@ -173,12 +174,16 @@ export function CategoryGrid({
   onStartRename,
   onSaveRename,
   onCancelRename,
+  // add-new-category (optional — Quick Add only)
+  onAddCategory,
+  addForm,
 }: {
   categories: CategoryOption[];
   selectedId: string;
   onSelect: (id: string) => void;
   budgetRemaining?: Map<string, number> | null;
   showBudgetHints?: boolean;
+  hint?: string;
   editMode?: boolean;
   onToggleEditMode?: () => void;
   onExitEditMode?: () => void;
@@ -191,8 +196,20 @@ export function CategoryGrid({
   onStartRename?: (c: CategoryOption) => void;
   onSaveRename?: (c: CategoryOption) => void;
   onCancelRename?: () => void;
+  onAddCategory?: () => void;
+  addForm?: {
+    emoji: string;
+    name: string;
+    saving: boolean;
+    error?: string | null;
+    onEmojiChange: (v: string) => void;
+    onNameChange: (v: string) => void;
+    onSave: () => void;
+    onCancel: () => void;
+  };
 }) {
   const canRename = Boolean(onToggleEditMode && onStartRename && onSaveRename && onCancelRename);
+  const canAdd = Boolean(onAddCategory);
 
   return (
     <div>
@@ -222,7 +239,7 @@ export function CategoryGrid({
           ))}
       </div>
       <p className="mb-2 text-[11px] text-muted-foreground">
-        {editMode ? "Tap a category to rename" : "Tap a category to select it"}
+        {hint ?? (editMode ? "Tap a category to rename" : "Tap a category to select it")}
       </p>
       <div className="grid grid-cols-3 gap-2">
         {categories.map((c) =>
@@ -302,6 +319,63 @@ export function CategoryGrid({
             </button>
           )
         )}
+
+        {/* add-new-category tile (Quick Add only, hidden while renaming) */}
+        {!editMode && canAdd &&
+          (addForm ? (
+            <div key="__add" className="flex flex-col gap-1 rounded-xl border border-dashed p-2">
+              <div className="flex gap-1">
+                <Input
+                  value={addForm.emoji}
+                  onChange={(e) => addForm.onEmojiChange(e.target.value)}
+                  className="h-8 w-10 shrink-0 px-1 text-center text-base"
+                  aria-label="Category emoji"
+                  maxLength={4}
+                />
+                <Input
+                  autoFocus
+                  value={addForm.name}
+                  onChange={(e) => addForm.onNameChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    // preventDefault stops Enter/Escape from also submitting the form
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addForm.onSave();
+                    }
+                    if (e.key === "Escape") {
+                      e.preventDefault();
+                      addForm.onCancel();
+                    }
+                  }}
+                  className="h-8 min-w-0 flex-1 text-center text-xs"
+                  aria-label="Category name"
+                  placeholder="New category"
+                  maxLength={50}
+                />
+              </div>
+              {addForm.error && (
+                <p className="text-center text-[10px] font-medium text-destructive">{addForm.error}</p>
+              )}
+              <div className="flex justify-center gap-1">
+                <Button type="button" size="icon" className="h-6 w-6" disabled={addForm.saving} onClick={addForm.onSave} aria-label="Save new category">
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={addForm.saving} onClick={addForm.onCancel} aria-label="Cancel">
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              key="__add"
+              type="button"
+              onClick={onAddCategory}
+              className="flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed p-3 text-muted-foreground active:scale-95"
+            >
+              <Plus className="h-6 w-6" />
+              <span className="text-center text-xs font-medium leading-tight">Add category</span>
+            </button>
+          ))}
       </div>
     </div>
   );

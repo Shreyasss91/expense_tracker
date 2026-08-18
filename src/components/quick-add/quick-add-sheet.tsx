@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { createTransaction } from "@/actions/transactions";
-import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
+import { createCategory, getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
 import { useCategoryUsage } from "@/lib/category-usage";
+import { suggestCategories } from "@/lib/category-suggestions";
 import { paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
@@ -103,6 +104,12 @@ export function QuickAddSheet({
   const [renameEmoji, setRenameEmoji] = useState("");
   const [renaming, setRenaming] = useState(false);
   const [cats, setCats] = useState(categories);
+  // §6.2 — inline "add a new category" form state
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryEmoji, setNewCategoryEmoji] = useState("");
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [newCategoryError, setNewCategoryError] = useState<string | null>(null);
   // §6.7 — remaining budget per category for the current date's month (expense only)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // §6.2 — the last committed tag + note, restored on open and updated on save
@@ -130,6 +137,21 @@ export function QuickAddSheet({
   const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
   // §6.2 — recently used categories float to the top of the grid
   const { orderedCategories, touchCategory } = useCategoryUsage(cats);
+
+  // §6.2 — when a note is typed, show up to 6 suggested categories instead of the
+  // full grid; fall back to the full grid when nothing matches. The already
+  // selected category stays pinned at the top so the selection never vanishes.
+  const noteTrimmed = note.trim();
+  const { shownCategories, suggestionsActive } = useMemo(() => {
+    if (editMode || !noteTrimmed) return { shownCategories: orderedCategories, suggestionsActive: false };
+    const suggestions = suggestCategories(noteTrimmed, orderedCategories);
+    if (suggestions.length === 0) return { shownCategories: orderedCategories, suggestionsActive: false };
+    if (selectedCategoryId && !suggestions.some((c) => c.id === selectedCategoryId)) {
+      const selected = orderedCategories.find((c) => c.id === selectedCategoryId);
+      if (selected) return { shownCategories: [selected, ...suggestions], suggestionsActive: true };
+    }
+    return { shownCategories: suggestions, suggestionsActive: true };
+  }, [noteTrimmed, orderedCategories, editMode, selectedCategoryId]);
 
   // §6.7 — fetch remaining budget per category for the transaction's month; only
   // meaningful for expenses, and only once the amount is set. Debounced so the
@@ -165,6 +187,10 @@ export function QuickAddSheet({
     setRenameValue("");
     setRenameEmoji("");
     setShowDatePicker(dateTimeExpandedRef.current);
+    setAddingCategory(false);
+    setNewCategoryName("");
+    setNewCategoryEmoji("");
+    setNewCategoryError(null);
   }
 
   async function submit() {
@@ -230,6 +256,34 @@ export function QuickAddSheet({
     } else {
       emitLedgerMutation({ kind: "create-revert", tempId });
       toast.error(res.error ?? "Could not save");
+    }
+  }
+
+  function cancelAddCategory() {
+    setAddingCategory(false);
+    setNewCategoryName("");
+    setNewCategoryEmoji("");
+    setNewCategoryError(null);
+  }
+
+  async function createNewCategory() {
+    if (creatingCategory) return;
+    setCreatingCategory(true);
+    setNewCategoryError(null);
+    const res = await createCategory({ name: newCategoryName, emoji: newCategoryEmoji });
+    setCreatingCategory(false);
+    if (res.ok) {
+      const c = res.category;
+      setCats((list) => [
+        ...list,
+        { id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder },
+      ]);
+      setSelectedCategoryId(c.id);
+      cancelAddCategory();
+      toast.success("Category added");
+      router.refresh();
+    } else {
+      setNewCategoryError(res.error ?? "Could not add category");
     }
   }
 
@@ -347,11 +401,16 @@ export function QuickAddSheet({
           </div>
 
           <CategoryGrid
-            categories={orderedCategories}
+            categories={shownCategories}
             selectedId={selectedCategoryId}
             onSelect={setSelectedCategoryId}
             budgetRemaining={budgetRemaining}
             showBudgetHints={!editMode}
+            hint={
+              suggestionsActive
+                ? "Suggested from your note — tap to select"
+                : "Tap a category to select it"
+            }
             editMode={editMode}
             onToggleEditMode={() => setEditMode(true)}
             onExitEditMode={() => { setEditMode(false); setRenamingId(null); }}
@@ -364,6 +423,21 @@ export function QuickAddSheet({
             onStartRename={startRename}
             onSaveRename={(c) => void saveRename(c)}
             onCancelRename={cancelRename}
+            onAddCategory={() => setAddingCategory(true)}
+            addForm={
+              addingCategory
+                ? {
+                    emoji: newCategoryEmoji,
+                    name: newCategoryName,
+                    saving: creatingCategory,
+                    error: newCategoryError,
+                    onEmojiChange: setNewCategoryEmoji,
+                    onNameChange: setNewCategoryName,
+                    onSave: () => void createNewCategory(),
+                    onCancel: cancelAddCategory,
+                  }
+                : undefined
+            }
           />
         </div>
 
