@@ -221,7 +221,15 @@ export function QuickAddSheet({
           )}
         </div>
 
-        {/* single scrollable page — all fields visible, Add commits (§6.2) */}
+        {/* single scrollable page — all fields visible, Add commits (§6.2).
+            A real <form> so Enter submits from any input (Option B semantics). */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+          className="flex min-h-0 flex-1 flex-col gap-4"
+        >
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           <div className="space-y-1.5">
             <Label htmlFor="qa-amount" className="text-xs text-muted-foreground">Amount (₹)</Label>
@@ -271,7 +279,20 @@ export function QuickAddSheet({
 
           <div className="space-y-1.5">
             <Label htmlFor="qa-note" className="text-xs text-muted-foreground">Note (optional)</Label>
-            <Textarea id="qa-note" rows={2} placeholder="What was it for?" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Textarea
+              id="qa-note"
+              rows={2}
+              placeholder="What was it for?"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              onKeyDown={(e) => {
+                // Enter in a textarea inserts a newline; Cmd/Ctrl+Enter submits
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void submit();
+                }
+              }}
+            />
           </div>
 
           {/* category grid — tap selects; Add commits */}
@@ -280,6 +301,7 @@ export function QuickAddSheet({
               <Label className="text-xs text-muted-foreground">Category</Label>
               {editMode ? (
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
@@ -289,6 +311,7 @@ export function QuickAddSheet({
                 </Button>
               ) : (
                 <Button
+                  type="button"
                   variant="ghost"
                   size="sm"
                   className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
@@ -318,8 +341,15 @@ export function QuickAddSheet({
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter") void saveRename(c);
-                          if (e.key === "Escape") cancelRename();
+                          // preventDefault stops Enter/Escape from also submitting the form
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void saveRename(c);
+                          }
+                          if (e.key === "Escape") {
+                            e.preventDefault();
+                            cancelRename();
+                          }
                         }}
                         className="h-8 min-w-0 flex-1 text-center text-xs"
                         aria-label="Category name"
@@ -327,10 +357,10 @@ export function QuickAddSheet({
                       />
                     </div>
                     <div className="flex justify-center gap-1">
-                      <Button size="icon" className="h-6 w-6" disabled={renaming} onClick={() => void saveRename(c)} aria-label="Save name and emoji">
+                      <Button type="button" size="icon" className="h-6 w-6" disabled={renaming} onClick={() => void saveRename(c)} aria-label="Save name and emoji">
                         <Check className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={cancelRename} aria-label="Cancel rename">
+                      <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={cancelRename} aria-label="Cancel rename">
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -378,10 +408,11 @@ export function QuickAddSheet({
 
         <div className="border-t border-muted-foreground/10 pt-3">
           {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
-          <Button className="h-12 w-full text-base" disabled={!canSubmit || saving} onClick={() => void submit()}>
+          <Button type="submit" className="h-12 w-full text-base" disabled={!canSubmit || saving}>
             {saving ? "Adding…" : "Add transaction"}
           </Button>
         </div>
+        </form>
       </SheetContent>
     </Sheet>
   );
