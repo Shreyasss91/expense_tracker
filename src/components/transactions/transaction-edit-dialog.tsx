@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -12,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { updateTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus } from "@/actions/settings";
 import { useCategoryUsage } from "@/lib/category-usage";
@@ -20,9 +20,10 @@ import { useCreateCategory } from "@/lib/use-create-category";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { emitLedgerMutation } from "@/lib/events";
+import { loadDateTimeExpanded, saveDateTimeExpanded } from "@/lib/date-time-expanded";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
-import { AmountField, CategoryGrid, DateTimeField, TagSelector, type TransactionTag } from "./transaction-fields";
+import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "./transaction-fields";
 
 export function TransactionEditDialog({
   row,
@@ -47,6 +48,15 @@ export function TransactionEditDialog({
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  // shares the collapsed/expanded choice and its persistence key with Quick Add
+  // (Amendment 10 §4)
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const dateTimeExpandedRef = useRef(false);
+  useEffect(() => {
+    dateTimeExpandedRef.current = loadDateTimeExpanded();
+    setShowDatePicker(dateTimeExpandedRef.current);
+  }, []);
   // §6.7 — remaining budget per category for the row's month (mirrors Quick Add)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // local category list — syncs from the server prop so a category created inline
@@ -68,9 +78,11 @@ export function TransactionEditDialog({
     setTime(row.time.slice(0, 5));
     setNote(row.note ?? "");
     setError(null);
+    setSubmitAttempted(false);
   }
 
   const paise = rupeesToPaise(amount);
+  const canSubmit = paise > 0 && categoryId !== "" && memberId !== "";
   // §6.2 — recently used categories float to the top, same as the Quick Add grid
   const { orderedCategories, touchCategory } = useCategoryUsage(cats);
   // §6.2/§6.5 — inline "add a new category" flow, same as Quick Add
@@ -104,6 +116,7 @@ export function TransactionEditDialog({
   async function save() {
     if (!row) return;
     if (!Number.isFinite(paise) || paise <= 0) {
+      setSubmitAttempted(true);
       setError("Enter a valid amount");
       return;
     }
@@ -177,20 +190,8 @@ export function TransactionEditDialog({
           }}
           className="space-y-4"
         >
-          {/* date/time first, mirroring the Quick Add sheet (§6.2) */}
-          <DateTimeField
-            date={date}
-            time={time}
-            onDateChange={setDate}
-            onTimeChange={setTime}
-            dateId="ed-date"
-            timeId="ed-time"
-          />
-
-          <AmountField id="ed-amount" value={amount} onChange={setAmount} />
-
-          <TagSelector value={tag} onChange={setTag} />
-
+          {/* member reassignment first, then date/time, then Amount+Tag — parity
+              with Quick Add's field order (Amendment 10 §4) */}
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Member</Label>
             <Select value={memberId} onValueChange={setMemberId}>
@@ -207,21 +208,40 @@ export function TransactionEditDialog({
             </Select>
           </div>
 
+          <DateTimeField
+            date={date}
+            time={time}
+            onDateChange={setDate}
+            onTimeChange={setTime}
+            dateId="ed-date"
+            timeId="ed-time"
+            collapsible
+            showPicker={showDatePicker}
+            onTogglePicker={() => {
+              const next = !showDatePicker;
+              dateTimeExpandedRef.current = next;
+              saveDateTimeExpanded(next);
+              setShowDatePicker(next);
+            }}
+          />
+
+          <AmountTagRow
+            amountId="ed-amount"
+            amount={amount}
+            onAmountChange={setAmount}
+            amountInvalid={submitAttempted && paise <= 0}
+            tag={tag}
+            onTagChange={setTag}
+          />
+
           <div className="space-y-1.5">
             <Label htmlFor="ed-note" className="text-xs text-muted-foreground">Note (optional)</Label>
-            <Textarea
+            <Input
               id="ed-note"
-              rows={2}
               placeholder="What was it for?"
               value={note}
+              maxLength={140}
               onChange={(e) => setNote(e.target.value)}
-              onKeyDown={(e) => {
-                // Enter in a textarea inserts a newline; Cmd/Ctrl+Enter submits
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  void save();
-                }
-              }}
             />
           </div>
 
@@ -236,7 +256,9 @@ export function TransactionEditDialog({
 
           {error && <p className="text-sm font-medium text-destructive">{error}</p>}
 
-          <p className="text-center text-[11px] text-muted-foreground">Tip: press Enter ↵ to save</p>
+          <p className="text-center text-[11px] text-muted-foreground">
+            {canSubmit ? "press Enter ↵ to save" : "Enter an amount and pick a category"}
+          </p>
 
           <DialogFooter className="gap-2 sm:justify-between">
             <Button
@@ -250,7 +272,7 @@ export function TransactionEditDialog({
             >
               Delete
             </Button>
-            <Button type="submit">
+            <Button type="submit" disabled={!canSubmit}>
               Save changes
             </Button>
           </DialogFooter>

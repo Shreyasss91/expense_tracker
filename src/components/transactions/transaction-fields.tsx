@@ -1,6 +1,6 @@
 "use client";
 
-import { format, parse } from "date-fns";
+import { format, parse, subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { Check, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,22 @@ import type { CategoryOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
 
 export type TransactionTag = (typeof TRANSACTION_TAGS)[number];
+
+/**
+ * Sanitize a raw amount input into a value that always fits NUMERIC(12,2):
+ * digits plus at most one decimal separator, at most 2 decimal digits, and at
+ * most 10 integer digits (Amendment 10 §2).
+ */
+export function sanitizeAmountInput(raw: string): string {
+  let v = raw.replace(/[^0-9.]/g, "");
+  const firstDot = v.indexOf(".");
+  if (firstDot !== -1) {
+    v = v.slice(0, firstDot + 1) + v.slice(firstDot + 1).replace(/\./g, "");
+  }
+  const [intPart, decPart] = v.split(".");
+  const trimmedInt = intPart.slice(0, 10);
+  return decPart !== undefined ? `${trimmedInt}.${decPart.slice(0, 2)}` : trimmedInt;
+}
 
 /** Inline "add a new category" form state, rendered as the last tile in the grid. */
 export interface AddCategoryForm {
@@ -26,34 +42,42 @@ export interface AddCategoryForm {
 }
 
 /**
- * Amount field — large input with a live ₹ preview. Shared by the Quick Add
- * sheet and the edit-transaction dialog so both forms feel identical (§6.2).
+ * Amount input — no label, ₹ prefix rendered inside the field, sized to sit
+ * flush against the Tag cluster in the single-row Amount+Tag layout
+ * (Amendment 10 §2). Sanitizes on change so the value always fits NUMERIC(12,2).
  */
 export function AmountField({
   id,
   value,
   onChange,
   autoFocus,
+  invalid,
 }: {
   id: string;
   value: string;
   onChange: (v: string) => void;
   autoFocus?: boolean;
+  invalid?: boolean;
 }) {
-  const paise = rupeesToPaise(value);
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">Amount (₹)</Label>
+    <div className="relative h-14 min-w-[110px] flex-1">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-lg font-semibold text-muted-foreground"
+      >
+        ₹
+      </span>
       <Input
         id={id}
         inputMode="decimal"
         placeholder="0.00"
+        aria-label="Amount"
+        aria-invalid={invalid || undefined}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-12 text-2xl font-semibold tabular-nums"
+        onChange={(e) => onChange(sanitizeAmountInput(e.target.value))}
+        className="h-14 pl-8 text-lg font-semibold tabular-nums"
         autoFocus={autoFocus}
       />
-      {paise > 0 && <p className="text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>}
     </div>
   );
 }
@@ -112,7 +136,14 @@ export function DateTimeField({
     );
   }
 
-  const isToday = date === formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd");
+  const now = new Date();
+  const isToday = date === formatInTimeZone(now, APP_TIMEZONE, "yyyy-MM-dd");
+  const isYesterday = date === formatInTimeZone(subDays(now, 1), APP_TIMEZONE, "yyyy-MM-dd");
+  const dateLabel = isToday
+    ? "Today"
+    : isYesterday
+      ? "Yesterday"
+      : format(parse(date, "yyyy-MM-dd", new Date()), "d MMM yyyy");
   return (
     <button
       type="button"
@@ -122,14 +153,20 @@ export function DateTimeField({
     >
       <span className="text-xs text-muted-foreground">Date & time</span>
       <span className="flex items-center gap-1.5 text-sm font-medium tabular-nums">
-        {isToday ? "Today" : format(parse(date, "yyyy-MM-dd", new Date()), "d MMM")} · {time}
+        {dateLabel} · {time}
         <Pencil className="h-3 w-3 text-muted-foreground" />
       </span>
     </button>
   );
 }
 
-/** Tag selector — three chips with a check on the selected tag. */
+/**
+ * Tag cluster (Amendment 10 §2) — a 2×2 grid at h-14. The selected tag fills
+ * the left column as a display-only big button (col 1, row-span-2); the other
+ * two tags sit stacked in the right column in canonical order
+ * (lifestyle, recurring, one_time minus selected). Tapping an alternative
+ * swaps it into the big slot — one tap to any tag, fully deterministic.
+ */
 export function TagSelector({
   value,
   onChange,
@@ -137,25 +174,74 @@ export function TagSelector({
   value: TransactionTag;
   onChange: (t: TransactionTag) => void;
 }) {
+  const alternatives = TRANSACTION_TAGS.filter((t) => t !== value);
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Tag"
+      className="grid h-14 w-[52%] min-w-[150px] max-w-[240px] grid-cols-2 grid-rows-2 gap-1"
+    >
+      <button
+        type="button"
+        role="radio"
+        aria-checked
+        tabIndex={-1}
+        className="row-span-2 flex items-center justify-center gap-1 truncate rounded-lg bg-primary px-1.5 text-xs font-medium text-primary-foreground sm:text-sm"
+      >
+        <Check className="h-3 w-3 shrink-0" />
+        <span className="truncate">{TRANSACTION_TAG_LABELS[value]}</span>
+      </button>
+      {alternatives.map((t) => (
+        <button
+          key={t}
+          type="button"
+          role="radio"
+          aria-checked={false}
+          onClick={() => onChange(t)}
+          className="truncate rounded-md border bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground active:scale-95 sm:text-[11px]"
+        >
+          {TRANSACTION_TAG_LABELS[t]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Amount + Tag row (Amendment 10 §2) — the Amount input and the Tag cluster
+ * share a single `flex gap-2 h-14` row that never wraps, with the live ≈
+ * preview rendered underneath. Shared by Quick Add and the edit dialog so
+ * both forms have identical geometry.
+ */
+export function AmountTagRow({
+  amountId,
+  amount,
+  onAmountChange,
+  autoFocusAmount,
+  amountInvalid,
+  tag,
+  onTagChange,
+}: {
+  amountId: string;
+  amount: string;
+  onAmountChange: (v: string) => void;
+  autoFocusAmount?: boolean;
+  amountInvalid?: boolean;
+  tag: TransactionTag;
+  onTagChange: (t: TransactionTag) => void;
+}) {
+  const paise = rupeesToPaise(amount || "0");
   return (
     <div>
-      <Label className="mb-1.5 text-xs text-muted-foreground">Tag</Label>
-      <div className="grid grid-cols-3 gap-2">
-        {TRANSACTION_TAGS.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => onChange(t)}
-            className={cn(
-              "flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-medium",
-              value === t ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
-            )}
-          >
-            {value === t && <Check className="h-3.5 w-3.5" />}
-            {TRANSACTION_TAG_LABELS[t]}
-          </button>
-        ))}
+      <div className="flex h-14 gap-2">
+        <AmountField id={amountId} value={amount} onChange={onAmountChange} autoFocus={autoFocusAmount} invalid={amountInvalid} />
+        <TagSelector value={tag} onChange={onTagChange} />
       </div>
+      {paise > 0 ? (
+        <p className="mt-1.5 text-xs tabular-nums text-muted-foreground">≈ {formatINR(paise)}</p>
+      ) : amountInvalid ? (
+        <p className="mt-1.5 text-xs font-medium text-destructive">Enter a valid amount</p>
+      ) : null}
     </div>
   );
 }
@@ -244,8 +330,9 @@ export function CategoryGrid({
             </Button>
           ))}
       </div>
-      <div className="mb-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-        <p>{hint ?? (editMode ? "Tap a category to rename" : "Tap a category to select it")}</p>
+      <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+        <p>{hint ?? (editMode ? "Tap a category to rename" : "Tap a category to select")}</p>
+        {showAllLink && <span aria-hidden>·</span>}
         {showAllLink}
       </div>
       <div className="flex flex-wrap gap-2">
@@ -318,8 +405,8 @@ export function CategoryGrid({
                   className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
                 >
                   {(budgetRemaining.get(c.id) ?? 0) < 0
-                    ? `${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
-                    : `${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
+                    ? `·${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
+                    : `·${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
                 </span>
               )}
             </button>

@@ -18,6 +18,17 @@ export function formatINR(paise: number): string {
   return inrFormatter.format(paise / 100);
 }
 
+const inrWholeFormatter = new Intl.NumberFormat("en-IN", {
+  style: "currency",
+  currency: "INR",
+  maximumFractionDigits: 0,
+});
+
+/** Format paise as ₹ with en-IN grouping, no decimals — sticky CTA label only. */
+export function formatINRWhole(paise: number): string {
+  return inrWholeFormatter.format(paise / 100);
+}
+
 /** Format paise as a plain 2-dp decimal string — CSV export (§6.6). */
 export function paiseToPlainString(paise: number): string {
   return (paise / 100).toFixed(2);

@@ -3,23 +3,34 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
+import { updateActiveMember } from "@/actions/member";
 import { emitLedgerMutation } from "@/lib/events";
 import { useCategoryUsage } from "@/lib/category-usage";
 import { suggestCategories } from "@/lib/category-suggestions";
 import { useCreateCategory } from "@/lib/use-create-category";
-import { paiseToDbString } from "@/lib/money";
+import { formatINRWhole, paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
+import { loadDateTimeExpanded, saveDateTimeExpanded } from "@/lib/date-time-expanded";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
-import { AmountField, CategoryGrid, DateTimeField, TagSelector, type TransactionTag } from "@/components/transactions/transaction-fields";
+import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
 // tag + note already filled in; the amount, category, date and time never repeat.
@@ -51,27 +62,6 @@ function saveLastEntry(entry: { tag: TransactionTag; note: string }) {
   }
 }
 
-// §6.2 — the Date/Time row's collapsed/expanded choice persists per device, so a
-// user who expands the pickers once keeps them expanded on later visits.
-const DATE_TIME_EXPANDED_KEY = "quick-add:date-time-expanded";
-
-function loadDateTimeExpanded(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    return window.localStorage.getItem(DATE_TIME_EXPANDED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function saveDateTimeExpanded(expanded: boolean) {
-  try {
-    window.localStorage.setItem(DATE_TIME_EXPANDED_KEY, expanded ? "1" : "0");
-  } catch {
-    // storage unavailable — remembering is best-effort
-  }
-}
-
 export function QuickAddSheet({
   open,
   onOpenChange,
@@ -95,6 +85,13 @@ export function QuickAddSheet({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  // the member chip doubles as a switcher (§1); optimistic against the cookie
+  // written by updateActiveMember, reverted if the switch fails
+  const [localActiveMemberId, setLocalActiveMemberId] = useState(activeMemberId);
+  useEffect(() => {
+    setLocalActiveMemberId(activeMemberId);
+  }, [activeMemberId]);
   // the date/time pickers stay collapsed behind their defaults until tapped;
   // the choice persists across sessions (dateTimeExpandedRef is the hydrated copy)
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -135,7 +132,20 @@ export function QuickAddSheet({
   }, [note]);
 
   const paise = useMemo(() => Math.round(parseFloat(amount || "0") * 100) || 0, [amount]);
-  const activeMember = members.find((m) => m.id === activeMemberId) ?? members[0];
+  const activeMember = members.find((m) => m.id === localActiveMemberId) ?? members[0];
+
+  async function switchMember(memberId: string) {
+    if (memberId === localActiveMemberId) return;
+    const prev = localActiveMemberId;
+    setLocalActiveMemberId(memberId); // optimistic — §1 member chip switch
+    const res = await updateActiveMember(memberId);
+    if (res.ok) {
+      router.refresh();
+    } else {
+      setLocalActiveMemberId(prev);
+      toast.error(res.error ?? "Could not switch member");
+    }
+  }
   // §6.2 — recently used categories float to the top of the grid
   const { orderedCategories, touchCategory } = useCategoryUsage(cats);
 
@@ -204,12 +214,16 @@ export function QuickAddSheet({
     setRenameEmoji("");
     setShowDatePicker(dateTimeExpandedRef.current);
     setShowAllSuggestions(false);
+    setSubmitAttempted(false);
     cancelAddCategory();
   }
 
   async function submit() {
-    if (paise <= 0 || saving) return;
-    const member = members.find((m) => m.id === activeMemberId) ?? members[0];
+    if (paise <= 0 || saving) {
+      setSubmitAttempted(true);
+      return;
+    }
+    const member = members.find((m) => m.id === localActiveMemberId) ?? members[0];
     const category = cats.find((c) => c.id === selectedCategoryId);
     if (!member || !category) {
       setError("Pick a category");
@@ -237,7 +251,7 @@ export function QuickAddSheet({
 
     setSaving(true);
     const base = {
-      memberId: activeMemberId, // server reads the cookie anyway (§6.2)
+      memberId: localActiveMemberId, // server reads the cookie anyway (§6.2)
       categoryId: category.id,
       amount: paise,
       date,
@@ -327,10 +341,31 @@ export function QuickAddSheet({
         <div className="mb-1 flex items-center gap-2">
           <h2 className="text-base font-semibold">Add transaction</h2>
           {activeMember && (
-            <span className="ml-auto flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              <span>{activeMember.emoji}</span>
-              {activeMember.name}
-            </span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-7 gap-1 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  <span>{activeMember.emoji}</span>
+                  {activeMember.name}
+                  <ChevronsUpDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Who&apos;s adding this?</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {members.map((m) => (
+                  <DropdownMenuItem key={m.id} onSelect={() => void switchMember(m.id)} className="gap-2">
+                    <span className="text-base">{m.emoji}</span>
+                    <span className="flex-1">{m.name}</span>
+                    {m.id === activeMember.id && <Check className="h-4 w-4 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
@@ -364,25 +399,24 @@ export function QuickAddSheet({
             }}
           />
 
-          <AmountField id="qa-amount" value={amount} onChange={setAmount} autoFocus />
-
-          <TagSelector value={tag} onChange={setTag} />
+          <AmountTagRow
+            amountId="qa-amount"
+            amount={amount}
+            onAmountChange={setAmount}
+            autoFocusAmount
+            amountInvalid={submitAttempted && paise <= 0}
+            tag={tag}
+            onTagChange={setTag}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="qa-note" className="text-xs text-muted-foreground">Note (optional)</Label>
-            <Textarea
+            <Input
               id="qa-note"
-              rows={2}
               placeholder="What was it for?"
               value={note}
+              maxLength={140}
               onChange={(e) => setNote(e.target.value)}
-              onKeyDown={(e) => {
-                // Enter in a textarea inserts a newline; Cmd/Ctrl+Enter submits
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  void submit();
-                }
-              }}
             />
           </div>
 
@@ -395,7 +429,7 @@ export function QuickAddSheet({
             hint={
               suggestionsActive
                 ? "Suggested from your note — tap to select"
-                : "Tap a category to select it"
+                : "Tap a category to select"
             }
             showAllLink={
               suggestionsActive && hasMoreCategories ? (
@@ -427,11 +461,23 @@ export function QuickAddSheet({
 
         <div className="border-t border-muted-foreground/10 pt-3">
           {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
-          {canSubmit && !saving && (
-            <p className="mb-1.5 text-center text-[11px] text-muted-foreground">Tip: press Enter ↵ to add</p>
+          {!saving && (
+            <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
+              {canSubmit
+                ? "press Enter ↵ to add"
+                : paise <= 0 && !selectedCategoryId
+                  ? "Enter an amount and pick a category"
+                  : paise <= 0
+                    ? "Enter an amount"
+                    : "Pick a category"}
+            </p>
           )}
           <Button type="submit" className="h-12 w-full text-base" disabled={!canSubmit || saving}>
-            {saving ? "Adding…" : "Add transaction"}
+            {saving
+              ? "Adding…"
+              : canSubmit
+                ? `Add ${formatINRWhole(paise)} · ${cats.find((c) => c.id === selectedCategoryId)?.name ?? ""}`
+                : "Add transaction"}
           </Button>
         </div>
         </form>
