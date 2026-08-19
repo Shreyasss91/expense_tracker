@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,7 +20,6 @@ import { useCreateCategory } from "@/lib/use-create-category";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { emitLedgerMutation } from "@/lib/events";
-import { loadDateTimeExpanded, saveDateTimeExpanded } from "@/lib/date-time-expanded";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "./transaction-fields";
@@ -49,14 +48,9 @@ export function TransactionEditDialog({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  // shares the collapsed/expanded choice and its persistence key with Quick Add
-  // (Amendment 10 §4)
+  // Amendment 11 §2 — always starts collapsed on open, not persisted (see
+  // Quick Add for the matching change and why).
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const dateTimeExpandedRef = useRef(false);
-  useEffect(() => {
-    dateTimeExpandedRef.current = loadDateTimeExpanded();
-    setShowDatePicker(dateTimeExpandedRef.current);
-  }, []);
   // §6.7 — remaining budget per category for the row's month (mirrors Quick Add)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // local category list — syncs from the server prop so a category created inline
@@ -79,6 +73,7 @@ export function TransactionEditDialog({
     setNote(row.note ?? "");
     setError(null);
     setSubmitAttempted(false);
+    setShowDatePicker(false);
   }
 
   const paise = rupeesToPaise(amount);
@@ -217,12 +212,7 @@ export function TransactionEditDialog({
             timeId="ed-time"
             collapsible
             showPicker={showDatePicker}
-            onTogglePicker={() => {
-              const next = !showDatePicker;
-              dateTimeExpandedRef.current = next;
-              saveDateTimeExpanded(next);
-              setShowDatePicker(next);
-            }}
+            onTogglePicker={() => setShowDatePicker((v) => !v)}
           />
 
           <AmountTagRow

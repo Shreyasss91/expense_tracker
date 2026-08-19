@@ -27,7 +27,6 @@ import { formatINRWhole, paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
-import { loadDateTimeExpanded, saveDateTimeExpanded } from "@/lib/date-time-expanded";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "./types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
@@ -92,10 +91,11 @@ export function QuickAddSheet({
   useEffect(() => {
     setLocalActiveMemberId(activeMemberId);
   }, [activeMemberId]);
-  // the date/time pickers stay collapsed behind their defaults until tapped;
-  // the choice persists across sessions (dateTimeExpandedRef is the hydrated copy)
+  // Amendment 11 §2 — always starts collapsed with today's date/default time on
+  // every open; no longer persisted, so it can't come back pre-expanded on a
+  // device where it was toggled open before. Still toggleable within the
+  // current session/tab (state lives on this always-mounted component).
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const dateTimeExpandedRef = useRef(false);
   const [editMode, setEditMode] = useState(false);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
@@ -109,15 +109,12 @@ export function QuickAddSheet({
   const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
   const router = useRouter();
 
-  // Hydrate the remembered tag/note and the date/time collapsed choice after mount
-  // (never during SSR, so the server-rendered defaults stay consistent with the
-  // client's first paint).
+  // Hydrate the remembered tag/note after mount (never during SSR, so the
+  // server-rendered defaults stay consistent with the client's first paint).
   useEffect(() => {
     lastEntryRef.current = loadLastEntry();
     setTag(lastEntryRef.current.tag);
     setNote(lastEntryRef.current.note);
-    dateTimeExpandedRef.current = loadDateTimeExpanded();
-    setShowDatePicker(dateTimeExpandedRef.current);
   }, []);
 
   // Keep the local category copy in sync with server-provided data when not mid-edit,
@@ -212,7 +209,7 @@ export function QuickAddSheet({
     setRenamingId(null);
     setRenameValue("");
     setRenameEmoji("");
-    setShowDatePicker(dateTimeExpandedRef.current);
+    setShowDatePicker(false);
     setShowAllSuggestions(false);
     setSubmitAttempted(false);
     cancelAddCategory();
@@ -339,7 +336,14 @@ export function QuickAddSheet({
       <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
         <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-1 flex items-center gap-2">
-          <h2 className="text-base font-semibold">Add transaction</h2>
+          <button
+            type="button"
+            onClick={() => void submit()}
+            disabled={saving}
+            className="rounded text-base font-semibold underline-offset-2 hover:underline disabled:pointer-events-none disabled:opacity-60"
+          >
+            Add transaction
+          </button>
           {activeMember && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -391,12 +395,7 @@ export function QuickAddSheet({
             timeId="qa-time"
             collapsible
             showPicker={showDatePicker}
-            onTogglePicker={() => {
-              const next = !showDatePicker;
-              dateTimeExpandedRef.current = next;
-              saveDateTimeExpanded(next);
-              setShowDatePicker(next);
-            }}
+            onTogglePicker={() => setShowDatePicker((v) => !v)}
           />
 
           <AmountTagRow
