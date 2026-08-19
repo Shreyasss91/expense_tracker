@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, List, Plus } from "lucide-react";
+import { LayoutDashboard, List, Plus, ClipboardCheck } from "lucide-react";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
 import { cn } from "@/lib/utils";
+import { usePendingReviewCount } from "@/components/use-pending-review-count";
 
 export function BottomNav() {
   const pathname = usePathname();
   const { open } = useQuickAdd();
+  const pendingCount = usePendingReviewCount();
 
   const item = (href: string, label: string, icon: React.ReactNode, active: boolean) => (
     <Link
@@ -39,6 +41,12 @@ export function BottomNav() {
           </button>
         </div>
         {item("/transactions", "Ledger", <List className="h-5 w-5" />, pathname === "/transactions")}
+        {item("/review", "Review", <ClipboardCheck className="h-5 w-5" />, pathname === "/review")}
+        {pendingCount > 0 && (
+          <span className="absolute right-8 top-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+            {pendingCount > 9 ? "9+" : pendingCount}
+          </span>
+        )}
       </div>
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>

@@ -73,6 +73,7 @@ export function mapRow(row: {
   date: string;
   time: string;
   createdAt: Date;
+  reviewedAt: Date | null;
   memberName: string;
   memberEmoji: string;
   memberColor: string;
@@ -92,6 +93,7 @@ export function mapRow(row: {
     date: row.date,
     time: row.time,
     createdAt: row.createdAt.toISOString(),
+    reviewedAt: row.reviewedAt?.toISOString() ?? null,
     member: {
       name: row.memberName,
       emoji: row.memberEmoji,
@@ -125,6 +127,7 @@ export interface TransactionListRow {
   date: string;
   time: string;
   createdAt: string;
+  reviewedAt: string | null;
   member: { name: string; emoji: string; color: string; slug: string };
   category: { name: string; emoji: string; color: string; slug: string };
 }

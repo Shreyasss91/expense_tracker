@@ -49,6 +49,24 @@ export const transactionSchema = transactionBaseSchema.extend({
 
 export type TransactionInput = z.infer<typeof transactionSchema>;
 
+/** §6.5 template input for create/updateTemplate actions. */
+export const templateSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+  categoryId: z.string().uuid(),
+  tag: z.enum(TRANSACTION_TAGS),
+  amount: z.number().int().positive(),
+  note: z
+    .string()
+    .trim()
+    .max(140)
+    .optional()
+    .nullable()
+    .transform((v) => (v === "" ? null : v)),
+  sortOrder: z.number().int(),
+});
+
+export type TemplateInput = z.infer<typeof templateSchema>;
+
 export const updateCategorySchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(50),

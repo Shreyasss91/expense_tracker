@@ -57,6 +57,8 @@ export const transactions = pgTable(
     // Postgres TIME; always reads back as HH:MM:SS string (§5.6)
     time: time("time").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    // Review queue: NULL = pending review if note is generic; set explicitly via acknowledge (§6.4)
+    reviewedAt: timestamp("reviewed_at"),
   },
   (t) => ({
     dateIdx: index("transactions_date_idx").on(t.date),
@@ -119,3 +121,21 @@ export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
 export type Budget = typeof budgets.$inferSelect;
 export type AppSetting = typeof appSettings.$inferSelect;
+
+/** Recurring template row (§6.5). */
+export const templates = pgTable("templates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(), // user-editable label, e.g. "ICICI Term Insurance"
+  categoryId: uuid("category_id")
+    .references(() => categories.id)
+    .notNull(),
+  tag: transactionTagEnum("tag").notNull(), // §5.2 triad applies to templates
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // §5.8
+  note: text("note"), // optional prefill note
+  sortOrder: integer("sort_order").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type Template = typeof templates.$inferSelect;
+export type NewTemplate = typeof templates.$inferInsert;

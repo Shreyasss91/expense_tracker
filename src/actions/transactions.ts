@@ -13,6 +13,7 @@ import { buildWhere, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type Transacti
 import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
+import { isGenericNote } from "@/lib/generic-notes";
 
 export async function createTransaction(raw: TransactionInput) {
   const parsed = transactionSchema.safeParse(raw);
@@ -46,6 +47,7 @@ export async function createTransaction(raw: TransactionInput) {
       note: data.note ?? null,
       date: data.date,
       time: `${data.time}:00`,
+      reviewedAt: isGenericNote(data.note) ? null : undefined, // NULL for generic notes (§6.4)
     })
     .returning();
 
@@ -71,6 +73,9 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
   if (!categoryExists) return { ok: false as const, error: "Unknown category" };
 
+  // Any note update resets reviewedAt to NULL if generic, otherwise clears it for re-eval (§6.4)
+  const reviewedAtValue = isGenericNote(data.note) ? null : undefined;
+
   const [row] = await db
     .update(transactions)
     .set({
@@ -81,6 +86,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
       note: data.note ?? null,
       date: data.date,
       time: `${data.time}:00`,
+      reviewedAt: reviewedAtValue,
     })
     .where(eq(transactions.id, idCheck.data))
     .returning();
@@ -112,6 +118,33 @@ export async function deleteTransaction(id: string) {
   return { ok: true as const };
 }
 
+/** Acknowledge a review item by setting reviewed_at (§6.4). */
+export async function acknowledgeTransactionReview(id: string) {
+  const idCheck = idSchema.safeParse(id);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
+
+  const [row] = await db
+    .update(transactions)
+    .set({ reviewedAt: new Date() })
+    .where(eq(transactions.id, idCheck.data))
+    .returning({ id: transactions.id });
+
+  if (!row) return { ok: false as const, error: "Transaction not found" };
+
+  revalidatePath("/review");
+  revalidateTag("transactions");
+  return { ok: true as const };
+}
+
+/** Get pending review count for the badge (§6.4). */
+export async function getPendingReviewCount(): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(transactions)
+    .where(sql`${transactions.reviewedAt} IS NULL`);
+  return Number(result[0]?.count ?? 0);
+}
+
 export async function getTransactionsPage(args: {
   cursor: Cursor | null;
   filters: TransactionListFilters;
@@ -129,6 +162,7 @@ export async function getTransactionsPage(args: {
       date: transactions.date,
       time: transactions.time,
       createdAt: transactions.createdAt,
+      reviewedAt: transactions.reviewedAt,
       memberName: members.name,
       memberEmoji: members.emoji,
       memberColor: members.color,

@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), and 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), and 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -177,6 +177,7 @@ export const transactions = pgTable('transactions', {
   date: date('date', { mode: 'string' }).notNull(),   // YYYY-MM-DD, Asia/Kolkata calendar date (§5.7)
   time: time('time', { mode: 'string' }).notNull(),   // Postgres TIME; reads back as HH:MM:SS (§5.6)
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  reviewedAt: timestamp('reviewed_at'),  // NULL = not acknowledged; set only by explicit acknowledge (Amendment 18, 19 Aug 2026 — Review tab queue)
 }, (t) => ({
   dateIdx: index('transactions_date_idx').on(t.date),
   memberIdx: index('transactions_member_id_idx').on(t.memberId),
@@ -190,6 +191,8 @@ export const transactions = pgTable('transactions', {
 **Note on `transactions.id`:** `defaultRandom()` is deliberately **removed**. Every insert supplies its own UUID — a random v4 from Quick Add, a deterministic v5 from the seed script. A database-generated random default would make seeding non-idempotent (§8.1).
 
 **Note on `transactions.type` (Amendment 13, 17 Aug 2026):** The `type` column and `transactionTypeEnum` were **removed**. The ledger is now **expense-only** — all transactions are expenses, there is no income type, and the `transactions_tag_invariant` CHECK constraint was removed with it. The `tag` column is now `NOT NULL` since every transaction requires a tag.
+
+**Note on `transactions.reviewedAt` (Amendment 18, 19 Aug 2026):** nullable timestamp for the Review tab month-end reconciliation queue (§6.4). A transaction is pending review iff `reviewed_at IS NULL` AND its note is generic (empty/NULL or matches `GENERIC_NOTE_BLOCKLIST` or equals the category display name). Setting `reviewed_at` acknowledges "No more detail"; any note update resets it to NULL. Not exported in CSV (§6.6 stays 8 columns).
 
 ```typescript
 export const budgets = pgTable('budgets', {
@@ -209,6 +212,18 @@ export const appSettings = pgTable('app_settings', {
   value: text('value').notNull(),            // plain string; '1'/'0' for booleans (§6.7)
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export const templates = pgTable('templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),                 // user-editable label, e.g. "ICICI Term Insurance"
+  categoryId: uuid('category_id').references(() => categories.id).notNull(),
+  tag: transactionTagEnum('tag').notNull(),     // §5.2 triad applies to templates
+  amount: numeric('amount', { precision: 12, scale: 2 }).notNull(), // §5.8
+  note: text('note'),                           // optional prefill note
+  sortOrder: integer('sort_order').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
 ```
 
 **`app_settings`** is a tiny key-value store for global application settings. It currently
@@ -216,7 +231,13 @@ holds exactly one key: `exclude_bills_from_budget` (`'1'`/`'0'` — the global "
 bills from the total budget" toggle, §6.7). Read/written via `src/db/app-settings-mutations.ts`
 (plain statements; upsert on conflict). No row for a key = off.
 
-**Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`, the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3), and `budgets_scope_unique` (§6.7).
+**`templates`** (Amendment 17, 19 Aug 2026): recurring transaction templates for Quick Add prefill.
+Templates carry **no member** — the currently active member is stamped at commit time (§3.2).
+Deletion IS permitted (unlike categories/members) — nothing references them. No `slug` column
+(templates are not ingestion identities). See §4.2 table summary, §6.2 Quick Add template strip,
+§6.5 Settings Templates card, and §7.1 Server Actions for creation/update/deletion rules.
+
+**Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`, the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3), `budgets_scope_unique` (§6.7), and `templates(sort_order)` for Settings ordering.
 
 ---
 
@@ -360,6 +381,19 @@ One representation, end to end. Mixing representations is the defect this sectio
 
 ---
 
+### 5.9 Generic Note Blocklist (Review tab — Amendment 18, 19 Aug 2026)
+
+A transaction enters the Review queue (§6.4) when its note is *generic*. After `lower(btrim(note))`:
+- **(A)** empty / NULL, **or**
+- **(B)** an exact match against the curated constant `GENERIC_NOTE_BLOCKLIST` (`src/lib/generic-notes.ts`), **or** equal to the transaction's category display name (redundant note).
+
+**Initial blocklist** (code constant; covered by DB-free test `test:generic-notes`):
+`hotel, snacks, tindi, oota, store, more, shyam, spar, hopcoms, blinkit, amazon, firstcry, westside, hopscotch, diana, medplus, bakery, chips, bonda, petrol, recharge, internet, vegetables, tarakari, fruits, pampers, wipes, medicine, misc, other`
+
+The blocklist follows the same governance model as the §6.2 keyword map — a code constant amended via CHANGELOG when the owner requests additions/removals.
+
+---
+
 ## 6. UI/UX Specifications
 
 ### 6.1 Global Layout
@@ -378,6 +412,7 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
    switcher, applied optimistically and reverted if the switch fails.
 3. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“, or „Yesterday · 14:32“, or „12 Aug 2026 · 14:32“ once the date is more than a day away, with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. **The collapsed/expanded choice no longer persists (Amendment 11, 19 Aug 2026)** — every open of the sheet starts collapsed on today's date and the current time, on every device; tapping it open keeps it expanded only for the rest of that tab's session. *(Superseded: the choice previously persisted per device in `localStorage` — see `CHANGELOG.md`.)*
 4. **Amount + Tag row (Amendment 10, 19 Aug 2026):** the Amount input and the Tag selector share one `flex` row rather than stacking. **Amount** is a ₹-prefixed text input (`flex-1`, mobile decimal keypad) that sanitizes on every keystroke to a value that always fits `NUMERIC(12,2)` — digits and at most one decimal separator, at most 2 decimal digits, at most 10 integer digits — and is captured as integer paise (§5.8). **Tag** is a compact 2×2 cluster beside it: the currently selected tag renders large in the left column (spanning both rows, defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills), with the other two tags stacked as small tap-to-swap buttons in the right column — tapping one swaps it into the selected slot. A live `≈ ₹` preview (or "Enter a valid amount" once a submit was attempted with none) renders under the row.
+4a. **Template strip (Amendment 17, 19 Aug 2026):** rendered only when ≥ 1 template exists — a horizontal scrollable row of chips between the Date/Time row and the Amount+Tag row. Each chip shows `name · ₹whole` (e.g. "ICICI Term Insurance · ₹2,500"). Tap → **prefills** amount, category, tag, note from the template; date/time stay at their IST defaults (§5.7); every field remains editable; commit still only via the Add button. Prefill **overrides** last-entry memory for that open; a successful commit still updates last-entry memory (§6.2). Templates carry no member — the currently active member is stamped at commit time (§3.2).
 5. **Note (optional):** a single-line text input, 140 characters max — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both the tag and note already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount, category, date and time are never remembered).
 6. **Category:** grid of categories (name only, no emoji — Amendment 9) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits. Recently used categories float to the top of the grid (per-device `localStorage`, recorded on each successful commit — the edit-transaction dialog's grid orders the same way and records usage on edit saves); never-used categories keep the manual order from Settings (§6.5). When a note is typed, the grid shows up to **6 suggested categories** instead of the full grid — scored from the note's words against a curated keyword map per seed category plus the category names (an already-selected category stays pinned on top); clearing the note, or a note with no matches, falls back to the full grid; a **"Show all categories"** link next to the hint text expands back to the full grid and resets whenever the note changes. A **＋ Add** tile (dashed pill, at the end of the grid) opens an inline emoji + name form that creates the category (§5.3/§6.5) and immediately selects it — the edit-transaction dialog offers the same tile via the shared `useCreateCategory` hook.
 7. **Submit:** the sticky footer **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. **Its label is dynamic (Amendment 10):** once valid it reads e.g. **"Add ₹1,250 · Dining Out"** (whole rupees, no decimals — `formatINRWhole`); while invalid it reads "Add transaction" and a small helper line above it names what's missing ("Enter an amount and pick a category" / "Enter an amount" / "Pick a category"). The fields live in a real `<form>`, so **Enter** submits once the form is valid; once valid, the helper line instead reads "press Enter ↵ to add". The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
@@ -463,8 +498,7 @@ The rows above are retained for the record and for any future income-driven surf
   Add's chip switches (§3.2.1, `SPEC_AMENDMENT_7_MEMBER_REASSIGNMENT.md`) — and the
   standalone "Member" select row from the 18 Aug layout is gone now that it lives in the
   header. **Delete** is a small icon button beside the sticky Save button, triggering the
-  same swipe-left undo flow (§6.4.1). *(Supersedes the centered-modal `Dialog`
-  presentation used before 19 Aug 2026 — see `CHANGELOG.md`.)*
+  same swipe-left undo flow (§6.4.1). **"Save as template"** button (type="button") in the footer creates a template from the current fields; default `name` = note (if non-generic) else category display name; toast "Template saved" (Amendment 17, 19 Aug 2026). *(Supersedes the centered-modal `Dialog` presentation used before 19 Aug 2026 — see `CHANGELOG.md`.)*
 - **Filters:** URL-driven pill toggles for Member, Category, Tag, **Type** (`income` /
   `expense`) and Month, plus search — every filter (and the month strip) writes to the
   URL (`?member=…&category=…&tag=…&type=…&month=…&q=…`), so filtered views are shareable
