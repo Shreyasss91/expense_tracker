@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`) and 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), and 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -32,6 +32,21 @@
 > chips, date/time, note, category grid (tap to select) and a single **Add transaction**
 > button. The one-tap "It's a bill" shortcut and the full-screen numpad are removed with
 > the multi-step flow. Recorded in `CHANGELOG.md`.
+>
+> **19 August 2026 — Add-transaction UI restructure, Amendments 10–12** (§6.2, §6.4): the
+> separate Amount field and Tag chip selector merge into one **Amount+Tag row** — a
+> ₹-prefixed amount input beside a compact 2×2 tag cluster — and the sticky footer CTA's
+> label goes dynamic (**"Add ₹1,250 · Dining Out"** once valid). The sheet's own header
+> "Add transaction" text becomes a real button wired to the same submit path as the
+> footer CTA (Amendment 11), and is then styled as a filled pill so it visibly reads as
+> a button rather than underlined text (Amendment 12).
+> The Date/Time collapsed summary **no longer persists** across devices — every open
+> starts collapsed on today's date and the current time, for the rest of that tab's
+> session only (Amendment 11). The **edit-transaction dialog is rewritten from a
+> centered modal into a bottom sheet matching Quick Add's shell** — grip handle, header
+> button + a per-transaction member-reassignment dropdown chip, the same field order,
+> and a dynamic sticky "Save ₹1,250 · Dining Out" CTA, with Delete moved to a small icon
+> button beside Save (Amendment 12). Recorded in `CHANGELOG.md`.
 
 ---
 
@@ -85,7 +100,7 @@ This app does **not** use standard multi-user email/password registration. It us
 ### 3.2 Member Identity (App State)
 Once authenticated, the user selects *who* is currently holding the device.
 
-1. **Member Switcher:** Dropdown in the global header displaying the 3 members: **Dad 👨, Mom 👩, Son 👦** with assigned colors/emojis.
+1. **Member Switcher:** Dropdown in the global header displaying the 3 members: **Dad 👨, Mom 👩, Son 👦** with assigned colors/emojis. **A second, equivalent switcher lives in the Quick Add sheet's own header chip (§6.2, Amendment 10, 19 Aug 2026)** — it calls the same `updateActiveMember` Server Action, so switching mid-entry needs no trip back to the global header.
 2. **State Management — normative:** The selected `member_id` is stored in **a plain, client-readable cookie** named `active_member_id`. It is **not** `httpOnly`, **not** Zustand, and **not** any other client store. Rationale: Server Components and Client Components both read the same value, it survives refresh, SSR is deterministic (no memberless first paint, no hydration flash), and no state-management dependency is introduced. Handing the phone to another member = one tap to switch, no re-login.
 3. **Mutations:** Every Server Action that creates a transaction reads `active_member_id` from the cookie and stamps it on the database record.
 
@@ -356,14 +371,29 @@ One representation, end to end. Mixing representations is the defect this sectio
 ### 6.2 The "Quick Add" Flow (Critical Path — optimize ruthlessly)
 One-handed mobile use, < 5 seconds, **one bottom sheet**:
 1. **Trigger:** Large Floating Action Button with `+`.
-2. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“ with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. The collapsed/expanded choice persists per device.
-3. **Amount:** plain text input (mobile decimal keypad); the amount is captured as integer paise (§5.8). A live `≈ ₹` preview renders once a valid amount is typed.
-4. **Tag:** three-chip selector (defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills).
-5. **Note (optional)** — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount, category, date and time are never remembered).
-6. **Category:** grid of categories (emoji + name) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits. Recently used categories float to the top of the grid (per-device `localStorage`, recorded on each successful commit — the edit-transaction dialog's grid orders the same way and records usage on edit saves); never-used categories keep the manual order from Settings (§6.5). When a note is typed, the grid shows up to **6 suggested categories** instead of the full grid — scored from the note's words against a curated keyword map per seed category plus the category names (an already-selected category stays pinned on top); clearing the note, or a note with no matches, falls back to the full grid. A **＋ Add category** tile (dashed, at the end of the grid) opens an inline emoji + name form that creates the category (§5.3/§6.5) and immediately selects it — the edit-transaction dialog offers the same tile via the shared `useCreateCategory` hook.
-7. **Submit:** the single **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. The fields live in a real `<form>`, so **Enter** submits once the form is valid (`Cmd/Ctrl+Enter` in the note); a small hint under the button announces the shortcut. The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
+2. **Sheet header (Amendments 10–12):** above the fields, a grip handle and a header row
+   with two controls — an **Add transaction** button (a filled pill, wired to the exact
+   same `submit()` as the footer CTA below — same validation, same optimistic create) and
+   the **member chip**, which is a real dropdown: tapping it switches the app-wide active
+   member (§3.2) via the same `updateActiveMember` Server Action as the global header
+   switcher, applied optimistically and reverted if the switch fails.
+3. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“, or „Yesterday · 14:32“, or „12 Aug 2026 · 14:32“ once the date is more than a day away, with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. **The collapsed/expanded choice no longer persists (Amendment 11, 19 Aug 2026)** — every open of the sheet starts collapsed on today's date and the current time, on every device; tapping it open keeps it expanded only for the rest of that tab's session. *(Superseded: the choice previously persisted per device in `localStorage` — see `CHANGELOG.md`.)*
+4. **Amount + Tag row (Amendment 10, 19 Aug 2026):** the Amount input and the Tag selector share one `flex` row rather than stacking. **Amount** is a ₹-prefixed text input (`flex-1`, mobile decimal keypad) that sanitizes on every keystroke to a value that always fits `NUMERIC(12,2)` — digits and at most one decimal separator, at most 2 decimal digits, at most 10 integer digits — and is captured as integer paise (§5.8). **Tag** is a compact 2×2 cluster beside it: the currently selected tag renders large in the left column (spanning both rows, defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills), with the other two tags stacked as small tap-to-swap buttons in the right column — tapping one swaps it into the selected slot. A live `≈ ₹` preview (or "Enter a valid amount" once a submit was attempted with none) renders under the row.
+5. **Note (optional):** a single-line text input, 140 characters max — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both the tag and note already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount, category, date and time are never remembered).
+6. **Category:** grid of categories (name only, no emoji — Amendment 9) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits. Recently used categories float to the top of the grid (per-device `localStorage`, recorded on each successful commit — the edit-transaction dialog's grid orders the same way and records usage on edit saves); never-used categories keep the manual order from Settings (§6.5). When a note is typed, the grid shows up to **6 suggested categories** instead of the full grid — scored from the note's words against a curated keyword map per seed category plus the category names (an already-selected category stays pinned on top); clearing the note, or a note with no matches, falls back to the full grid; a **"Show all categories"** link next to the hint text expands back to the full grid and resets whenever the note changes. A **＋ Add** tile (dashed pill, at the end of the grid) opens an inline emoji + name form that creates the category (§5.3/§6.5) and immediately selects it — the edit-transaction dialog offers the same tile via the shared `useCreateCategory` hook.
+7. **Submit:** the sticky footer **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. **Its label is dynamic (Amendment 10):** once valid it reads e.g. **"Add ₹1,250 · Dining Out"** (whole rupees, no decimals — `formatINRWhole`); while invalid it reads "Add transaction" and a small helper line above it names what's missing ("Enter an amount and pick a category" / "Enter an amount" / "Pick a category"). The fields live in a real `<form>`, so **Enter** submits once the form is valid; once valid, the helper line instead reads "press Enter ↵ to add". The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
 
 > **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. *(Same-day field order, owner request: **Date/Time** moved to the top — collapsed behind a „Today · 14:32“ summary in Quick Add, with a pencil revealing the pickers — followed by **Amount → Tag → Note → Category**; the edit-transaction dialog mirrors the same Date/Time-first order.)* See `CHANGELOG.md`.
+>
+> **Amount+Tag row, member switch, dynamic CTA — owner amendment, 19 Aug 2026
+> (Amendments 10–12).** Step 3 (Amount) and step 4 (Tag) above from the 18 Aug pass are
+> **merged into one row** (step 4 above) — the two fields no longer stack. **Note**
+> (step 5) changes from a multi-line field to a **single-line, 140-character input**,
+> so the `Cmd/Ctrl+Enter`-in-the-note carve-out from the 18 Aug amendment no longer
+> applies — a plain **Enter** now submits from every field, note included. The sheet's
+> own header gains a **member-switch dropdown** and an **Add transaction** button wired
+> to the same submit path as the footer CTA (superseding the earlier plain `<h2>` heading
+> and non-interactive member badge). See `CHANGELOG.md`.
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
@@ -423,7 +453,19 @@ The rows above are retained for the record and for any future income-driven surf
   describe exactly what the filters describe — never just the visible page.
 - **Grouping:** By date ("Today", "Yesterday", "12 Aug 2026") — all three resolved in `Asia/Kolkata` (§5.7).
 - **List Item:** Emoji · Category · Note (truncated) · Member avatar · **₹Amount** (red=expense, green=income).
-- **Interactions:** Swipe-left delete (§6.4.1), tap to edit.
+- **Interactions:** Swipe-left delete (§6.4.1), tap to edit. **Edit sheet (Amendment 12,
+  19 Aug 2026):** tapping a row opens a **bottom sheet matching Quick Add's shell** —
+  grip handle, a header row with an **Edit transaction** pill button (saves — same
+  submit path as the sticky footer CTA) and a **member-reassignment dropdown chip**,
+  the same field order as Quick Add (Date/Time → Amount+Tag row → Note → Category, §6.2)
+  inside a scrollable body, and a sticky footer with a dynamic **"Save ₹1,250 · Dining
+  Out"** CTA. The member chip here reassigns *this transaction's* member — a local,
+  validated form field, distinct from the app-wide `active_member_id` cookie that Quick
+  Add's chip switches (§3.2.1, `SPEC_AMENDMENT_7_MEMBER_REASSIGNMENT.md`) — and the
+  standalone "Member" select row from the 18 Aug layout is gone now that it lives in the
+  header. **Delete** is a small icon button beside the sticky Save button, triggering the
+  same swipe-left undo flow (§6.4.1). *(Supersedes the centered-modal `Dialog`
+  presentation used before 19 Aug 2026 — see `CHANGELOG.md`.)*
 - **Filters:** URL-driven pill toggles for Member, Category, Tag, **Type** (`income` /
   `expense`) and Month, plus search — every filter (and the month strip) writes to the
   URL (`?member=…&category=…&tag=…&type=…&month=…&q=…`), so filtered views are shareable

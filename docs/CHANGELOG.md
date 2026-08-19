@@ -7,6 +7,102 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## v1.2 Amendment — 19 August 2026 (owner decision: edit sheet parity with Quick Add)
+
+### Amendment 12 — Edit sheet matches Quick Add's shell; header CTA styled as a button (§6.2, §6.4)
+
+- **Decision:** the Add-transaction UI pass continues with the edit-transaction surface —
+  make editing an existing row feel like the same page as adding one, and make the Quick
+  Add header control visibly read as a button rather than underlined text.
+- **`quick-add-sheet.tsx`:** the header **"Add transaction"** control (made clickable in
+  Amendment 11) is now a filled, `rounded-full` `Button` (`size="sm"`) instead of
+  underlined text, so it visibly reads as a button rather than a link.
+- **`transaction-edit-dialog.tsx` — rewritten from a centered `Dialog` into a bottom
+  `Sheet`** with the same shell as Quick Add: a grip handle, a header row with a
+  clickable **"Edit transaction"** pill button (saves — same path as the sticky footer
+  CTA) plus a **member dropdown chip**, the same field order as Quick Add (Date/Time →
+  Amount+Tag row → Note → Category, §6.2) inside a scrollable body, and a sticky footer
+  with a dynamic **"Save ₹1,250 · Dining Out"** CTA matching Quick Add's label logic
+  (§6.2 Amendment 10). The member chip **reassigns this transaction's member** — a
+  local, validated form field — rather than the app-wide `active_member_id` cookie that
+  Quick Add's chip switches (§3.2.1); this distinction is unchanged from
+  `SPEC_AMENDMENT_7_MEMBER_REASSIGNMENT.md`, only its location moved. **Delete** moves
+  to a small icon button beside the sticky Save button; the standalone "Member" select
+  row from the 18 Aug layout is gone now that member selection lives in the header.
+- **§6.4 (Transactions List View):** the "tap to edit" interaction now opens this bottom
+  sheet rather than a centered modal — recorded as a normative supersession.
+- Verified: `tsc --noEmit` and `eslint` pass clean on both touched files.
+- **Supersedes:** the centered `Dialog` presentation of the edit-transaction form used
+  since Amendment 7 (18 Aug 2026), and the plain underlined-text rendering of the Quick
+  Add header CTA introduced in Amendment 11.
+
+---
+
+## v1.2 Amendment — 19 August 2026 (owner decision: fix header link and cross-device Date/Time mismatch)
+
+### Amendment 11 — Header CTA wired to submit; Date/Time collapse no longer persists (§6.2)
+
+- **Decision:** two defects surfaced after Amendment 10 — the new "Add transaction"
+  header text didn't actually submit the form, and the collapsed/expanded state of the
+  Date/Time row was drifting between devices.
+- **`quick-add-sheet.tsx`:** the **"Add transaction" header text is now a real button**
+  that calls the same `submit()` as the bottom sticky CTA — same validation, same
+  optimistic create. (Amendment 12, immediately after, restyles this button as a filled
+  pill; functionally it has submitted since this amendment.)
+- **Date/Time collapse no longer persists (Quick Add + edit dialog):** the
+  collapsed/expanded choice was being remembered per device in `localStorage`
+  (`quick-add:date-time-expanded`, introduced in Amendment 10), so a browser where it
+  was toggled open once — e.g. a phone used for earlier testing — kept opening
+  pre-expanded while other devices/browsers stayed collapsed. **It now always starts
+  collapsed with today's date and the current time on every open, on every device**,
+  and only stays expanded for the rest of that tab's session if the user taps it open.
+  `src/lib/date-time-expanded.ts` (added in Amendment 10) is removed as now-unused.
+- Verified: `tsc --noEmit` and `eslint` pass clean on all touched files.
+- **Supersedes:** the §6.2 Amendment 10 wording that the Date/Time collapsed/expanded
+  choice "persists per device" — it no longer does, by design, effective this
+  amendment.
+
+---
+
+## v1.2 Amendment — 19 August 2026 (owner decision: Add-transaction UI restructure)
+
+### Amendment 10 — Amount+Tag row, member-switch chip, dynamic sticky CTA (§6.2)
+
+- **Decision:** restructure the Quick Add / edit-transaction fields for a tighter,
+  more scannable single page — merge Amount and Tag into one row, let the sheet's
+  member chip actually switch the active member, and make the submit CTA reflect what
+  it's about to do.
+- **`transaction-fields.tsx` — new `AmountTagRow`:** a single `flex h-14` row — the
+  Amount input (`flex-1`, ₹ prefix rendered inside the field, sanitized on every
+  keystroke via `sanitizeAmountInput` so the value always fits `NUMERIC(12,2)`: digits
+  and at most one decimal separator, at most 2 decimal digits, at most 10 integer
+  digits) beside a **Tag cluster** — a 2×2 grid where the selected tag fills a big
+  display-only button in column 1 (row-span-2) and the other two tags sit stacked as
+  small tap-to-swap buttons in column 2; tapping an alternative swaps it into the big
+  slot. A live `≈ ₹` preview, or "Enter a valid amount" once a submit was attempted
+  with none, renders under the row. `DateTimeField`'s collapsed summary now shows
+  Today/Yesterday/the full date (`d MMM yyyy`) instead of always the raw date. The
+  `CategoryGrid` hint row and budget-hint pills switch to a "·" separator.
+- **`quick-add-sheet.tsx`:** `AmountField` + `TagSelector` are replaced by the shared
+  `AmountTagRow`; **Note becomes a single-line, 140-character `Input`** (previously
+  multi-line); the **member chip becomes a real dropdown** that switches the app-wide
+  `active_member_id` via the existing `updateActiveMember` Server Action — applied
+  optimistically, reverted on failure; the **sticky CTA label goes dynamic** — "Add
+  ₹1,250 · Dining Out" (`formatINRWhole` — whole rupees, no decimals) once valid,
+  "Add transaction" plus a small missing-field helper line when not.
+- **`transaction-edit-dialog.tsx`:** field order now matches Quick Add (Member →
+  collapsible Date/Time → `AmountTagRow` → Note → Category); the Date/Time collapse
+  state is shared with Quick Add via a new `date-time-expanded.ts` persistence helper
+  (removed the next day — Amendment 11); Save is disabled until the form is valid.
+- **`money.ts`:** new `formatINRWhole()` for the no-decimals CTA amount.
+- Verified: `tsc --noEmit` and `eslint` pass clean on all touched files.
+- **Supersedes:** the stacked `AmountField` + `TagSelector` layout and the
+  non-interactive member badge from Amendment 7/8 (18 Aug 2026); the single-line Note
+  supersedes the multi-line Note field and its `Cmd/Ctrl+Enter` submit carve-out from
+  Amendment 7.
+
+---
+
 ## v1.2 Amendment — 18 August 2026 (owner decision: category UI refinement)
 
 ### Amendment 9 — Name-only category chips and "Show all" expansion (§6.2)
