@@ -48,6 +48,11 @@
 > and a dynamic sticky "Save ₹1,250 · Dining Out" CTA, with Delete moved to a small icon
 > button beside Save (Amendment 12). Recorded in `CHANGELOG.md`.
 
+> **17 August 2026 — Expense-only ledger (§4.1, §4.2, §5.2, §6.3, §6.4, §6.6, §7.1):** the
+> `type` column and `transactionTypeEnum` are removed. The ledger is now expense-only,
+> `tag` is `NOT NULL`, the 6-month trend becomes a bar chart, and the CSV export drops
+> to 7 columns. Recorded in `CHANGELOG.md`.
+
 ---
 
 ## 1. Executive Summary & User Intent
@@ -139,7 +144,6 @@ The seed script maps the CSV `member` string through **this table as a literal l
 
 ### 4.1 Enums
 ```typescript
-export const transactionTypeEnum = pgEnum('transaction_type', ['income', 'expense']);
 export const transactionTagEnum = pgEnum('transaction_tag', ['one_time', 'recurring', 'lifestyle']);
 ```
 
@@ -167,8 +171,7 @@ export const transactions = pgTable('transactions', {
   id: uuid('id').primaryKey(),         // Quick Add: crypto.randomUUID(). Seed: deterministic UUIDv5 (§8.1)
   memberId: uuid('member_id').references(() => members.id).notNull(),
   categoryId: uuid('category_id').references(() => categories.id).notNull(),
-  type: transactionTypeEnum('type').notNull().default('expense'),
-  tag: transactionTagEnum('tag'),      // Nullable in type only — constrained by CHECK below (§5.2)
+  tag: transactionTagEnum('tag').notNull(), // All transactions are expenses; tag is always required (§5.2, Amendment 13)
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),  // Read as string; see §5.8
   note: text('note'),
   date: date('date', { mode: 'string' }).notNull(),   // YYYY-MM-DD, Asia/Kolkata calendar date (§5.7)
@@ -181,16 +184,12 @@ export const transactions = pgTable('transactions', {
   // Keyset pagination cursor (§7.3) — must match the ORDER BY exactly, all four columns
   listCursorIdx: index('transactions_list_cursor_idx')
     .on(t.date.desc(), t.time.desc(), t.createdAt.desc(), t.id.desc()),
-  // §5.2 invariant, enforced at the last line of defence
-  tagInvariant: check(
-    'transactions_tag_invariant',
-    sql`(${t.type} = 'expense' AND ${t.tag} IS NOT NULL)
-     OR (${t.type} = 'income'  AND ${t.tag} IS NULL)`
-  ),
 }));
 ```
 
 **Note on `transactions.id`:** `defaultRandom()` is deliberately **removed**. Every insert supplies its own UUID — a random v4 from Quick Add, a deterministic v5 from the seed script. A database-generated random default would make seeding non-idempotent (§8.1).
+
+**Note on `transactions.type` (Amendment 13, 17 Aug 2026):** The `type` column and `transactionTypeEnum` were **removed**. The ledger is now **expense-only** — all transactions are expenses, there is no income type, and the `transactions_tag_invariant` CHECK constraint was removed with it. The `tag` column is now `NOT NULL` since every transaction requires a tag.
 
 ```typescript
 export const budgets = pgTable('budgets', {
@@ -229,7 +228,7 @@ bills from the total budget" toggle, §6.7). Read/written via `src/db/app-settin
 - **Month cycle:** Calendar month, 1st–31st.
 
 ### 5.2 The Tag Triad (Strict Definitions)
-Every **expense** carries exactly one tag. Income entries skip tags.
+Every **transaction** carries exactly one tag. (Amendment 13, 17 Aug 2026: the ledger is now expense-only — there is no income type, and all transactions require a tag.)
 
 | Tag | Definition | Rule of Thumb | Examples |
 |---|---|---|---|
@@ -241,12 +240,12 @@ Every **expense** carries exactly one tag. Income entries skip tags.
 
 | Layer | Mechanism |
 |---|---|
-| UI | Tag selector is mandatory for expenses; hidden and cleared for income (§6.2) |
-| Zod | Discriminated union on `type`: `expense` requires a tag, `income` forbids one |
+| UI | Tag selector is mandatory for all transactions (§6.2) |
+| Zod | `tag` is required in all transaction payloads |
 | Server Action | Re-validates the parsed payload before any DB write — never trusts the client |
-| Database | `transactions_tag_invariant` CHECK constraint (§4.2) |
+| Database | `tag` is `NOT NULL` at the schema level (§4.2) |
 
-The column stays nullable in *type* because income legitimately has no tag; the CHECK makes `expense + NULL` and `income + tag` unrepresentable regardless of which code path writes the row.
+The column is `NOT NULL` because every transaction is an expense and requires a tag.
 
 **Tag is never inferred from category.** 9 of the 19 categories carry more than one tag in the historical data (e.g. `Property & Investments` is 17 `one_time` + 1 `recurring` — the Bhima EMI). Any logic that derives a tag from a category is wrong.
 
@@ -609,7 +608,7 @@ No traditional REST API routes for mutations. Use Next.js **Server Actions**.
 - `updateActiveMember(memberId: string)`
 
 **Every mutating action must, before any write:**
-1. Parse its payload with Zod — including the `type`/`tag` discriminated union (§5.2).
+1. Parse its payload with Zod — including the required `tag` (§5.2).
 2. Verify the `member_id` exists in `members` (§3.2.1 — data integrity, *not* authentication).
 3. Convert amounts to/from integer paise at the boundary (§5.8).
 
