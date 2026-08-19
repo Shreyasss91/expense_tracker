@@ -336,14 +336,15 @@ export function QuickAddSheet({
       <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
         <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-1 flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => void submit()}
             disabled={saving}
-            className="rounded text-base font-semibold underline-offset-2 hover:underline disabled:pointer-events-none disabled:opacity-60"
+            className="rounded-full px-3"
           >
             Add transaction
-          </button>
+          </Button>
           {activeMember && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

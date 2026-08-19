@@ -2,28 +2,38 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Check, ChevronsUpDown, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { updateTransaction } from "@/actions/transactions";
 import { getCategoryBudgetStatus } from "@/actions/settings";
 import { useCategoryUsage } from "@/lib/category-usage";
 import { useCreateCategory } from "@/lib/use-create-category";
-import { paiseToDbString, rupeesToPaise } from "@/lib/money";
+import { formatINRWhole, paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "./transaction-fields";
 
+/**
+ * Edit transaction — a bottom sheet with the same shell, header pattern
+ * (clickable title + member dropdown chip), field order, and sticky CTA as
+ * Quick Add, so both forms feel like the same page (Amendment 12 §2). The
+ * member chip here reassigns *this transaction's* member (a local form
+ * field, validated on save) rather than the app-wide active member cookie
+ * that Quick Add's chip switches.
+ */
 export function TransactionEditDialog({
   row,
   members,
@@ -47,14 +57,14 @@ export function TransactionEditDialog({
   const [time, setTime] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  // Amendment 11 §2 — always starts collapsed on open, not persisted (see
-  // Quick Add for the matching change and why).
+  // always starts collapsed on open, not persisted (matches Quick Add)
   const [showDatePicker, setShowDatePicker] = useState(false);
   // §6.7 — remaining budget per category for the row's month (mirrors Quick Add)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // local category list — syncs from the server prop so a category created inline
-  // (or in Quick Add) shows up without remounting the dialog
+  // (or in Quick Add) shows up without remounting the sheet
   const [cats, setCats] = useState(categories);
   useEffect(() => {
     setCats(categories);
@@ -72,12 +82,14 @@ export function TransactionEditDialog({
     setTime(row.time.slice(0, 5));
     setNote(row.note ?? "");
     setError(null);
+    setSaving(false);
     setSubmitAttempted(false);
     setShowDatePicker(false);
   }
 
   const paise = rupeesToPaise(amount);
   const canSubmit = paise > 0 && categoryId !== "" && memberId !== "";
+  const activeMember = members.find((m) => m.id === memberId);
   // §6.2 — recently used categories float to the top, same as the Quick Add grid
   const { orderedCategories, touchCategory } = useCategoryUsage(cats);
   // §6.2/§6.5 — inline "add a new category" flow, same as Quick Add
@@ -109,7 +121,7 @@ export function TransactionEditDialog({
   }, [paise, date]);
 
   async function save() {
-    if (!row) return;
+    if (!row || saving) return;
     if (!Number.isFinite(paise) || paise <= 0) {
       setSubmitAttempted(true);
       setError("Enter a valid amount");
@@ -118,12 +130,14 @@ export function TransactionEditDialog({
     const member = members.find((m) => m.id === memberId);
     const category = categories.find((c) => c.id === categoryId);
     if (!member || !category) {
+      setSubmitAttempted(true);
       setError("Pick a member and category");
       return;
     }
 
+    setSaving(true);
     // Fully optimistic: build the updated row locally, apply it and close the
-    // dialog immediately; on failure the original row is emitted back.
+    // sheet immediately; on failure the original row is emitted back.
     const originalRow = row;
     emitLedgerMutation({
       kind: "update",
@@ -149,9 +163,11 @@ export function TransactionEditDialog({
       res = await updateTransaction(originalRow.id, payload);
     } catch {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
+      setSaving(false);
       toast.error("Could not save");
       return;
     }
+    setSaving(false);
     if (res.ok) {
       toast.success("Transaction updated");
       // §6.7 — warn when the edited expense left the month or its category over budget
@@ -165,44 +181,63 @@ export function TransactionEditDialog({
   }
 
   return (
-    <Dialog
+    <Sheet
       open={open}
       onOpenChange={(o) => {
         onOpenChange(o);
         if (!o) cancelAddCategory();
       }}
     >
-      <DialogContent className="max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit transaction</DialogTitle>
-        </DialogHeader>
+      <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
+        <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
+        <div className="mb-1 flex items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void save()}
+            disabled={saving}
+            className="rounded-full px-3"
+          >
+            Edit transaction
+          </Button>
+          {activeMember && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-7 gap-1 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted"
+                >
+                  <span>{activeMember.emoji}</span>
+                  {activeMember.name}
+                  <ChevronsUpDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Reassign to</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {members.map((m) => (
+                  <DropdownMenuItem key={m.id} onSelect={() => setMemberId(m.id)} className="gap-2">
+                    <span className="text-base">{m.emoji}</span>
+                    <span className="flex-1">{m.name}</span>
+                    {m.id === activeMember.id && <Check className="h-4 w-4 text-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
 
-        {/* a real <form> so Enter submits from any input (same as Quick Add) */}
+        {/* a real <form> so Enter submits from any input — same shell as Quick Add */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             void save();
           }}
-          className="space-y-4"
+          className="flex min-h-0 flex-1 flex-col gap-4"
         >
-          {/* member reassignment first, then date/time, then Amount+Tag — parity
-              with Quick Add's field order (Amendment 10 §4) */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Member</Label>
-            <Select value={memberId} onValueChange={setMemberId}>
-              <SelectTrigger className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {members.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.emoji} {m.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           <DateTimeField
             date={date}
             time={time}
@@ -240,34 +275,44 @@ export function TransactionEditDialog({
             selectedId={categoryId}
             onSelect={setCategoryId}
             budgetRemaining={budgetRemaining}
+            hint="Tap a category to select"
             onAddCategory={openAddCategory}
             addForm={addForm}
           />
+        </div>
 
-          {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-
-          <p className="text-center text-[11px] text-muted-foreground">
-            {canSubmit ? "press Enter ↵ to save" : "Enter an amount and pick a category"}
-          </p>
-
-          <DialogFooter className="gap-2 sm:justify-between">
+        <div className="border-t border-muted-foreground/10 pt-3">
+          {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+          {!saving && (
+            <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
+              {canSubmit ? "press Enter ↵ to save" : "Enter an amount and pick a category"}
+            </p>
+          )}
+          <div className="flex gap-2">
             <Button
               type="button"
-              variant="destructive"
-              className="mr-auto"
+              variant="outline"
+              size="icon"
+              className="h-12 w-12 shrink-0 text-destructive"
+              aria-label="Delete transaction"
               onClick={() => {
                 if (row) onRequestDelete(row);
                 onOpenChange(false);
               }}
             >
-              Delete
+              <Trash2 className="h-4 w-4" />
             </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              Save changes
+            <Button type="submit" className="h-12 flex-1 text-base" disabled={!canSubmit || saving}>
+              {saving
+                ? "Saving…"
+                : canSubmit
+                  ? `Save ${formatINRWhole(paise)} · ${cats.find((c) => c.id === categoryId)?.name ?? ""}`
+                  : "Save changes"}
             </Button>
-          </DialogFooter>
+          </div>
+        </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
