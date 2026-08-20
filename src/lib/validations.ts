@@ -67,6 +67,13 @@ export const templateSchema = z.object({
 
 export type TemplateInput = z.infer<typeof templateSchema>;
 
+export const reviewNoteSchema = z
+  .string()
+  .trim()
+  .max(140)
+  .nullable()
+  .transform((value) => (value === "" ? null : value));
+
 export const updateCategorySchema = z.object({
   id: z.string().uuid(),
   name: z.string().trim().min(1).max(50),
