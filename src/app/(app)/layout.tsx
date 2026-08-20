@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { getCategories, getMembers } from "@/lib/meta";
+import { getCategories, getMembers, getTemplates } from "@/lib/meta";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { QuickAddProvider } from "@/components/quick-add/quick-add-context";
@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieStore = await cookies();
   const activeMemberId = cookieStore.get("active_member_id")?.value;
 
-  const [memberRows, categoryRows] = await Promise.all([getMembers(), getCategories()]);
+  const [memberRows, categoryRows, templateRows] = await Promise.all([getMembers(), getCategories(), getTemplates()]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,
@@ -40,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <QuickAddProvider
       members={memberOptions}
       categories={categoryOptions}
+      templates={templateRows}
       activeMemberId={activeId}
     >
       <AppHeader members={memberOptions} activeMemberId={activeId} />

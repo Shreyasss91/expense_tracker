@@ -2,7 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, templates } from "@/db/schema";
 import { paiseToDbString } from "@/lib/money";
@@ -18,6 +18,7 @@ export async function createTemplate(raw: TemplateInput) {
   const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
   if (!categoryExists) return { ok: false as const, error: "Unknown category" };
 
+  const [maxRow] = await db.select({ max: sql<number>`COALESCE(MAX(${templates.sortOrder}), 0)` }).from(templates);
   const [row] = await db
     .insert(templates)
     .values({
@@ -27,12 +28,14 @@ export async function createTemplate(raw: TemplateInput) {
       tag: data.tag,
       amount: paiseToDbString(data.amount),
       note: data.note ?? null,
-      sortOrder: data.sortOrder,
+      sortOrder: data.sortOrder ?? Number(maxRow?.max ?? 0) + 1,
     })
     .returning();
 
   revalidateTag("templates");
   revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings");
 
   return { ok: true as const, id: row.id };
 }
@@ -56,7 +59,7 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
       tag: data.tag,
       amount: paiseToDbString(data.amount),
       note: data.note ?? null,
-      sortOrder: data.sortOrder,
+      ...(data.sortOrder === undefined ? {} : { sortOrder: data.sortOrder }),
       updatedAt: new Date(),
     })
     .where(eq(templates.id, idCheck.data))
@@ -66,6 +69,8 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
 
   revalidateTag("templates");
   revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings");
 
   return { ok: true as const, id: row.id };
 }
@@ -79,5 +84,7 @@ export async function deleteTemplate(id: string) {
 
   revalidateTag("templates");
   revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings");
   return { ok: true as const };
 }

@@ -28,7 +28,7 @@ import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
-import type { CategoryOption, MemberOption } from "./types";
+import type { CategoryOption, MemberOption, TemplateOption } from "./types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
@@ -66,6 +66,7 @@ export function QuickAddSheet({
   onOpenChange,
   members,
   categories,
+  templates,
   activeMemberId,
   onClose,
 }: {
@@ -73,6 +74,7 @@ export function QuickAddSheet({
   onOpenChange: (o: boolean) => void;
   members: MemberOption[];
   categories: CategoryOption[];
+  templates: TemplateOption[];
   activeMemberId: string;
   onClose: () => void;
 }) {
@@ -241,6 +243,7 @@ export function QuickAddSheet({
       date,
       time: `${time}:00`,
       createdAt: new Date().toISOString(),
+      reviewedAt: null,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug },
     };
@@ -331,6 +334,15 @@ export function QuickAddSheet({
 
   const canSubmit = paise > 0 && selectedCategoryId !== "";
 
+  function applyTemplate(template: TemplateOption) {
+    setAmount(String(template.amountPaise / 100));
+    setTag(template.tag);
+    setSelectedCategoryId(template.categoryId);
+    setNote(template.note ?? "");
+    setError(null);
+    setSubmitAttempted(false);
+  }
+
   return (
     <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { reset(); onClose(); } }}>
       <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
@@ -398,6 +410,26 @@ export function QuickAddSheet({
             showPicker={showDatePicker}
             onTogglePicker={() => setShowDatePicker((v) => !v)}
           />
+
+          {templates.length > 0 && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground">Templates</p>
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {templates.map((template) => (
+                  <Button
+                    key={template.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 rounded-full text-xs"
+                    onClick={() => applyTemplate(template)}
+                  >
+                    {template.name} · {formatINRWhole(template.amountPaise)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <AmountTagRow
             amountId="qa-amount"
