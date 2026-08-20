@@ -1,10 +1,12 @@
 "use server";
 
-import { sql } from "drizzle-orm";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { transactions, members, categories } from "@/db/schema";
-import { PAGE_SIZE, type Cursor } from "@/lib/query";
-import { isGenericNote } from "@/lib/generic-notes";
+import { listOrderBy, PAGE_SIZE, type Cursor } from "@/lib/query";
+import { pendingReviewWhere } from "@/lib/review-where";
+import { idSchema, reviewNoteSchema } from "@/lib/validations";
 
 export interface ReviewItem {
   id: string;
@@ -29,7 +31,7 @@ export interface ReviewItem {
 export async function getReviewPage(args: {
   cursor: Cursor | null;
 }): Promise<{ rows: ReviewItem[]; nextCursor: Cursor | null }> {
-  const whereClause = sql`${transactions.reviewedAt} IS NULL`;
+  const whereClause = pendingReviewWhere(args.cursor);
 
   const rows = await db
     .select({
@@ -56,22 +58,11 @@ export async function getReviewPage(args: {
     .innerJoin(members, sql`${transactions.memberId} = ${members.id}`)
     .innerJoin(categories, sql`${transactions.categoryId} = ${categories.id}`)
     .where(whereClause)
-    .orderBy(sql`${transactions.date} DESC`, sql`${transactions.time} DESC`, sql`${transactions.createdAt} DESC`, sql`${transactions.id} DESC`)
+    .orderBy(...listOrderBy)
     .limit(PAGE_SIZE + 1);
 
-  // Filter for generic notes in-memory (blocklist + category name check)
-  const filteredRows = rows.filter((row) => {
-    const normalizedNote = row.note ? row.note.toLowerCase().trim() : "";
-    const isEmptyOrGeneric =
-      !row.note ||
-      row.note.trim() === "" ||
-      isGenericNote(row.note) ||
-      normalizedNote === row.categoryName.toLowerCase();
-    return isEmptyOrGeneric;
-  });
-
-  const hasMore = filteredRows.length > PAGE_SIZE;
-  const page = hasMore ? filteredRows.slice(0, PAGE_SIZE) : filteredRows;
+  const hasMore = rows.length > PAGE_SIZE;
+  const page = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
   const last = page[page.length - 1];
 
   return {
@@ -104,4 +95,24 @@ export async function getReviewPage(args: {
         ? { date: last.date, time: last.time, createdAt: last.createdAt.toISOString(), id: last.id }
         : null,
   };
+}
+
+export async function updateReviewNote(id: string, rawNote: string | null) {
+  const idCheck = idSchema.safeParse(id);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
+  const note = reviewNoteSchema.safeParse(rawNote);
+  if (!note.success) return { ok: false as const, error: "Note must be 140 characters or fewer" };
+
+  const [row] = await db
+    .update(transactions)
+    .set({ note: note.data, reviewedAt: null })
+    .where(eq(transactions.id, idCheck.data))
+    .returning({ id: transactions.id });
+  if (!row) return { ok: false as const, error: "Transaction not found" };
+
+  revalidatePath("/review");
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+  return { ok: true as const };
 }
