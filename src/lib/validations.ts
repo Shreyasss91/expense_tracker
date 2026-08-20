@@ -62,7 +62,7 @@ export const templateSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (v === "" ? null : v)),
-  sortOrder: z.number().int(),
+  sortOrder: z.number().int().min(0).optional(),
 });
 
 export type TemplateInput = z.infer<typeof templateSchema>;

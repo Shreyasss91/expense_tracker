@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS "templates" (
   "created_at" timestamp DEFAULT now() NOT NULL,
   "updated_at" timestamp DEFAULT now() NOT NULL
 );
+CREATE INDEX IF NOT EXISTS "templates_sort_order_idx" ON "templates" ("sort_order");
 --> statement-breakpoint
 
 -- Amendment 18: Add reviewed_at column to transactions (§6.4)

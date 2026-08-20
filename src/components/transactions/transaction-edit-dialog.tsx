@@ -16,11 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { updateTransaction } from "@/actions/transactions";
+import { createTemplate } from "@/actions/templates";
 import { getCategoryBudgetStatus } from "@/actions/settings";
 import { useCategoryUsage } from "@/lib/category-usage";
 import { useCreateCategory } from "@/lib/use-create-category";
 import { formatINRWhole, paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
+import { isGenericNote } from "@/lib/generic-notes";
 import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
@@ -58,6 +60,7 @@ export function TransactionEditDialog({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   // always starts collapsed on open, not persisted (matches Quick Add)
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -180,6 +183,30 @@ export function TransactionEditDialog({
     }
   }
 
+  async function saveAsTemplate() {
+    if (savingTemplate) return;
+    const category = cats.find((c) => c.id === categoryId);
+    if (!category || paise <= 0) {
+      toast.error("Enter an amount and pick a category first");
+      return;
+    }
+    const trimmedNote = note.trim();
+    const name = trimmedNote && !isGenericNote(trimmedNote) && trimmedNote.toLowerCase() !== category.name.toLowerCase()
+      ? trimmedNote
+      : category.name;
+    setSavingTemplate(true);
+    const result = await createTemplate({
+      name,
+      categoryId: category.id,
+      tag,
+      amount: paise,
+      note: trimmedNote || null,
+    });
+    setSavingTemplate(false);
+    if (result.ok) toast.success("Template saved");
+    else toast.error(result.error ?? "Could not save template");
+  }
+
   return (
     <Sheet
       open={open}
@@ -283,6 +310,9 @@ export function TransactionEditDialog({
 
         <div className="border-t border-muted-foreground/10 pt-3">
           {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+          <Button type="button" variant="outline" className="mb-2 w-full" onClick={() => void saveAsTemplate()} disabled={savingTemplate}>
+            {savingTemplate ? "Saving template…" : "Save as template"}
+          </Button>
           {!saving && (
             <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
               {canSubmit ? "press Enter ↵ to save" : "Enter an amount and pick a category"}

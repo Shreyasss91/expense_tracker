@@ -15,3 +15,13 @@ export interface CategoryOption {
   color: string;
   sortOrder: number;
 }
+
+export interface TemplateOption {
+  id: string;
+  name: string;
+  categoryId: string;
+  tag: "one_time" | "recurring" | "lifestyle";
+  amountPaise: number;
+  note: string | null;
+  sortOrder: number;
+}
