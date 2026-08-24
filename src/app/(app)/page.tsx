@@ -211,76 +211,66 @@ export default async function DashboardPage({
         <MonthPicker month={monthKey} />
       </div>
 
-      {/* Summary cards (§6.3) — each links to the ledger filtered to its transactions */}
-      <div className="grid grid-cols-2 gap-2">
-        <Link href={`/transactions?month=${monthKey}`} className="block active:scale-[0.98] transition-transform">
+      {/* Layout pass — money state first: a full-width Expense hero (largest
+          spend folded in as its subline), then a compact 3-up row. The old
+          2-col grid orphaned its fifth tile and buried the budget below four
+          chart cards. */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-xs font-medium text-muted-foreground">Expense · {format(parse(`${monthKey}-01`, "yyyy-MM-dd", new Date()), "MMMM yyyy")}</p>
+            <Link href={`/transactions?month=${monthKey}`} className="text-[11px] text-muted-foreground hover:text-foreground hover:underline">
+              View in Ledger →
+            </Link>
+          </div>
+          <p className="mt-1 truncate text-3xl font-semibold tabular-nums text-red-600">{formatINR(data.expensePaise)}</p>
+          {data.largestSpend && (
+            <Link
+              href={`/transactions?month=${monthKey}${data.largestSpend.categoryId ? `&category=${data.largestSpend.categoryId}` : "&category=uncategorized"}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`}
+              className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <span aria-hidden>↳</span>
+              <span className="truncate">
+                Largest {formatINR(data.largestSpend.amountPaise)} · {data.largestSpend.note || data.largestSpend.categoryName || "Uncategorized"}
+              </span>
+            </Link>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Link href={data.topCategory ? `/transactions?month=${monthKey}&category=${data.topCategory.id}` : `/transactions?month=${monthKey}`} className="block active:scale-[0.98] transition-transform">
           <Card>
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Expense</p>
-              <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.expensePaise)}</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link
-          href={data.topCategory ? `/transactions?month=${monthKey}&category=${data.topCategory.id}` : `/transactions?month=${monthKey}`}
-          className="block active:scale-[0.98] transition-transform"
-        >
-          <Card>
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Top category</p>
+            <CardContent className="p-2.5">
+              <p className="text-[11px] leading-tight text-muted-foreground">Top category</p>
               {data.topCategory ? (
                 <>
-                  <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">
-                    {data.topCategory.emoji} {formatINR(data.topCategory.paise)}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">{data.topCategory.name}</p>
+                  <p className="mt-0.5 truncate text-sm font-semibold tabular-nums sm:text-base">{data.topCategory.emoji} {formatINR(data.topCategory.paise)}</p>
+                  <p className="truncate text-[10px] text-muted-foreground sm:text-xs">{data.topCategory.name}</p>
                 </>
               ) : (
-                <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
+                <p className="mt-0.5 text-sm font-semibold text-muted-foreground sm:text-base">—</p>
               )}
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href={`/transactions?month=${monthKey}&tag=lifestyle`} className="block active:scale-[0.98] transition-transform">
-          <Card>
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Lifestyle spend</p>
-              <p className="mt-1 truncate text-base font-semibold tabular-nums sm:text-lg">{formatINR(data.lifestylePaise)}</p>
             </CardContent>
           </Card>
         </Link>
         <Link href={`/transactions?month=${monthKey}&tag=recurring`} className="block active:scale-[0.98] transition-transform">
           <Card>
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Bills</p>
-              <p className="mt-1 truncate text-base font-semibold tabular-nums text-[#8b5cf6] sm:text-lg">{formatINR(data.billsPaise)}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {data.billsCount > 0 ? `${data.billsCount} recurring ${data.billsCount === 1 ? "entry" : "entries"}` : "No recurring entries"}
+            <CardContent className="p-2.5">
+              <p className="text-[11px] leading-tight text-muted-foreground">Bills</p>
+              <p className="mt-0.5 truncate text-sm font-semibold tabular-nums text-[#8b5cf6] sm:text-base">{formatINR(data.billsPaise)}</p>
+              <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
+                {data.billsCount > 0 ? `${data.billsCount} recurring` : "none"}
               </p>
             </CardContent>
           </Card>
         </Link>
-        <Link
-          href={
-            data.largestSpend
-              ? `/transactions?month=${monthKey}${data.largestSpend.categoryId ? `&category=${data.largestSpend.categoryId}` : "&category=uncategorized"}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`
-              : `/transactions?month=${monthKey}`
-          }
-          className="block active:scale-[0.98] transition-transform"
-        >
+        <Link href={`/transactions?month=${monthKey}&tag=lifestyle`} className="block active:scale-[0.98] transition-transform">
           <Card>
-            <CardContent className="p-3">
-              <p className="text-xs text-muted-foreground">Largest spend</p>
-              {data.largestSpend ? (
-                <>
-                  <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.largestSpend.amountPaise)}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {data.largestSpend.categoryEmoji ?? "❔"} {data.largestSpend.note || data.largestSpend.categoryName || "Uncategorized"}
-                  </p>
-                </>
-              ) : (
-                <p className="mt-1 text-base font-semibold text-muted-foreground">—</p>
-              )}
+            <CardContent className="p-2.5">
+              <p className="text-[11px] leading-tight text-muted-foreground">Lifestyle</p>
+              <p className="mt-0.5 truncate text-sm font-semibold tabular-nums sm:text-base">{formatINR(data.lifestylePaise)}</p>
+              <p className="truncate text-[10px] text-muted-foreground sm:text-xs">discretionary</p>
             </CardContent>
           </Card>
         </Link>
@@ -354,19 +344,21 @@ export default async function DashboardPage({
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Who spent</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MemberSplit slices={data.memberSlices} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
           <CardTitle className="text-sm">6-month trend</CardTitle>
         </CardHeader>
         <CardContent>
           <TrendChart points={data.trend} />
+        </CardContent>
+      </Card>
+
+      {/* Who spent last — per-member comparison is the least actionable chart,
+          so it closes the page (Layout pass reorder). */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Who spent</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MemberSplit slices={data.memberSlices} />
         </CardContent>
       </Card>
 

@@ -82,6 +82,27 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   pendingReviewWhere, empty CSV cell); validation-test covers the optional-category
   schema branch. All suites green against the live database.
 
+### Layout pass — 24 August 2026 (owner decision: six UI layout improvements)
+
+- **Ledger chrome collapsed to one slim card:** the spent-vs-budget bar moved inside
+  `LedgerSummaryHeader` (below the totals + uncategorized warning), eliminating a whole
+  stacked block; first transaction row now reaches the opening viewport on mobile.
+- **Filter bar:** member chips, tag chips and the category select share ONE scrollable
+  row (the "All members"/"All tags" reset pills are gone — tapping an active chip
+  toggles it off); active filters render as dismissible chips in a second row that only
+  appears while something is set, carrying the category rename pencil and "Clear all".
+- **Review queue:** its collapsed state is now a thin amber-tinted banner (notification,
+  not section); expanded state unchanged.
+- **Day-group totals:** ledger date headers show the group's summed spend right-aligned
+  ("Yesterday …… ₹1,240"), computed over exactly the rows in the group.
+- **Dashboard:** the orphaned 2×3 summary grid became a full-width **Expense hero**
+  (largest spend folded in as a drill-down subline) plus a compact 3-up row
+  (Top category · Bills · Lifestyle); card order is now money-state-first — Budget →
+  Tag breakdown → Spending by category → Trend → Who spent.
+- **Desktop (≥lg):** the edit-transaction dialog and bulk category picker dock as
+  RIGHT-side sheets (`useMediaQuery` hook), keeping the ledger visible beside them;
+  mobile keeps bottom sheets. Quick Add intentionally unchanged.
+
 ---
 
 ## v1.2 Amendment — 19 August 2026 (owner decision: edit sheet parity with Quick Add)
