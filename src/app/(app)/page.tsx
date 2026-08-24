@@ -53,7 +53,8 @@ const getDashboardData = unstable_cache(
           total: sql<string>`SUM(${transactions.amount})`,
         })
         .from(transactions)
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
+        // Amendment 20 — left join so uncategorized spend appears as its own slice
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
         .where(and(gte(transactions.date, start), lte(transactions.date, end)))
         .groupBy(categories.id, categories.name, categories.emoji, categories.color),
       db
@@ -88,7 +89,7 @@ const getDashboardData = unstable_cache(
           categoryColor: categories.color,
         })
         .from(transactions)
-        .innerJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
         .where(and(gte(transactions.date, start), lte(transactions.date, end)))
         .orderBy(desc(transactions.amount))
         .limit(1),
@@ -121,8 +122,10 @@ const getDashboardData = unstable_cache(
       ).values(),
     ).filter((b) => b.paise > 0);
 
+    // Amendment 20 — the "Top category" insight ignores uncategorized spend;
+    // the pie chart below still shows it as an explicit gray slice.
     const topCategory = catRows.reduce<typeof catRows[number] | null>(
-      (best, r) => (best === null || rupeesToPaise(r.total) > rupeesToPaise(best.total) ? r : best),
+      (best, r) => (r.id === null ? best : best === null || rupeesToPaise(r.total) > rupeesToPaise(best.total) ? r : best),
       null,
     );
     const largest = largestRows[0];
@@ -260,7 +263,7 @@ export default async function DashboardPage({
         <Link
           href={
             data.largestSpend
-              ? `/transactions?month=${monthKey}&category=${data.largestSpend.categoryId}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`
+              ? `/transactions?month=${monthKey}${data.largestSpend.categoryId ? `&category=${data.largestSpend.categoryId}` : "&category=uncategorized"}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`
               : `/transactions?month=${monthKey}`
           }
           className="block active:scale-[0.98] transition-transform"
@@ -272,7 +275,7 @@ export default async function DashboardPage({
                 <>
                   <p className="mt-1 truncate text-base font-semibold tabular-nums text-red-600 sm:text-lg">{formatINR(data.largestSpend.amountPaise)}</p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {data.largestSpend.categoryEmoji} {data.largestSpend.note || data.largestSpend.categoryName}
+                    {data.largestSpend.categoryEmoji ?? "❔"} {data.largestSpend.note || data.largestSpend.categoryName || "Uncategorized"}
                   </p>
                 </>
               ) : (
@@ -319,9 +322,9 @@ export default async function DashboardPage({
         <CardContent className="space-y-3">
           <CategoryPie
             slices={data.catRows.map((r) => ({
-              name: r.name,
-              emoji: r.emoji,
-              color: r.color,
+              name: r.name ?? "Uncategorized",
+              emoji: r.emoji ?? "❔",
+              color: r.color ?? "#9ca3af",
               paise: rupeesToPaise(r.total),
             }))}
           />

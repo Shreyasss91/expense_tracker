@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
-import { buildLedgerUrl, type LedgerFilters } from "@/lib/ledger-url";
+import { buildLedgerUrl, UNCATEGORIZED, type LedgerFilters } from "@/lib/ledger-url";
 import { updateCategory } from "@/actions/settings";
 import { emitLedgerMutation } from "@/lib/events";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
@@ -105,7 +105,7 @@ export function FiltersBar({
     }
   }
 
-  const hasFilters = !!(filters.memberId || filters.categoryId || filters.tag || filters.month || filters.q);
+  const hasFilters = !!(filters.memberId || filters.categoryId || filters.uncategorized || filters.tag || filters.month || filters.q);
 
   return (
     <div className="space-y-2">
@@ -160,12 +160,23 @@ export function FiltersBar({
             {TRANSACTION_TAG_LABELS[t]}
           </button>
         ))}
-        <Select value={filters.categoryId ?? ""} onValueChange={(v) => push({ ...filters, categoryId: v || undefined })}>
+        <Select
+          value={filters.uncategorized ? UNCATEGORIZED : filters.categoryId ?? ""}
+          onValueChange={(v) =>
+            push({
+              ...filters,
+              categoryId: v && v !== UNCATEGORIZED ? v : undefined,
+              uncategorized: v === UNCATEGORIZED || undefined,
+            })
+          }
+        >
           <SelectTrigger className="h-8 w-36 shrink-0 text-xs">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All categories</SelectItem>
+            {/* Amendment 20 — rows with no category assigned */}
+            <SelectItem value={UNCATEGORIZED}>❔ Uncategorized</SelectItem>
             {categories.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.emoji} {c.name}
