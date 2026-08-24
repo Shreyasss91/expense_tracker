@@ -7,6 +7,55 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## v1.3 Amendment — 24 August 2026 (owner decision: capture-first workflow, bulk categorization, Review merged into Ledger)
+
+### Amendment 20 — Optional categories: capture fast, categorize later; multi-select bulk actions; Review joins the Ledger (§4.2, §5.3, §6.2, §6.3, §6.4, §6.5, §6.6)
+
+- **Decision:** the owner asked for a two-phase workflow — Quick Add stops asking for a
+  category so entries take seconds, and categories get assigned afterwards per-row (edit
+  dialog) or across many rows at once (multi-select). The Review tab merges into the
+  Ledger page as a pinned queue.
+- **Schema (§4.2):** `transactions.category_id` is now **nullable** (`DROP NOT NULL`,
+  migration `drizzle/0005_gorgeous_speed.sql`). NULL is *uncategorized* — a transaction
+  state, never a category row; no placeholder category exists anywhere. Apply with
+  `npm run db:push`. All category joins in list/export/review/dashboard queries are now
+  `LEFT JOIN`s.
+- **§6.2 Quick Add:** the category grid, note-based suggestion UI, inline rename/create,
+  budget hints and "Show all" link are removed from `quick-add-sheet.tsx`; the sticky CTA
+  reads "Add ₹1,250" (no category suffix) and enables on amount alone. Templates still
+  stamp their own category silently at commit. Tag + last-entry memory unchanged.
+- **Edit dialog:** the category field is optional — uncategorized rows start unselected,
+  a dashed **None** tile clears an existing category, and Save works without one.
+- **Bulk actions (Ledger):** long-press a row (or tap the new **Select** control) to
+  enter selection mode — checkboxes, count, and a sticky bottom bar with **Assign**
+  and **Delete**. Assign opens `category-picker-sheet.tsx`: the shared `CategoryGrid`
+  ordered by rank-weighted matches against the selected rows' notes ("smart grouping"),
+  with **None** included. One batched Server Action each:
+  `assignCategory(ids, categoryId | null)` (single `UPDATE … IN`) and
+  `deleteTransactions(ids)`; both cap at 500 ids and revalidate normally. Bulk assign
+  and bulk delete carry the §6.4.1 five-second Undo toast; undoing an assign restores
+  each row's *previous* category (grouped server calls).
+- **Uncategorized visibility:** the ledger filter gains an **❔ Uncategorized** option
+  (`?category=uncategorized`); the summary card shows an amber "N uncategorized · ₹X —
+  review →" deep link when the filtered set contains any; the dashboard pie renders an
+  explicit gray Uncategorized slice while the **Top category** card ignores it;
+  largest-spend handles uncategorized rows.
+- **Review queue (§6.4) merged into the Ledger page:** `/review` redirects to
+  `/transactions`, its nav slot is gone (the pending-count badge now rides the Ledger
+  item), and a collapsible **Review** card sits between the summary and filters —
+  full ledger rows inside: tap to edit/categorize (the dialog's save re-evaluates
+  queue membership), swipe to delete, long-press to multi-select, plus the per-item
+  **Done** acknowledgement. Collapse state persists per device.
+- **`review-where.ts` fix:** the redundant-note clause became a self-contained `EXISTS`
+  subquery — the badge count (`FROM transactions` alone) previously referenced
+  `categories.name` without a join, which Postgres rejects; it also keeps working now
+  that `category_id` can be NULL.
+- **CSV export (§6.6):** uncategorized rows write an empty `category` cell; format and
+  column order unchanged.
+- Verified: `tsc --noEmit` and `eslint` pass clean.
+
+---
+
 ## v1.2 Amendment — 19 August 2026 (owner decision: edit sheet parity with Quick Add)
 
 ### Amendment 12 — Edit sheet matches Quick Add's shell; header CTA styled as a button (§6.2, §6.4)

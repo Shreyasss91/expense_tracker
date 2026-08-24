@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
-| **Version** | 1.2 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), and 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`) |
+| **Version** | 1.3 (see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), and 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -52,6 +52,17 @@
 > `type` column and `transactionTypeEnum` are removed. The ledger is now expense-only,
 > `tag` is `NOT NULL`, the 6-month trend becomes a bar chart, and the CSV export drops
 > to 7 columns. Recorded in `CHANGELOG.md`.
+
+> **24 August 2026 — Capture-first categories, bulk actions, Review in Ledger (Amendment 20; §4.2, §5.3, §6.2, §6.3, §6.4, §6.6):**
+> `transactions.category_id` becomes **nullable** — NULL means *uncategorized* (a state,
+> never a category row). Quick Add drops its category grid entirely (templates still stamp
+> theirs); categories are assigned afterwards via the edit dialog (now optional/clearable)
+> or multi-select bulk assign/delete on the Ledger with 5-second Undo. The ledger gains an
+> ❔ Uncategorized filter and summary warning line; the dashboard pie shows an explicit
+> Uncategorized slice while Top category ignores it. The Review tab merges into the Ledger
+> page as a pinned collapsible queue (`/review` redirects); its pending-count badge rides
+> the Ledger nav item. CSV export writes an empty category cell for uncategorized rows.
+> Full details in `CHANGELOG.md`.
 
 ---
 
