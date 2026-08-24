@@ -87,7 +87,9 @@ dmypy.json
 
 # Drizzle
 drizzle/migrations/
-drizzle/meta/
+# meta/ is tracked since the Amendment 20 follow-up: without the per-migration
+# snapshots in git, `db:generate` diffs against a stale snapshot and bundles
+# unrelated drift into every new migration (see 0005).
 
 # Next.js
 .next/
