@@ -106,7 +106,10 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 ### UX pass — 24 August 2026 (owner decision: ten refinements)
 
 - **Toasts clear the bottom nav:** global Sonner `offset` lifts every toast above the
-  Dashboard/+ /Ledger bar and the iOS home indicator.
+  Dashboard/+ /Ledger bar and the iOS home indicator. Later switched to
+  `position="top-center"` (owner request: toasts must sit on top of the Add-transaction
+  sheet) with `expand` + `visibleToasts={4}` so simultaneous toasts stack fully visible,
+  one above another, instead of Sonner's default collapsed pile.
 - **Quick Add:** uncategorized saves offer a **"Categorize"** action on the success
   toast (jumps to `category=uncategorized`); recent distinct notes render as one-tap
   chips while the Note field is empty (`quick-add:recent-notes`, max 5, per device).

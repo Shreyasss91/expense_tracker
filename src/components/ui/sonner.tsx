@@ -17,6 +17,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // and clears the iOS notch via the safe-area inset.
       position="top-center"
       offset={`calc(4rem + env(safe-area-inset-top))`}
+      // Owner request: multiple toasts stack fully expanded, one above
+      // another — Sonner's default collapses older toasts behind the newest
+      // and only fans them out on hover, which hides feedback like a
+      // simultaneous "Transaction added" + budget warning.
+      expand
+      visibleToasts={4}
       icons={{
         success: (
           <CircleCheckIcon className="size-4" />
