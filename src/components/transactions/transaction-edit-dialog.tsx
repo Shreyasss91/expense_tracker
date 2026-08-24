@@ -43,6 +43,7 @@ export function TransactionEditDialog({
   open,
   onOpenChange,
   onRequestDelete,
+  onSaved,
 }: {
   row: TransactionListRow | null;
   members: MemberOption[];
@@ -50,6 +51,9 @@ export function TransactionEditDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   onRequestDelete: (row: TransactionListRow) => void;
+  /** Optional post-save callback (Amendment 20) — used by the Review queue to
+   * re-evaluate an item's membership after its note/category changed. */
+  onSaved?: (row: TransactionListRow) => void;
 }) {
   const [tag, setTag] = useState<TransactionTag>("lifestyle");
   const [categoryId, setCategoryId] = useState("");
@@ -78,7 +82,9 @@ export function TransactionEditDialog({
   if (row && row.id !== lastKey) {
     setLastKey(row.id);
     setTag((row.tag ?? "lifestyle") as TransactionTag);
-    setCategoryId(row.categoryId);
+    // Amendment 20 — uncategorized rows start with no selection; saving without
+    // one is valid ("Uncategorized" is a state, not an error).
+    setCategoryId(row.categoryId ?? "");
     setMemberId(row.memberId);
     setAmount(Number(row.amount).toString());
     setDate(row.date);
@@ -91,7 +97,7 @@ export function TransactionEditDialog({
   }
 
   const paise = rupeesToPaise(amount);
-  const canSubmit = paise > 0 && categoryId !== "" && memberId !== "";
+  const canSubmit = paise > 0 && memberId !== "";
   const activeMember = members.find((m) => m.id === memberId);
   // §6.2 — recently used categories float to the top, same as the Quick Add grid
   const { orderedCategories, touchCategory } = useCategoryUsage(cats);
@@ -131,10 +137,11 @@ export function TransactionEditDialog({
       return;
     }
     const member = members.find((m) => m.id === memberId);
-    const category = categories.find((c) => c.id === categoryId);
-    if (!member || !category) {
+    // empty selection = uncategorized — a deliberate, valid choice (Amendment 20)
+    const category = categoryId ? categories.find((c) => c.id === categoryId) : null;
+    if (!member) {
       setSubmitAttempted(true);
-      setError("Pick a member and category");
+      setError("Pick a member");
       return;
     }
 
@@ -142,24 +149,23 @@ export function TransactionEditDialog({
     // Fully optimistic: build the updated row locally, apply it and close the
     // sheet immediately; on failure the original row is emitted back.
     const originalRow = row;
-    emitLedgerMutation({
-      kind: "update",
-      id: row.id,
-      row: {
-        ...row,
-        memberId,
-        categoryId,
-        tag: tag as TransactionListRow["tag"],
-        amount: paiseToDbString(paise),
-        note: note || null,
-        date,
-        time: `${time}:00`,
-        member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
-        category: { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug },
-      },
-    });
+    const updatedRow: TransactionListRow = {
+      ...row,
+      memberId,
+      categoryId: category?.id ?? null,
+      tag: tag as TransactionListRow["tag"],
+      amount: paiseToDbString(paise),
+      note: note || null,
+      date,
+      time: `${time}:00`,
+      member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
+      category: category
+        ? { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug }
+        : null,
+    };
+    emitLedgerMutation({ kind: "update", id: row.id, row: updatedRow });
     onOpenChange(false);
-    const base = { memberId, categoryId, amount: paise, date, time, note: note || null };
+    const base = { memberId, categoryId: category?.id ?? null, amount: paise, date, time, note: note || null };
     const payload = { ...base, tag: tag as "one_time" | "recurring" | "lifestyle" };
     let res: Awaited<ReturnType<typeof updateTransaction>>;
     try {
@@ -176,7 +182,8 @@ export function TransactionEditDialog({
       // §6.7 — warn when the edited expense left the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
       // §6.2 — record the category as used so recently used ones float to the top
-      touchCategory(category.id);
+      if (category) touchCategory(category.id);
+      onSaved?.(updatedRow);
     } else {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
       toast.error(res.error ?? "Could not save");
@@ -302,7 +309,8 @@ export function TransactionEditDialog({
             selectedId={categoryId}
             onSelect={setCategoryId}
             budgetRemaining={budgetRemaining}
-            hint="Tap a category to select"
+            hint="Optional — tap to categorize, None leaves it uncategorized"
+            allowClear
             onAddCategory={openAddCategory}
             addForm={addForm}
           />
@@ -315,7 +323,7 @@ export function TransactionEditDialog({
           </Button>
           {!saving && (
             <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
-              {canSubmit ? "press Enter ↵ to save" : "Enter an amount and pick a category"}
+              {canSubmit ? "press Enter ↵ to save" : "Enter an amount"}
             </p>
           )}
           <div className="flex gap-2">
@@ -336,7 +344,7 @@ export function TransactionEditDialog({
               {saving
                 ? "Saving…"
                 : canSubmit
-                  ? `Save ${formatINRWhole(paise)} · ${cats.find((c) => c.id === categoryId)?.name ?? ""}`
+                  ? `Save ${formatINRWhole(paise)}${categoryId ? ` · ${cats.find((c) => c.id === categoryId)?.name ?? ""}` : ""}`
                   : "Save changes"}
             </Button>
           </div>

@@ -259,6 +259,9 @@ export function CategoryGrid({
   budgetRemaining,
   showBudgetHints = true,
   hint,
+  // "None" tile (Amendment 20) — clears/un-assigns the category; used by the
+  // edit dialog and bulk assign where a category is optional
+  allowClear = false,
   // rename mode (optional — Quick Add only)
   editMode = false,
   onToggleEditMode,
@@ -297,6 +300,7 @@ export function CategoryGrid({
   onSaveRename?: (c: CategoryOption) => void;
   onCancelRename?: () => void;
   showAllLink?: React.ReactNode;
+  allowClear?: boolean;
   onAddCategory?: () => void;
   addForm?: AddCategoryForm;
 }) {
@@ -336,6 +340,26 @@ export function CategoryGrid({
         {showAllLink}
       </div>
       <div className="flex flex-wrap gap-2">
+        {/* "None" tile — un-assign the category (Amendment 20) */}
+        {allowClear && !editMode && (
+          <button
+            key="__none"
+            type="button"
+            disabled={renaming}
+            onClick={() => onSelect("")}
+            className={cn(
+              "relative inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium active:scale-95 disabled:opacity-60",
+              selectedId === "" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+            )}
+          >
+            {selectedId === "" && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
+                <Check className="h-3 w-3" />
+              </span>
+            )}
+            None
+          </button>
+        )}
         {categories.map((c) =>
           renamingId === c.id && canRename ? (
             <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
