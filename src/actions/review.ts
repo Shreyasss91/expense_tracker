@@ -11,7 +11,7 @@ import { idSchema, reviewNoteSchema } from "@/lib/validations";
 export interface ReviewItem {
   id: string;
   memberId: string;
-  categoryId: string;
+  categoryId: string | null;
   tag: "one_time" | "recurring" | "lifestyle" | null;
   amount: string;
   note: string | null;
@@ -20,7 +20,8 @@ export interface ReviewItem {
   createdAt: string;
   reviewedAt: string | null;
   member: { name: string; emoji: string; color: string; slug: string };
-  category: { name: string; emoji: string; color: string; slug: string };
+  /** NULL = uncategorized (Amendment 20). */
+  category: { name: string; emoji: string; color: string; slug: string } | null;
 }
 
 /**
@@ -56,7 +57,7 @@ export async function getReviewPage(args: {
     })
     .from(transactions)
     .innerJoin(members, sql`${transactions.memberId} = ${members.id}`)
-    .innerJoin(categories, sql`${transactions.categoryId} = ${categories.id}`)
+    .leftJoin(categories, sql`${transactions.categoryId} = ${categories.id}`)
     .where(whereClause)
     .orderBy(...listOrderBy)
     .limit(PAGE_SIZE + 1);
@@ -83,12 +84,15 @@ export async function getReviewPage(args: {
         color: row.memberColor,
         slug: row.memberSlug,
       },
-      category: {
-        name: row.categoryName,
-        emoji: row.categoryEmoji,
-        color: row.categoryColor,
-        slug: row.categorySlug,
-      },
+      category:
+        row.categoryId && row.categoryName
+          ? {
+              name: row.categoryName,
+              emoji: row.categoryEmoji ?? "🏷️",
+              color: row.categoryColor ?? "#9ca3af",
+              slug: row.categorySlug ?? "",
+            }
+          : null,
     })),
     nextCursor:
       hasMore && last

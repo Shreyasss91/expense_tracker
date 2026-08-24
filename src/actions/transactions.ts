@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
 import { paiseToDbString } from "@/lib/money";
@@ -32,8 +32,11 @@ export async function createTransaction(raw: TransactionInput) {
   const memberExists = await db.query.members.findFirst({ where: eq(members.id, memberId) });
   if (!memberExists) return { ok: false as const, error: "Unknown member" };
 
-  const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
-  if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  // Amendment 20 — the category is optional; when present it must exist.
+  if (data.categoryId) {
+    const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
+    if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  }
 
   const paise = data.amount;
 
@@ -42,7 +45,7 @@ export async function createTransaction(raw: TransactionInput) {
     .values({
       id: randomUUID(),
       memberId,
-      categoryId: data.categoryId,
+      categoryId: data.categoryId ?? null,
       tag: data.tag,
       amount: paiseToDbString(paise),
       note: data.note ?? null,
@@ -56,7 +59,7 @@ export async function createTransaction(raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId);
+  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
 
   return { ok: true as const, id: row.id, alert };
 }
@@ -71,8 +74,10 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
 
   const memberExists = await db.query.members.findFirst({ where: eq(members.id, data.memberId) });
   if (!memberExists) return { ok: false as const, error: "Unknown member" };
-  const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
-  if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  if (data.categoryId) {
+    const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
+    if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  }
 
   const [existing] = await db
     .select({ note: transactions.note })
@@ -84,7 +89,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
     .update(transactions)
     .set({
       memberId: data.memberId,
-      categoryId: data.categoryId,
+      categoryId: data.categoryId ?? null,
       tag: data.tag,
       amount: paiseToDbString(data.amount),
       note: data.note ?? null,
@@ -103,9 +108,59 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId);
+  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
 
   return { ok: true as const, id: row.id, alert };
+}
+
+/** Amendment 20 — max ids per bulk call; the UI pages selection well below this. */
+const BULK_MAX = 500;
+
+/**
+ * Amendment 20 — assign one category to many transactions in a single
+ * UPDATE. `categoryId: null` clears the category ("Uncategorized").
+ */
+export async function assignCategory(ids: string[], categoryId: string | null): Promise<{ ok: true; updated: number } | { ok: false; error: string }> {
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
+  if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
+  const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
+  if (checkedIds.length !== ids.length) return { ok: false as const, error: "Invalid transaction id" };
+
+  if (categoryId !== null) {
+    const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, categoryId) });
+    if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  }
+
+  const rows = await db
+    .update(transactions)
+    .set({ categoryId })
+    .where(inArray(transactions.id, checkedIds))
+    .returning({ id: transactions.id });
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+
+  return { ok: true as const, updated: rows.length };
+}
+
+/** Amendment 20 — hard-delete many transactions in one statement (no undo server-side; the UI owns the undo window). */
+export async function deleteTransactions(ids: string[]): Promise<{ ok: true; deleted: number } | { ok: false; error: string }> {
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
+  if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
+  const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
+  if (checkedIds.length !== ids.length) return { ok: false as const, error: "Invalid transaction id" };
+
+  const rows = await db
+    .delete(transactions)
+    .where(inArray(transactions.id, checkedIds))
+    .returning({ id: transactions.id });
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+
+  return { ok: true as const, deleted: rows.length };
 }
 
 export async function deleteTransaction(id: string) {
@@ -180,7 +235,8 @@ export async function getTransactionsPage(args: {
     })
     .from(transactions)
     .innerJoin(members, eq(transactions.memberId, members.id))
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
+    // Amendment 20 — left join: uncategorized rows list with a null category.
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(where)
     .orderBy(...listOrderBy)
     .limit(PAGE_SIZE + 1);
@@ -208,7 +264,7 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
     })
     .from(transactions)
     .innerJoin(members, eq(transactions.memberId, members.id))
-    .innerJoin(categories, eq(transactions.categoryId, categories.id))
+    .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .orderBy(sql`date ASC, created_at ASC`);
 
   const lines = rows.map((r) =>

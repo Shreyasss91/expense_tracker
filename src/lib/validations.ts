@@ -26,7 +26,8 @@ export const monthKeySchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Inval
 
 export const transactionBaseSchema = z.object({
   memberId: z.string().uuid(),
-  categoryId: z.string().uuid(),
+  /** Amendment 20 — optional/nullable: Quick Add captures without a category. */
+  categoryId: z.string().uuid().optional().nullable(),
   /** Integer paise (§5.8). */
   amount: z.number().int().positive(),
   note: z

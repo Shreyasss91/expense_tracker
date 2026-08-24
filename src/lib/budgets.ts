@@ -92,7 +92,7 @@ export async function getMonthBudgetStatus(
   };
 }
 
-export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId: string): Promise<BudgetAlert | null> {
+export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId: string | null): Promise<BudgetAlert | null> {
   const validatedMonth = monthKeySchema.parse(monthKey);
   const { start, end } = monthBounds(validatedMonth);
 
@@ -120,17 +120,21 @@ export async function getBudgetAlert(db: BudgetDb, monthKey: string, categoryId:
     };
   }
 
-  const categoryBudget = resolveEffectiveBudget(budgetRows, validatedMonth, categoryId);
-  const categoryPaise = rupeesToPaise(totals[0].category);
-  if (categoryBudget && categoryPaise > rupeesToPaise(categoryBudget.amount)) {
-    const row = budgetRows.find((b) => b.categoryId === categoryId);
-    return {
-      kind: "category" as const,
-      label: row?.categoryName ?? "Category",
-      emoji: row?.categoryEmoji ?? undefined,
-      overPaise: categoryPaise - rupeesToPaise(categoryBudget.amount),
-      limitPaise: rupeesToPaise(categoryBudget.amount),
-    };
+  // Uncategorized transactions (Amendment 20) can only trip the total budget —
+  // there is no category to resolve a per-category limit against.
+  if (categoryId) {
+    const categoryBudget = resolveEffectiveBudget(budgetRows, validatedMonth, categoryId);
+    const categoryPaise = rupeesToPaise(totals[0].category);
+    if (categoryBudget && categoryPaise > rupeesToPaise(categoryBudget.amount)) {
+      const row = budgetRows.find((b) => b.categoryId === categoryId);
+      return {
+        kind: "category" as const,
+        label: row?.categoryName ?? "Category",
+        emoji: row?.categoryEmoji ?? undefined,
+        overPaise: categoryPaise - rupeesToPaise(categoryBudget.amount),
+        limitPaise: rupeesToPaise(categoryBudget.amount),
+      };
+    }
   }
 
   return null;

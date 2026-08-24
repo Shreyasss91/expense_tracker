@@ -21,11 +21,20 @@ export function pendingReviewWhere(cursor: Cursor | null = null): SQL {
       )
     : undefined;
 
+  // The "redundant note" clause is a self-contained EXISTS so the predicate
+  // works both with and without a `categories` join in the outer query (the
+  // badge count selects from transactions alone). With nullable
+  // category_id (Amendment 20) an uncategorized row simply never matches
+  // this branch — it can't be "equal to its category name".
   const genericNote = sql`(
     ${transactions.note} IS NULL
     OR btrim(${transactions.note}) = ''
     OR lower(btrim(${transactions.note})) IN (${sql.join(genericNotes, sql`, `)})
-    OR lower(btrim(${transactions.note})) = lower(btrim(${categories.name}))
+    OR EXISTS (
+      SELECT 1 FROM ${categories}
+      WHERE ${categories.id} = ${transactions.categoryId}
+        AND lower(btrim(${categories.name})) = lower(btrim(${transactions.note}))
+    )
   )`;
 
   return and(sql`${transactions.reviewedAt} IS NULL`, genericNote, cursorWhere)!;

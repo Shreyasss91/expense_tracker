@@ -14,8 +14,8 @@ export interface CsvExportRow {
   note: string | null;
   /** NUMERIC string as returned by the driver; normalized to plain 2 dp. */
   amount: string;
-  /** Category's current display name (§6.6). */
-  category: string;
+  /** Category's current display name (§6.6); empty cell when uncategorized (Amendment 20). */
+  category: string | null;
   tag: "one_time" | "recurring" | "lifestyle";
 }
 
@@ -27,7 +27,7 @@ export function formatCsvLine(r: CsvExportRow): string {
     r.member,
     r.note ?? "",
     Number(r.amount).toFixed(2), // plain 2-dp decimal, no ₹, no grouping (§6.6)
-    r.category,
+    r.category ?? "",
     r.tag,
   ]);
 }
