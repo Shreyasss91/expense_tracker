@@ -29,3 +29,16 @@ export function emitLedgerMutation(mutation: LedgerMutation) {
     window.dispatchEvent(new CustomEvent(LEDGER_MUTATION_EVENT, { detail: mutation }));
   }
 }
+
+/**
+ * Selection-mode signal (Layout/UX pass): any surface opening a sticky bulk
+ * bar (ledger list, review queue) broadcasts it so the bottom nav can hide
+ * the + FAB — otherwise it sits in the same thumb zone as the bar's buttons.
+ */
+export const LEDGER_SELECTION_EVENT = "ledger:selection";
+
+export function emitSelectionMode(active: boolean) {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(LEDGER_SELECTION_EVENT, { detail: { active } }));
+  }
+}

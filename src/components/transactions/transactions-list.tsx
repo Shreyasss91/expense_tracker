@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { ListChecks, Tag, Trash2, X } from "lucide-react";
 import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory } from "@/actions/transactions";
 import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
-import { emitLedgerMutation } from "@/lib/events";
+import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
 import { dateGroupLabel } from "@/lib/dates";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
@@ -36,6 +36,8 @@ function matchesFilters(row: TransactionListRow, f: TransactionListFilters): boo
   } else if (f.uncategorized && row.categoryId !== null) return false;
   if (f.tag && row.tag !== f.tag) return false;
   if (f.month && !row.date.startsWith(f.month)) return false;
+  if (f.from && row.date < f.from) return false;
+  if (f.to && row.date > f.to) return false;
   if (f.search?.trim()) {
     const q = f.search.trim().toLowerCase();
     if (!(row.note ?? "").toLowerCase().includes(q)) return false;
@@ -49,12 +51,15 @@ export function TransactionsList({
   filters,
   members,
   categories,
+  enableSelection = true,
 }: {
   initialRows: TransactionListRow[];
   initialCursor: Cursor | null;
   filters: TransactionListFilters;
   members: MemberOption[];
   categories: CategoryOption[];
+  /** UX pass — false hides all bulk tooling (dashboard's preview panel). */
+  enableSelection?: boolean;
 }) {
   const [rows, setRows] = useState<TransactionListRow[]>(initialRows);
   const [cursor, setCursor] = useState<Cursor | null>(initialCursor);
@@ -221,6 +226,13 @@ export function TransactionsList({
     setPickerOpen(false);
   }
 
+  // Broadcast so the bottom nav can tuck the + FAB away while the bulk bar
+  // occupies its thumb zone.
+  useEffect(() => {
+    emitSelectionMode(selectionMode);
+    return () => emitSelectionMode(false);
+  }, [selectionMode]);
+
   // Esc exits selection mode (desktop convenience)
   useEffect(() => {
     if (!selectionMode) return;
@@ -358,19 +370,21 @@ export function TransactionsList({
   return (
     <div className="space-y-4">
       {/* selection entry point / status — desktop users have no long-press */}
-      <div className="flex items-center justify-end">
-        {!selectionMode ? (
-          rows.length > 0 && (
-            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={() => enterSelection(rows[0])}>
-              <ListChecks className="h-3.5 w-3.5" /> Select
+      {enableSelection && (
+        <div className="flex items-center justify-end">
+          {!selectionMode ? (
+            rows.length > 0 && (
+              <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={() => enterSelection(rows[0])}>
+                <ListChecks className="h-3.5 w-3.5" /> Select
+              </Button>
+            )
+          ) : (
+            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={exitSelection}>
+              <X className="h-3.5 w-3.5" /> Cancel selection
             </Button>
-          )
-        ) : (
-          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={exitSelection}>
-            <X className="h-3.5 w-3.5" /> Cancel selection
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
@@ -392,10 +406,10 @@ export function TransactionsList({
                   row={r}
                   onEdit={setEditing}
                   onDelete={requestDelete}
-                  selectionMode={selectionMode}
+                  selectionMode={enableSelection && selectionMode}
                   selected={selectedIds.has(r.id)}
                   onSelectToggle={toggleSelected}
-                  onLongPress={enterSelection}
+                  onLongPress={enableSelection ? enterSelection : undefined}
                 />
               ))}
             </div>

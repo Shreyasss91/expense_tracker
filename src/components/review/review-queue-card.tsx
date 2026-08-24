@@ -10,7 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CategoryPickerSheet } from "@/components/transactions/category-picker-sheet";
 import { TransactionEditDialog } from "@/components/transactions/transaction-edit-dialog";
 import { TransactionItem } from "@/components/transactions/transaction-item";
-import { emitLedgerMutation } from "@/lib/events";
+import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
 import { isGenericNote } from "@/lib/generic-notes";
 import type { Cursor } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
@@ -136,6 +136,12 @@ export function ReviewQueueCard({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, [selectionMode]);
+
+  // Broadcast so the bottom nav tucks the + FAB away while the bulk bar is open
+  useEffect(() => {
+    emitSelectionMode(selectionMode);
+    return () => emitSelectionMode(false);
   }, [selectionMode]);
 
   /** Month-end batch: acknowledge every loaded item in one server call. No
