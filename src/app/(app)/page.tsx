@@ -10,6 +10,7 @@ import { monthEndInIST, monthKeyInIST } from "@/lib/dates";
 import { getCategories, getMembers } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
+import { cn } from "@/lib/utils";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { BudgetBar } from "@/components/dashboard/budget-bar";
@@ -204,6 +205,15 @@ export default async function DashboardPage({
   // Per-category spend for the budget card's category rows (§6.7)
   const catSpentPaise = new Map(data.catRows.map((r) => [r.id, rupeesToPaise(r.total)]));
 
+  // UX pass — month-over-month direction for the hero, from the trend series
+  // already fetched (index 4 = last month, 5 = this month).
+  const prevTrend = data.trend[data.trend.length - 2];
+  const momDelta =
+    prevTrend && prevTrend.expensePaise > 0
+      ? ((data.expensePaise - prevTrend.expensePaise) / prevTrend.expensePaise) * 100
+      : null;
+  const prevMonthLabel = format(addMonths(parse(`${monthKey}-01`, "yyyy-MM-dd", new Date()), -1), "MMM");
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -224,6 +234,16 @@ export default async function DashboardPage({
             </Link>
           </div>
           <p className="mt-1 truncate text-3xl font-semibold tabular-nums text-red-600">{formatINR(data.expensePaise)}</p>
+          {momDelta !== null && (
+            <p
+              className={cn(
+                "mt-0.5 text-xs font-medium tabular-nums",
+                momDelta > 0 ? "text-red-600" : momDelta < 0 ? "text-emerald-600" : "text-muted-foreground",
+              )}
+            >
+              {momDelta > 0 ? "▲" : momDelta < 0 ? "▼" : "—"} {Math.abs(momDelta).toFixed(0)}% vs {prevMonthLabel}
+            </p>
+          )}
           {data.largestSpend && (
             <Link
               href={`/transactions?month=${monthKey}${data.largestSpend.categoryId ? `&category=${data.largestSpend.categoryId}` : "&category=uncategorized"}&q=${encodeURIComponent(data.largestSpend.note ?? "")}`}
@@ -378,6 +398,7 @@ export default async function DashboardPage({
             filters={{ month: monthKey }}
             members={memberOptions}
             categories={categoryOptions}
+            enableSelection={false}
           />
         </CardContent>
       </Card>

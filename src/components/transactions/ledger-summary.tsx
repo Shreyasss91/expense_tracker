@@ -2,6 +2,7 @@ import { format, parse } from "date-fns";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
+import { monthEndInIST, todayInIST } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
 import type { LedgerSummary } from "@/lib/query";
 
@@ -76,6 +77,25 @@ export function LedgerSummaryHeader({
             {monthBudget.excludeBills && monthBudget.billsPaise > 0 && (
               <p className="text-[11px] text-muted-foreground">excluding {formatINR(monthBudget.billsPaise)} in bills</p>
             )}
+            {/* UX pass — mid-month pacing: what the remaining budget allows per
+                day. Only meaningful for the CURRENT month; past months get no
+                projection. */}
+            {(() => {
+              const today = todayInIST();
+              if (!monthKey || monthKey !== today.slice(0, 7)) return null;
+              const daysLeft = Number(monthEndInIST().slice(8, 10)) - Number(today.slice(8, 10)) + 1;
+              if (daysLeft <= 0) return null;
+              const remaining = monthBudget.budgetPaise - monthBudget.spentPaise;
+              return remaining >= 0 ? (
+                <p className="text-[11px] font-medium tabular-nums text-emerald-600">
+                  ≈ {formatINR(Math.round(remaining / daysLeft))}/day safe · {daysLeft} {daysLeft === 1 ? "day" : "days"} left
+                </p>
+              ) : (
+                <p className="text-[11px] font-medium tabular-nums text-red-600">
+                  over by {formatINR(-remaining)} · {daysLeft} {daysLeft === 1 ? "day" : "days"} left
+                </p>
+              );
+            })()}
           </div>
         )}
       </CardContent>
