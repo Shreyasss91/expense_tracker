@@ -45,9 +45,10 @@ export const transactions = pgTable(
     memberId: uuid("member_id")
       .references(() => members.id)
       .notNull(),
-    categoryId: uuid("category_id")
-      .references(() => categories.id)
-      .notNull(),
+    // Nullable (Amendment 20): Quick Add captures without a category; the
+    // category is assigned afterwards via the edit dialog or bulk assign.
+    // NULL = uncategorized — a transaction state, never a category row.
+    categoryId: uuid("category_id").references(() => categories.id),
     tag: transactionTagEnum("tag").notNull(),
     // Read as string; see §5.8
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
