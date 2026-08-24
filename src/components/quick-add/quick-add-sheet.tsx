@@ -32,6 +32,36 @@ import { AmountTagRow, DateTimeField, type TransactionTag } from "@/components/t
 // Amendment 20 — categories are no longer part of Quick Add at all; they are
 // assigned afterwards in the Ledger (edit dialog / bulk assign).
 const LAST_ENTRY_KEY = "quick-add:last-entry";
+// UX pass — recent distinct notes offered as one-tap chips while the Note
+// field is empty. Per-device localStorage, same pattern as last-entry memory.
+const RECENT_NOTES_KEY = "quick-add:recent-notes";
+const RECENT_NOTES_MAX = 5;
+
+function loadRecentNotes(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_NOTES_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((n): n is string => typeof n === "string").slice(0, RECENT_NOTES_MAX);
+  } catch {
+    return [];
+  }
+}
+
+function rememberNote(note: string, current: string[]): string[] {
+  const trimmed = note.trim();
+  if (!trimmed) return current;
+  const next = [trimmed, ...current.filter((n) => n.toLowerCase() !== trimmed.toLowerCase())];
+  const capped = next.slice(0, RECENT_NOTES_MAX);
+  try {
+    window.localStorage.setItem(RECENT_NOTES_KEY, JSON.stringify(capped));
+  } catch {
+    // storage unavailable — remembering is best-effort
+  }
+  return capped;
+}
 
 function loadLastEntry(): { tag: TransactionTag; note: string } {
   const fallback = { tag: "lifestyle" as const, note: "" };
@@ -95,6 +125,8 @@ export function QuickAddSheet({
   const [showDatePicker, setShowDatePicker] = useState(false);
   // §6.2 — the last committed tag + note, restored on open and updated on save
   const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
+  // UX pass — recent distinct notes for one-tap refill
+  const [recentNotes, setRecentNotes] = useState<string[]>([]);
   const router = useRouter();
 
   // Hydrate the remembered tag/note after mount (never during SSR, so the
@@ -103,6 +135,7 @@ export function QuickAddSheet({
     lastEntryRef.current = loadLastEntry();
     setTag(lastEntryRef.current.tag);
     setNote(lastEntryRef.current.note);
+    setRecentNotes(loadRecentNotes());
   }, []);
 
   const paise = useMemo(() => Math.round(parseFloat(amount || "0") * 100) || 0, [amount]);
@@ -186,12 +219,25 @@ export function QuickAddSheet({
     setSaving(false);
     if (res.ok) {
       emitLedgerMutation({ kind: "create-confirm", tempId, id: res.id });
-      toast.success("Transaction added");
+      // A2 — uncategorized entries close the loop immediately: the toast
+      // offers a one-tap jump to the ledger's uncategorized view.
+      if (templateCategoryId === undefined) {
+        toast.success("Transaction added", {
+          duration: 6000,
+          action: {
+            label: "Categorize",
+            onClick: () => router.push("/transactions?category=uncategorized"),
+          },
+        });
+      } else {
+        toast.success("Transaction added");
+      }
       // §6.7 — warn when this expense pushed the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
       // §6.2 — remember the committed tag/note so repeat entries start filled in
       lastEntryRef.current = { tag, note };
       saveLastEntry(lastEntryRef.current);
+      setRecentNotes((prev) => rememberNote(note, prev));
       reset();
       onClose();
     } else {
@@ -320,6 +366,21 @@ export function QuickAddSheet({
               maxLength={140}
               onChange={(e) => setNote(e.target.value)}
             />
+            {/* A3 — one-tap recent notes while the field is empty */}
+            {recentNotes.length > 0 && !note && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {recentNotes.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNote(n)}
+                    className="max-w-full truncate rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/10 hover:text-foreground"
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Amendment 20 — no category picker here. Categorize later in the
