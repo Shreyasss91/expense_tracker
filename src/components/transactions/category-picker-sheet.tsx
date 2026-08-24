@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { suggestCategories } from "@/lib/category-suggestions";
+import { useIsDesktop } from "@/lib/use-media-query";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption } from "@/components/quick-add/types";
 import { CategoryGrid } from "./transaction-fields";
@@ -43,15 +44,20 @@ export function CategoryPickerSheet({
   }, [rows, categories]);
 
   const suggested = orderedCategories !== categories;
+  const isDesktop = useIsDesktop();
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        side="bottom"
-        className="mx-auto flex max-h-[80dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6"
+        side={isDesktop ? "right" : "bottom"}
+        className={
+          isDesktop
+            ? "flex h-full w-full max-w-sm flex-col rounded-l-2xl px-4 py-4 sm:px-6"
+            : "mx-auto flex max-h-[80dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6"
+        }
         showCloseButton={false}
       >
-        <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
+        {!isDesktop && <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />}
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
             <p className="text-sm font-semibold">Assign category</p>

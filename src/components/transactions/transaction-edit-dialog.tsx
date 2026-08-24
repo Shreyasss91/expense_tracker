@@ -20,6 +20,7 @@ import { createTemplate } from "@/actions/templates";
 import { getCategoryBudgetStatus } from "@/actions/settings";
 import { useCategoryUsage } from "@/lib/category-usage";
 import { useCreateCategory } from "@/lib/use-create-category";
+import { useIsDesktop } from "@/lib/use-media-query";
 import { formatINRWhole, paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { isGenericNote } from "@/lib/generic-notes";
@@ -68,6 +69,10 @@ export function TransactionEditDialog({
   const [submitAttempted, setSubmitAttempted] = useState(false);
   // always starts collapsed on open, not persisted (matches Quick Add)
   const [showDatePicker, setShowDatePicker] = useState(false);
+  // Layout pass — on ≥lg the sheet docks as a right-side panel so the ledger
+  // stays visible beside it ("categorize at your desk"); mobile keeps the
+  // bottom sheet.
+  const isDesktop = useIsDesktop();
   // §6.7 — remaining budget per category for the row's month (mirrors Quick Add)
   const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // local category list — syncs from the server prop so a category created inline
@@ -222,8 +227,16 @@ export function TransactionEditDialog({
         if (!o) cancelAddCategory();
       }}
     >
-      <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
-        <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
+      <SheetContent
+        side={isDesktop ? "right" : "bottom"}
+        className={
+          isDesktop
+            ? "flex h-full w-full max-w-md flex-col rounded-l-2xl px-4 py-4 sm:px-6"
+            : "mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6"
+        }
+        showCloseButton={false}
+      >
+        {!isDesktop && <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />}
         <div className="mb-1 flex items-center gap-2">
           <Button
             type="button"
