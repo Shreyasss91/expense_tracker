@@ -7,6 +7,7 @@ import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCateg
 import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
 import { emitLedgerMutation } from "@/lib/events";
 import { dateGroupLabel } from "@/lib/dates";
+import { formatINR, rupeesToPaise } from "@/lib/money";
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { TransactionItem } from "./transaction-item";
@@ -339,13 +340,17 @@ export function TransactionsList({
 
   // ─────────────────────────────────────────────────────────────────────────
 
+  // Layout pass — each day group carries its total so the header reads
+  // "Yesterday …… ₹1,240" while scanning; the sum covers exactly the rows in
+  // the group (which is the loaded pages, consistent with the list itself).
   const groups = useMemo(() => {
-    const map = new Map<string, TransactionListRow[]>();
+    const map = new Map<string, { items: TransactionListRow[]; totalPaise: number }>();
     for (const r of rows) {
       const label = dateGroupLabel(r.date);
-      const arr = map.get(label) ?? [];
-      arr.push(r);
-      map.set(label, arr);
+      const entry = map.get(label) ?? { items: [], totalPaise: 0 };
+      entry.items.push(r);
+      entry.totalPaise += rupeesToPaise(r.amount);
+      map.set(label, entry);
     }
     return [...map.entries()];
   }, [rows]);
@@ -374,9 +379,12 @@ export function TransactionsList({
           <p className="text-xs text-muted-foreground">Try clearing filters, or tap + to add one.</p>
         </div>
       ) : (
-        groups.map(([label, items]) => (
+        groups.map(([label, { items, totalPaise }]) => (
           <section key={label}>
-            <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</h3>
+            <div className="mb-2 flex items-baseline justify-between px-1">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</h3>
+              <span className="text-xs font-medium tabular-nums text-muted-foreground">{formatINR(totalPaise)}</span>
+            </div>
             <div className="space-y-2">
               {items.map((r) => (
                 <TransactionItem
