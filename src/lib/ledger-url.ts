@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 import { TRANSACTION_TAGS } from "./constants";
-import { monthKeySchema } from "./validations";
+import { dateSchema, monthKeySchema } from "./validations";
 import type { TransactionListFilters } from "./query";
 
 /** The filter state as carried by the ledger URL. `q` is the search text. */
@@ -16,6 +16,9 @@ export interface LedgerFilters {
   uncategorized?: boolean;
   tag?: "one_time" | "recurring" | "lifestyle";
   month?: string;
+  /** UX pass — custom date range (inclusive), YYYY-MM-DD. */
+  from?: string;
+  to?: string;
   q?: string;
 }
 
@@ -30,6 +33,8 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
   else if (filters.categoryId) params.set("category", filters.categoryId);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.month) params.set("month", filters.month);
+  if (filters.from) params.set("from", filters.from);
+  if (filters.to) params.set("to", filters.to);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   const qs = params.toString();
   return qs ? `/transactions?${qs}` : "/transactions";
@@ -61,6 +66,14 @@ export function parseLedgerSearchParams(
     month: (() => {
       const v = read(sp.month);
       return v && monthKeySchema.safeParse(v).success ? v : undefined;
+    })(),
+    from: (() => {
+      const v = read(sp.from);
+      return v && dateSchema.safeParse(v).success ? v : undefined;
+    })(),
+    to: (() => {
+      const v = read(sp.to);
+      return v && dateSchema.safeParse(v).success ? v : undefined;
     })(),
     search: read(sp.q)?.slice(0, 100),
   };

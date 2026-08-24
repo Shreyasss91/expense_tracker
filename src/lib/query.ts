@@ -14,6 +14,9 @@ export interface TransactionListFilters {
   tag?: "one_time" | "recurring" | "lifestyle";
   /** YYYY-MM */
   month?: string;
+  /** UX pass — custom date range (inclusive), YYYY-MM-DD. */
+  from?: string;
+  to?: string;
   search?: string;
 }
 
@@ -41,6 +44,8 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
     const month = monthKeySchema.parse(filters.month);
     conds.push(gte(transactions.date, `${month}-01`), lte(transactions.date, monthEnd(month)));
   }
+  if (filters.from) conds.push(gte(transactions.date, filters.from));
+  if (filters.to) conds.push(lte(transactions.date, filters.to));
   if (filters.search?.trim()) conds.push(ilike(transactions.note, `%${filters.search.trim()}%`));
 
   // §7.3 keyset cursor — strict total order (date DESC, time DESC, created_at DESC, id DESC)

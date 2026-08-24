@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Search, X, Pencil, Check } from "lucide-react";
+import { Search, X, Pencil, Check, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,6 +41,10 @@ export function FiltersBar({
   const [renaming, setRenaming] = useState(false);
   const [renameName, setRenameName] = useState("");
   const [renameEmoji, setRenameEmoji] = useState("");
+  // UX pass — custom date-range picker
+  const [rangeOpen, setRangeOpen] = useState(false);
+  const [fromDraft, setFromDraft] = useState(filters.from ?? "");
+  const [toDraft, setToDraft] = useState(filters.to ?? "");
 
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
   const selectedMemberChip = members.find((m) => m.id === filters.memberId);
@@ -48,6 +52,24 @@ export function FiltersBar({
   useEffect(() => {
     setQ(filters.q ?? "");
   }, [filters.q]);
+
+  // keep drafts in sync when the URL changes externally
+  useEffect(() => {
+    setFromDraft(filters.from ?? "");
+    setToDraft(filters.to ?? "");
+  }, [filters.from, filters.to]);
+
+  function applyRange() {
+    setRangeOpen(false);
+    push({ ...filters, from: fromDraft || undefined, to: toDraft || undefined });
+  }
+
+  function clearRange() {
+    setFromDraft("");
+    setToDraft("");
+    setRangeOpen(false);
+    push({ ...filters, from: undefined, to: undefined });
+  }
 
   // changing the filtered category mid-rename would target the wrong row
   useEffect(() => {
@@ -180,10 +202,51 @@ export function FiltersBar({
             ))}
           </SelectContent>
         </Select>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
+        {/* UX pass — custom date range entry point */}
+        <button
+          type="button"
+          className={pill(!!(filters.from || filters.to))}
+          onClick={() => setRangeOpen((v) => !v)}
+        >
+          <Calendar className="mr-0.5 inline h-3 w-3" />
+          {filters.from || filters.to ? "Range" : "Dates"}
+        </button>
       </div>
 
+      {/* date-range panel */}
+      {rangeOpen && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-muted-foreground/20 bg-muted p-2">
+          <Input
+            aria-label="From date"
+            type="date"
+            value={fromDraft}
+            max={toDraft || undefined}
+            onChange={(e) => setFromDraft(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">to</span>
+          <Input
+            aria-label="To date"
+            type="date"
+            value={toDraft}
+            min={fromDraft || undefined}
+            onChange={(e) => setToDraft(e.target.value)}
+            className="h-8 w-36 text-xs"
+          />
+          <Button size="sm" className="h-8 rounded-full px-3 text-xs" onClick={applyRange}>
+            <Check className="mr-1 h-3.5 w-3.5" /> Apply
+          </Button>
+          {(filters.from || filters.to) && (
+            <Button size="sm" variant="ghost" className="h-8 rounded-full px-3 text-xs" onClick={clearRange}>
+              Clear
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* active-filter chips — only rendered while something is set */}
-      {(filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.q?.trim()) && (
+      {(filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.from || filters.to || filters.q?.trim()) && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Active</span>
           {selectedMemberChip && (
@@ -199,6 +262,12 @@ export function FiltersBar({
           {filters.uncategorized && (
             <button type="button" className={cn(pill(false), "text-amber-700 dark:text-amber-400")} onClick={() => push({ ...filters, uncategorized: undefined })}>
               ❔ Uncategorized <X className="ml-0.5 inline h-3 w-3" />
+            </button>
+          )}
+          {(filters.from || filters.to) && (
+            <button type="button" className={pill(false)} onClick={clearRange}>
+              <Calendar className="mr-0.5 inline h-3 w-3" />
+              {filters.from ?? "…"} – {filters.to ?? "…"} <X className="ml-0.5 inline h-3 w-3" />
             </button>
           )}
           {filters.categoryId && selectedCat && !renaming && (
