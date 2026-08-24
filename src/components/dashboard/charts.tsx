@@ -21,13 +21,6 @@ export interface CategorySlice {
   paise: number;
 }
 
-export interface MemberSlice {
-  name: string;
-  emoji: string;
-  color: string;
-  paise: number;
-}
-
 export interface TrendPoint {
   label: string;
   expensePaise: number;
@@ -101,38 +94,6 @@ export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
           })}
       </ul>
     </div>
-  );
-}
-
-export function MemberSplit({ slices }: { slices: MemberSlice[] }) {
-  const total = slices.reduce((s, m) => s + m.paise, 0);
-  const max = Math.max(...slices.map((m) => m.paise), 1);
-
-  return (
-    <ul className="space-y-3">
-      {slices.map((m) => {
-        const p = pct(m.paise, total);
-        return (
-          <li key={m.name}>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="w-8 text-center text-base leading-none">{m.emoji}</span>
-              <span className="w-12 truncate font-medium">{m.name}</span>
-              <span className="ml-auto tabular-nums">{formatINR(m.paise)}</span>
-              <span className="w-12 text-right tabular-nums text-muted-foreground">
-                {p === null ? "—" : `${p.toFixed(0)}%`}
-              </span>
-            </div>
-            {/* §6.3.1: 0-width bar, never NaN width */}
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${m.paise > 0 ? (m.paise / max) * 100 : 0}%`, background: m.color }}
-              />
-            </div>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 

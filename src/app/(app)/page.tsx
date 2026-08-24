@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { addMonths, format, parse } from "date-fns";
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
-import { categories, members, transactions } from "@/db/schema";
+import { categories, transactions } from "@/db/schema";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthEndInIST, monthKeyInIST } from "@/lib/dates";
 import { getCategories, getMembers } from "@/lib/meta";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { BudgetBar } from "@/components/dashboard/budget-bar";
-import { CategoryPie, MemberSplit, TagBar, TrendChart } from "@/components/dashboard/charts";
+import { CategoryPie, TagBar, TrendChart } from "@/components/dashboard/charts";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -33,7 +33,7 @@ const getDashboardData = unstable_cache(
     const end = monthEndInIST(baseDate);
     const range = and(gte(transactions.date, start), lte(transactions.date, end));
 
-    const [totalsTags, catRows, memberRows, trendRows, memberList, largestRows, budgetRows] = await Promise.all([
+    const [totalsTags, catRows, trendRows, largestRows, budgetRows] = await Promise.all([
       // expense + all three expense tags in a single pass over the month
       db
         .select({
@@ -60,25 +60,12 @@ const getDashboardData = unstable_cache(
         .groupBy(categories.id, categories.name, categories.emoji, categories.color),
       db
         .select({
-          id: members.id,
-          name: members.name,
-          emoji: members.emoji,
-          color: members.color,
-          total: sql<string>`SUM(${transactions.amount})`,
-        })
-        .from(transactions)
-        .innerJoin(members, eq(transactions.memberId, members.id))
-        .where(and(gte(transactions.date, start), lte(transactions.date, end)))
-        .groupBy(members.id, members.name, members.emoji, members.color),
-      db
-        .select({
           month: sql<string>`substring(${transactions.date}::text from 1 for 7)`,
           total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
         })
         .from(transactions)
         .where(gte(transactions.date, `${format(addMonths(baseDate, -5), "yyyy-MM")}-01`))
         .groupBy(sql`substring(${transactions.date}::text from 1 for 7)`),
-      db.select().from(members).orderBy(asc(members.sortOrder)),
       // Largest single expense this month — for the summary card
       db
         .select({
@@ -137,14 +124,6 @@ const getDashboardData = unstable_cache(
       { key: "one_time", label: "One-time buys", paise: rupeesToPaise(totals.oneTime), color: "#f59e0b" },
     ] as const;
 
-    const memberPaise = new Map(memberRows.map((r) => [r.id, rupeesToPaise(r.total)]));
-    const memberSlices = memberList.map((m) => ({
-      name: m.name,
-      emoji: m.emoji,
-      color: m.color,
-      paise: memberPaise.get(m.id) ?? 0,
-    }));
-
     // §6.3.1: months with no data plot as 0, not a gap — the axis stays continuous.
     const trendKeys = Array.from({ length: 6 }, (_, i) => format(addMonths(baseDate, i - 5), "yyyy-MM"));
     const trendMap = new Map(trendRows.map((r) => [r.month, r]));
@@ -173,7 +152,6 @@ const getDashboardData = unstable_cache(
       },
       tags,
       catRows,
-      memberSlices,
       trend,
     };
   },
@@ -371,17 +349,6 @@ export default async function DashboardPage({
         </CardContent>
       </Card>
 
-      {/* Who spent last — per-member comparison is the least actionable chart,
-          so it closes the page (Layout pass reorder). */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Who spent</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <MemberSplit slices={data.memberSlices} />
-        </CardContent>
-      </Card>
-
       {/* Month-wise transactions panel — tap a row to edit, swipe to delete */}
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
@@ -398,7 +365,6 @@ export default async function DashboardPage({
             filters={{ month: monthKey }}
             members={memberOptions}
             categories={categoryOptions}
-            enableSelection={false}
           />
         </CardContent>
       </Card>
