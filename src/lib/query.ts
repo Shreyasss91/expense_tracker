@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, ilike, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
@@ -9,6 +9,8 @@ export const PAGE_SIZE = 50; // §7.3
 export interface TransactionListFilters {
   memberId?: string;
   categoryId?: string;
+  /** Amendment 20 — `category=uncategorized` in the URL; rows with NULL category_id. */
+  uncategorized?: boolean;
   tag?: "one_time" | "recurring" | "lifestyle";
   /** YYYY-MM */
   month?: string;
@@ -33,6 +35,7 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
   const conds: SQL[] = [];
   if (filters.memberId) conds.push(eq(transactions.memberId, filters.memberId));
   if (filters.categoryId) conds.push(eq(transactions.categoryId, filters.categoryId));
+  else if (filters.uncategorized) conds.push(isNull(transactions.categoryId));
   if (filters.tag) conds.push(eq(transactions.tag, filters.tag));
   if (filters.month) {
     const month = monthKeySchema.parse(filters.month);
@@ -66,7 +69,7 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
 export function mapRow(row: {
   id: string;
   memberId: string;
-  categoryId: string;
+  categoryId: string | null;
   tag: string | null;
   amount: string;
   note: string | null;
@@ -78,10 +81,10 @@ export function mapRow(row: {
   memberEmoji: string;
   memberColor: string;
   memberSlug: string;
-  categoryName: string;
-  categoryEmoji: string;
-  categoryColor: string;
-  categorySlug: string;
+  categoryName: string | null;
+  categoryEmoji: string | null;
+  categoryColor: string | null;
+  categorySlug: string | null;
 }): TransactionListRow {
   return {
     id: row.id,
@@ -100,12 +103,17 @@ export function mapRow(row: {
       color: row.memberColor,
       slug: row.memberSlug,
     },
-    category: {
-      name: row.categoryName,
-      emoji: row.categoryEmoji,
-      color: row.categoryColor,
-      slug: row.categorySlug,
-    },
+    // Amendment 20 — NULL category_id = uncategorized; the joined fields come
+    // back null with it, so the whole object collapses to null.
+    category:
+      row.categoryId && row.categoryName
+        ? {
+            name: row.categoryName,
+            emoji: row.categoryEmoji ?? "🏷️",
+            color: row.categoryColor ?? "#9ca3af",
+            slug: row.categorySlug ?? "",
+          }
+        : null,
   };
 }
 
@@ -120,7 +128,8 @@ export const listOrderBy = [
 export interface TransactionListRow {
   id: string;
   memberId: string;
-  categoryId: string;
+  /** NULL = uncategorized (Amendment 20). */
+  categoryId: string | null;
   tag: "one_time" | "recurring" | "lifestyle" | null;
   amount: string;
   note: string | null;
@@ -129,7 +138,8 @@ export interface TransactionListRow {
   createdAt: string;
   reviewedAt: string | null;
   member: { name: string; emoji: string; color: string; slug: string };
-  category: { name: string; emoji: string; color: string; slug: string };
+  /** NULL = uncategorized — rendered as an explicit "Uncategorized" state. */
+  category: { name: string; emoji: string; color: string; slug: string } | null;
 }
 
 export interface LedgerSummary {
@@ -137,6 +147,9 @@ export interface LedgerSummary {
   lifestylePaise: number;
   largestPaise: number | null;
   count: number;
+  /** Amendment 20 — uncategorized entries inside the filtered set (count + sum). */
+  uncategorizedCount: number;
+  uncategorizedPaise: number;
 }
 
 /**
@@ -154,6 +167,8 @@ export async function getLedgerSummary(filters: TransactionListFilters): Promise
       lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'lifestyle'), 0)`,
       largest: sql<string | null>`MAX(${transactions.amount})`,
       count: sql<number>`COUNT(*)::int`,
+      uncategorizedCount: sql<number>`COUNT(*) FILTER (WHERE ${transactions.categoryId} IS NULL)::int`,
+      uncategorized: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.categoryId} IS NULL), 0)`,
     })
     .from(transactions)
     .where(where);
@@ -163,5 +178,7 @@ export async function getLedgerSummary(filters: TransactionListFilters): Promise
     lifestylePaise: rupeesToPaise(r.lifestyle),
     largestPaise: r.largest === null ? null : rupeesToPaise(r.largest),
     count: Number(r.count),
+    uncategorizedCount: Number(r.uncategorizedCount),
+    uncategorizedPaise: rupeesToPaise(r.uncategorized),
   };
 }

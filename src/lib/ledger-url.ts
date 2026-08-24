@@ -12,16 +12,22 @@ import type { TransactionListFilters } from "./query";
 export interface LedgerFilters {
   memberId?: string;
   categoryId?: string;
+  /** Amendment 20 — serialized as `category=uncategorized`. */
+  uncategorized?: boolean;
   tag?: "one_time" | "recurring" | "lifestyle";
   month?: string;
   q?: string;
 }
 
+/** Sentinel category-filter value selecting rows with no category assigned. */
+export const UNCATEGORIZED = "uncategorized";
+
 /** Serialize the filter state into the ledger URL — shared by the filter bar and the month strip. */
 export function buildLedgerUrl(filters: LedgerFilters): string {
   const params = new URLSearchParams();
   if (filters.memberId) params.set("member", filters.memberId);
-  if (filters.categoryId) params.set("category", filters.categoryId);
+  if (filters.uncategorized) params.set("category", UNCATEGORIZED);
+  else if (filters.categoryId) params.set("category", filters.categoryId);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.month) params.set("month", filters.month);
   if (filters.q?.trim()) params.set("q", filters.q.trim());
@@ -43,15 +49,14 @@ export function parseLedgerSearchParams(
   const uuid = z.string().uuid();
 
   const rawTag = read(sp.tag);
+  const rawCategory = read(sp.category);
   const filters: TransactionListFilters = {
     memberId: (() => {
       const v = read(sp.member);
       return v && uuid.safeParse(v).success ? v : undefined;
     })(),
-    categoryId: (() => {
-      const v = read(sp.category);
-      return v && uuid.safeParse(v).success ? v : undefined;
-    })(),
+    categoryId: rawCategory && rawCategory !== UNCATEGORIZED && uuid.safeParse(rawCategory).success ? rawCategory : undefined,
+    uncategorized: rawCategory === UNCATEGORIZED,
     tag: rawTag && (TRANSACTION_TAGS as readonly string[]).includes(rawTag) ? (rawTag as TransactionListFilters["tag"]) : undefined,
     month: (() => {
       const v = read(sp.month);
