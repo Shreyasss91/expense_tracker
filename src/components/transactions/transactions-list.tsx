@@ -220,6 +220,23 @@ export function TransactionsList({
     setPickerOpen(false);
   }
 
+  // Esc exits selection mode (desktop convenience)
+  useEffect(() => {
+    if (!selectionMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectionMode]);
+
+  /** Select every loaded row, or clear the selection when everything is already
+   * selected. Honest scope: the loaded pages, not the whole filtered set. */
+  const allSelected = rows.length > 0 && selectedIds.size === rows.length;
+  function toggleSelectAll() {
+    setSelectedIds(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  }
+
   const selectedRows = useMemo(() => rows.filter((r) => selectedIds.has(r.id)), [rows, selectedIds]);
 
   /** Optimistically patch every selected row's category through the update bus. */
@@ -397,6 +414,13 @@ export function TransactionsList({
             <X className="h-4 w-4" />
           </Button>
           <span className="text-sm font-medium tabular-nums">{selectedIds.size} selected</span>
+          <button
+            type="button"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground"
+            onClick={toggleSelectAll}
+          >
+            {allSelected ? "Clear" : "All"}
+          </button>
           <div className="ml-auto flex items-center gap-2">
             <Button
               type="button"
