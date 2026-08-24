@@ -19,6 +19,8 @@ export type LedgerMutation =
   | { kind: "create-revert"; tempId: string }
   /** Optimistic replace of an existing row (re-emitted with the old row to revert). */
   | { kind: "update"; id: string; row: TransactionListRow }
+  /** Amendment 20 — a row was deleted on another surface (e.g. the Review queue). */
+  | { kind: "delete"; id: string }
   /** Rare, non-derivable change (settings rename) — refetch the first page. */
   | { kind: "refetch" };
 
