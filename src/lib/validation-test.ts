@@ -1,5 +1,5 @@
 /** DB-free validation regression tests for transaction and month boundaries. */
-import { dateSchema, monthKeySchema, timeSchema, transactionSchema } from "./validations";
+import { dateSchema, monthKeySchema, templateSchema, timeSchema, transactionSchema } from "./validations";
 
 let failures = 0;
 function check(cond: boolean, msg: string) {
@@ -43,6 +43,23 @@ const validExpense = {
 check(transactionSchema.safeParse(validExpense).success, "valid transaction accepts semantic date/time");
 check(!transactionSchema.safeParse({ ...validExpense, date: "2026-02-29" }).success, "transaction rejects impossible date");
 check(!transactionSchema.safeParse({ ...validExpense, time: "24:00" }).success, "transaction rejects impossible time");
+
+// Amendment 20 — categoryId is optional/nullable on transactions
+const noCategory = {
+  memberId: UUID_A,
+  amount: 1000,
+  note: null,
+  date: "2026-08-17",
+  time: "09:30",
+  tag: "lifestyle" as const,
+};
+check(transactionSchema.safeParse(noCategory).success, "transaction WITHOUT categoryId accepted (capture-first)");
+check(transactionSchema.safeParse({ ...validExpense, categoryId: null }).success, "explicit null categoryId accepted");
+check(!transactionSchema.safeParse({ ...validExpense, categoryId: "not-a-uuid" }).success, "malformed categoryId rejected");
+check(
+  !templateSchema.safeParse({ name: "Rent", amount: 1000, note: null, tag: "recurring" }).success,
+  "templates still REQUIRE categoryId",
+);
 
 if (failures > 0) {
   console.error(`✗ Validation regression FAILED (${failures} check(s) failed)`);

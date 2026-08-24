@@ -14,6 +14,7 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:setup": "drizzle-kit push && npm run db:seed",
     "test:seed-roundtrip": "tsx src/db/seed-roundtrip-test.ts",
+    "test:categorize-roundtrip": "tsx src/db/categorize-roundtrip-test.ts",
     "test:rename-roundtrip": "tsx src/db/category-rename-test.ts",
     "test:budget-roundtrip": "tsx src/db/budget-roundtrip-test.ts",
     "test:budget-semantics": "tsx src/db/budget-semantics-test.ts",
