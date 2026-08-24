@@ -74,7 +74,8 @@ export default async function TransactionsPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Ledger</h1>
-        <ExportButton />
+        {/* UX pass — exports describe exactly the filtered set on screen */}
+        <ExportButton filters={filters} />
       </div>
       <MonthStrip months={stripMonths} selected={filters.month} filters={ledgerFilters} />
       {/* Layout pass — budget bar lives inside the summary card now, so the

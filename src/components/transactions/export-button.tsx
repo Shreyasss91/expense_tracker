@@ -5,13 +5,15 @@ import { toast } from "sonner";
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportCsv } from "@/actions/transactions";
+import type { TransactionListFilters } from "@/lib/query";
 
-export function ExportButton() {
+/** UX pass — exports honor the active ledger filter set; no props = all-time. */
+export function ExportButton({ filters }: { filters?: TransactionListFilters }) {
   const [pending, setPending] = useState(false);
 
   async function run() {
     setPending(true);
-    const res = await exportCsv();
+    const res = await exportCsv(filters);
     setPending(false);
     if (!res.ok) {
       toast.error("Export failed");

@@ -280,7 +280,16 @@ export async function getTransactionsPage(args: {
   };
 }
 
-export async function exportCsv(): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
+/**
+ * UX pass — CSV export now honors the ledger's active filter set when one is
+ * provided (month/member/tag/category/uncategorized/search/date-range);
+ * called with no arguments it exports everything, as before. The WHERE is
+ * built by the same buildWhere() the list uses, so the file always describes
+ * exactly what the user was looking at.
+ */
+export async function exportCsv(filters?: TransactionListFilters): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
+  const where = filters && Object.keys(filters).length > 0 ? buildWhere(filters, null) : undefined;
+
   const rows = await db
     .select({
       date: transactions.date,
@@ -294,6 +303,7 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
     .from(transactions)
     .innerJoin(members, eq(transactions.memberId, members.id))
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
+    .where(where)
     .orderBy(sql`date ASC, created_at ASC`);
 
   const lines = rows.map((r) =>
@@ -309,5 +319,12 @@ export async function exportCsv(): Promise<{ ok: true; csv: string; filename: st
   );
 
   const csv = [CSV_HEADER, ...lines].join("\n") + "\n";
-  return { ok: true, csv, filename: `family-ledger-export-${todayInIST()}.csv` };
+  // Scope the filename so multiple exports don't overwrite each other.
+  const parts: string[] = [filters?.month ?? "all"];
+  if (filters?.memberId) parts.push("member");
+  if (filters?.tag) parts.push(filters.tag);
+  if (filters?.uncategorized) parts.push("uncategorized");
+  if (filters?.categoryId) parts.push("category");
+  if (filters?.from || filters?.to) parts.push("range");
+  return { ok: true as const, csv, filename: `ledger-${parts.join("-")}-${todayInIST()}.csv` };
 }
