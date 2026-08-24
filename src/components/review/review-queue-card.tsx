@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, ChevronDown, Tag, Trash2, X } from "lucide-react";
+import { Check, CheckCheck, ChevronDown, Tag, Trash2, X } from "lucide-react";
 import { getReviewPage, type ReviewItem } from "@/actions/review";
-import { acknowledgeTransactionReview, assignCategory, deleteTransaction, deleteTransactions } from "@/actions/transactions";
+import { acknowledgeTransactionsReview, acknowledgeTransactionReview, assignCategory, deleteTransaction, deleteTransactions } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CategoryPickerSheet } from "@/components/transactions/category-picker-sheet";
@@ -128,6 +128,39 @@ export function ReviewQueueCard({
     setPickerOpen(false);
   }
 
+  // Esc exits selection mode (desktop convenience)
+  useEffect(() => {
+    if (!selectionMode) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") exitSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectionMode]);
+
+  /** Month-end batch: acknowledge every loaded item in one server call. No
+   * undo toast — acknowledgement is reversible by design (any later note edit
+   * resets reviewed_at and sends the row back through the queue, §6.4). */
+  const [acknowledgingAll, setAcknowledgingAll] = useState(false);
+  async function acknowledgeAll() {
+    if (rows.length === 0 || acknowledgingAll) return;
+    setAcknowledgingAll(true);
+    try {
+      const res = await acknowledgeTransactionsReview(rows.map((r) => r.id));
+      if (!res.ok) {
+        toast.error(res.error ?? "Could not acknowledge");
+        return;
+      }
+      setRows([]);
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+      setPendingCount((c) => Math.max(0, c - res.acknowledged));
+      toast.success(`Acknowledged ${res.acknowledged} item${res.acknowledged === 1 ? "" : "s"}`);
+    } finally {
+      setAcknowledgingAll(false);
+    }
+  }
+
   const selectedRows = useMemo(() => rows.filter((r) => selectedIds.has(r.id)), [rows, selectedIds]);
 
   async function handleAssign(categoryId: string | null) {
@@ -242,9 +275,21 @@ export function ReviewQueueCard({
                     <X className="h-3.5 w-3.5" /> Cancel
                   </Button>
                 ) : (
-                  <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={() => enterSelection(rows[0])}>
-                    Select
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 rounded-full text-xs text-muted-foreground"
+                      onClick={() => void acknowledgeAll()}
+                      disabled={acknowledgingAll}
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" /> {acknowledgingAll ? "Acknowledging…" : "Acknowledge all"}
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" className="h-7 rounded-full text-xs text-muted-foreground" onClick={() => enterSelection(rows[0])}>
+                      Select
+                    </Button>
+                  </div>
                 )
               )}
             </div>
