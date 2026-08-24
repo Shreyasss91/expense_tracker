@@ -197,12 +197,41 @@ export async function acknowledgeTransactionReview(id: string) {
   return { ok: true as const };
 }
 
+/** Amendment 20 — acknowledge many review items at once ("Acknowledge all"). */
+export async function acknowledgeTransactionsReview(ids: string[]): Promise<{ ok: true; acknowledged: number } | { ok: false; error: string }> {
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
+  if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
+  const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
+  if (checkedIds.length !== ids.length) return { ok: false as const, error: "Invalid transaction id" };
+
+  const rows = await db
+    .update(transactions)
+    .set({ reviewedAt: new Date() })
+    .where(inArray(transactions.id, checkedIds))
+    .returning({ id: transactions.id });
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+
+  return { ok: true as const, acknowledged: rows.length };
+}
+
 /** Get pending review count for the badge (§6.4). */
 export async function getPendingReviewCount(): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(transactions)
     .where(pendingReviewWhere());
+  return Number(result[0]?.count ?? 0);
+}
+
+/** Amendment 20 — count of uncategorized transactions, for the nav badge nudge. */
+export async function getUncategorizedCount(): Promise<number> {
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(transactions)
+    .where(sql`${transactions.categoryId} IS NULL`);
   return Number(result[0]?.count ?? 0);
 }
 

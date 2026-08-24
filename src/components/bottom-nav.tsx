@@ -6,13 +6,21 @@ import { LayoutDashboard, List, Plus } from "lucide-react";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
 import { cn } from "@/lib/utils";
 import { usePendingReviewCount } from "@/components/use-pending-review-count";
+import { useUncategorizedCount } from "@/components/use-uncategorized-count";
 
 export function BottomNav() {
   const pathname = usePathname();
   const { open } = useQuickAdd();
   const pendingCount = usePendingReviewCount();
+  const uncategorizedCount = useUncategorizedCount();
 
-  const item = (href: string, label: string, icon: React.ReactNode, active: boolean, badge?: number) => (
+  const item = (
+    href: string,
+    label: string,
+    icon: React.ReactNode,
+    active: boolean,
+    badge?: { count: number; tone: "destructive" | "amber" },
+  ) => (
     <Link
       href={href}
       className={cn(
@@ -22,10 +30,17 @@ export function BottomNav() {
     >
       {icon}
       {label}
-      {/* Amendment 20 — the review badge rides on the Ledger item */}
-      {badge !== undefined && badge > 0 && (
-        <span className="absolute right-1/2 top-1 flex h-4 min-w-4 translate-x-4 items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
-          {badge > 9 ? "9+" : badge}
+      {/* Amendment 20 — review + uncategorized nudges ride the Ledger item */}
+      {badge !== undefined && badge.count > 0 && (
+        <span
+          className={cn(
+            "absolute right-1/2 top-1 flex h-4 min-w-4 translate-x-4 items-center justify-center rounded-full px-1 text-[9px] font-bold",
+            badge.tone === "destructive"
+              ? "bg-destructive text-destructive-foreground"
+              : "bg-amber-500 text-white",
+          )}
+        >
+          {badge.count > 9 ? "9+" : badge.count}
         </span>
       )}
     </Link>
@@ -46,7 +61,11 @@ export function BottomNav() {
             <Plus className="h-7 w-7" />
           </button>
         </div>
-        {item("/transactions", "Ledger", <List className="h-5 w-5" />, pathname === "/transactions", pendingCount)}
+        {item("/transactions", "Ledger", <List className="h-5 w-5" />, pathname === "/transactions",
+          pendingCount > 0
+            ? { count: pendingCount, tone: "destructive" as const }
+            : { count: uncategorizedCount, tone: "amber" as const },
+        )}
       </div>
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
