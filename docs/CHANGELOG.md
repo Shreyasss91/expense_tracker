@@ -103,6 +103,31 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   RIGHT-side sheets (`useMediaQuery` hook), keeping the ledger visible beside them;
   mobile keeps bottom sheets. Quick Add intentionally unchanged.
 
+### UX pass — 24 August 2026 (owner decision: ten refinements)
+
+- **Toasts clear the bottom nav:** global Sonner `offset` lifts every toast above the
+  Dashboard/+ /Ledger bar and the iOS home indicator.
+- **Quick Add:** uncategorized saves offer a **"Categorize"** action on the success
+  toast (jumps to `category=uncategorized`); recent distinct notes render as one-tap
+  chips while the Note field is empty (`quick-add:recent-notes`, max 5, per device).
+- **Filtered CSV export:** `exportCsv(filters)` builds its WHERE with the same
+  `buildWhere()` as the list; the Ledger button passes the active filter set and the
+  filename reflects scope (`ledger-june-all-2026-08-24.csv`). No args = all-time.
+- **Custom date range:** `from`/`to` URL params (validated calendar dates) thread
+  through `TransactionListFilters`/`buildWhere`/summary; a Dates chip opens an inline
+  From–To panel, and the range appears as a dismissible active chip.
+- **Insights:** the dashboard Expense hero shows a month-over-month percentage vs the
+  previous month (from the existing trend series, red up / green down); the ledger
+  budget strip adds mid-month pacing for the current month ("≈ ₹X/day safe · N days
+  left", or over-budget in red).
+- **PWA:** web manifest + ImageResponse-generated `/icon` and `/apple-icon` PNGs +
+  `appleWebApp` metadata — installable to the phone home screen without binary assets.
+- **Polish:** the + FAB hides (scale-out) whenever a bulk-selection bar is open, via a
+  new `ledger:selection` window event emitted by both selection surfaces; the
+  dashboard's embedded TransactionsList opts out of bulk tooling entirely
+  (`enableSelection={false}`). Month-strip auto-centering of the selected month was
+  verified to already exist.
+
 ---
 
 ## v1.2 Amendment — 19 August 2026 (owner decision: edit sheet parity with Quick Add)
