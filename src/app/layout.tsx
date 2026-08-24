@@ -17,6 +17,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Family Ledger",
   description: "High-speed expense tracking for the family — bills, lifestyle and one-time buys at a glance.",
+  // UX pass — PWA installability on iOS (Android/Chrome read the web manifest)
+  appleWebApp: {
+    capable: true,
+    title: "Ledger",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
