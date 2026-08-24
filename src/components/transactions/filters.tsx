@@ -43,6 +43,7 @@ export function FiltersBar({
   const [renameEmoji, setRenameEmoji] = useState("");
 
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
+  const selectedMemberChip = members.find((m) => m.id === filters.memberId);
 
   useEffect(() => {
     setQ(filters.q ?? "");
@@ -105,8 +106,6 @@ export function FiltersBar({
     }
   }
 
-  const hasFilters = !!(filters.memberId || filters.categoryId || filters.uncategorized || filters.tag || filters.month || filters.q);
-
   return (
     <div className="space-y-2">
       <div className="relative">
@@ -130,10 +129,11 @@ export function FiltersBar({
         )}
       </div>
 
+      {/* Layout pass — one scrollable row carries ALL filter families
+          (members · tags · category); previously members and tags+category
+          each had their own row. Active-filter chips render only when
+          something is actually set. */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <button type="button" className={pill(!filters.memberId)} onClick={() => push({ ...filters, memberId: undefined })}>
-          All members
-        </button>
         {members.map((m) => (
           <button
             key={m.id}
@@ -144,12 +144,7 @@ export function FiltersBar({
             {m.emoji} {m.name}
           </button>
         ))}
-      </div>
-
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        <button type="button" className={pill(!filters.tag)} onClick={() => push({ ...filters, tag: undefined })}>
-          All tags
-        </button>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
         {TRANSACTION_TAGS.map((t) => (
           <button
             key={t}
@@ -160,6 +155,7 @@ export function FiltersBar({
             {TRANSACTION_TAG_LABELS[t]}
           </button>
         ))}
+        <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
         <Select
           value={filters.uncategorized ? UNCATEGORIZED : filters.categoryId ?? ""}
           onValueChange={(v) =>
@@ -184,17 +180,47 @@ export function FiltersBar({
             ))}
           </SelectContent>
         </Select>
-        {selectedCat && !renaming && (
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={startRename} aria-label={`Rename ${selectedCat.name}`}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-        )}
-        {hasFilters && (
-          <button type="button" className={pill(false)} onClick={() => push({})}>
-            Clear
-          </button>
-        )}
       </div>
+
+      {/* active-filter chips — only rendered while something is set */}
+      {(filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.q?.trim()) && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Active</span>
+          {selectedMemberChip && (
+            <button type="button" className={pill(false)} onClick={() => push({ ...filters, memberId: undefined })}>
+              {selectedMemberChip.emoji} {selectedMemberChip.name} <X className="ml-0.5 inline h-3 w-3" />
+            </button>
+          )}
+          {filters.tag && (
+            <button type="button" className={pill(false)} onClick={() => push({ ...filters, tag: undefined })}>
+              {TRANSACTION_TAG_LABELS[filters.tag]} <X className="ml-0.5 inline h-3 w-3" />
+            </button>
+          )}
+          {filters.uncategorized && (
+            <button type="button" className={cn(pill(false), "text-amber-700 dark:text-amber-400")} onClick={() => push({ ...filters, uncategorized: undefined })}>
+              ❔ Uncategorized <X className="ml-0.5 inline h-3 w-3" />
+            </button>
+          )}
+          {filters.categoryId && selectedCat && !renaming && (
+            <>
+              <span className={cn(pill(true), "max-w-44")}>
+                {selectedCat.emoji} {selectedCat.name} <X className="ml-0.5 inline h-3 w-3" />
+              </span>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={startRename} aria-label={`Rename ${selectedCat.name}`}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+          {filters.categoryId && !selectedCat && (
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={() => push({ ...filters, categoryId: undefined })} aria-label="Clear category">
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+          <button type="button" className={cn(pill(false), "ml-auto")} onClick={() => { setQ(""); push({}); }}>
+            Clear all
+          </button>
+        </div>
+      )}
 
       {renaming && selectedCat && (
         <div className="flex items-center gap-1.5 rounded-lg border border-muted-foreground/20 bg-muted p-1.5">
