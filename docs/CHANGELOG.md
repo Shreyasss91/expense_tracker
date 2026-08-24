@@ -128,6 +128,21 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   (`enableSelection={false}`). Month-strip auto-centering of the selected month was
   verified to already exist.
 
+### Multi-entry Quick Add — 24 August 2026 (owner decision: A1 from the UX list)
+
+- **Decision:** the highest-impact remaining capture friction — logging a grocery run
+  of five items cost five full open→save→reopen cycles. After a successful save the
+  sheet now STAYS OPEN.
+- **`quick-add-sheet.tsx`:** on commit the form resets exactly as before (tag/note
+  last-entry memory, template stamp cleared, date/time back to IST defaults) but the
+  sheet remains mounted and a confirmation banner takes over the footer:
+  **"✓ Added ₹50 · 3 this trip"** with **Done** (outline) and **Add another**
+  (primary, refocuses the amount field). The header pill flips to **Done** in this
+  state, and simply typing a new amount dismisses the banner and resumes the form —
+  Enter-to-add keeps working without tapping anything first. Swipe-down/backdrop
+  close always discards the banner state safely.
+- Verified: `tsc --noEmit` and `eslint` pass clean.
+
 ---
 
 ## v1.2 Amendment — 19 August 2026 (owner decision: edit sheet parity with Quick Add)

@@ -127,6 +127,12 @@ export function QuickAddSheet({
   const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
   // UX pass — recent distinct notes for one-tap refill
   const [recentNotes, setRecentNotes] = useState<string[]>([]);
+  // Multi-entry mode: after a successful save the sheet STAYS OPEN with the
+  // form reset and a confirmation banner ("Added ✓") offering Add-another /
+  // Done — a grocery run of five items costs one open instead of five.
+  const [justAdded, setJustAdded] = useState(false);
+  const [addedCount, setAddedCount] = useState(0);
+  const [lastAddedPaise, setLastAddedPaise] = useState(0);
   const router = useRouter();
 
   // Hydrate the remembered tag/note after mount (never during SSR, so the
@@ -238,8 +244,13 @@ export function QuickAddSheet({
       lastEntryRef.current = { tag, note };
       saveLastEntry(lastEntryRef.current);
       setRecentNotes((prev) => rememberNote(note, prev));
+      // Multi-entry — reset the form but KEEP the sheet open; a confirmation
+      // banner takes over the footer with Add-another / Done.
+      const savedPaise = paise;
       reset();
-      onClose();
+      setLastAddedPaise(savedPaise);
+      setAddedCount((c) => c + 1);
+      setJustAdded(true);
     } else {
       emitLedgerMutation({ kind: "create-revert", tempId });
       toast.error(res.error ?? "Could not save");
@@ -247,6 +258,19 @@ export function QuickAddSheet({
   }
 
   const canSubmit = paise > 0;
+
+  function continueAdding() {
+    setJustAdded(false);
+    // straight back into the amount field for the next item
+    document.getElementById("qa-amount")?.focus();
+  }
+
+  function done() {
+    setJustAdded(false);
+    setAddedCount(0);
+    reset();
+    onClose();
+  }
 
   function applyTemplate(template: TemplateOption) {
     setAmount(String(template.amountPaise / 100));
@@ -260,18 +284,18 @@ export function QuickAddSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { reset(); onClose(); } }}>
+    <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { setJustAdded(false); setAddedCount(0); reset(); onClose(); } }}>
       <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
         <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-1 flex items-center gap-2">
           <Button
             type="button"
             size="sm"
-            onClick={() => void submit()}
+            onClick={() => (justAdded ? done() : void submit())}
             disabled={saving}
             className="rounded-full px-3"
           >
-            Add transaction
+            {justAdded ? "Done" : "Add transaction"}
           </Button>
           {activeMember && (
             <DropdownMenu>
@@ -350,7 +374,12 @@ export function QuickAddSheet({
           <AmountTagRow
             amountId="qa-amount"
             amount={amount}
-            onAmountChange={setAmount}
+            onAmountChange={(v) => {
+              // typing a new amount while the confirmation banner is showing
+              // simply resumes the form — no need to tap "Add another" first
+              setJustAdded(false);
+              setAmount(v);
+            }}
             autoFocusAmount
             amountInvalid={submitAttempted && paise <= 0}
             tag={tag}
@@ -389,14 +418,39 @@ export function QuickAddSheet({
 
         <div className="border-t border-muted-foreground/10 pt-3">
           {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
-          {!saving && (
-            <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
-              {canSubmit ? "press Enter ↵ to add" : "Enter an amount"}
-            </p>
+          {justAdded ? (
+            /* Multi-entry confirmation — the form above is already reset and
+               live again; typing an amount also dismisses this banner. */
+            <div className="space-y-2">
+              <p
+                className="flex items-center justify-center gap-1.5 rounded-lg bg-emerald-500/10 py-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400"
+                role="status"
+              >
+                <Check className="h-4 w-4" />
+                Added {formatINRWhole(lastAddedPaise)}
+                {addedCount > 1 ? ` · ${addedCount} this trip` : ""}
+              </p>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" className="h-12 flex-1 text-base" onClick={done}>
+                  Done
+                </Button>
+                <Button type="button" className="h-12 flex-[1.6] text-base" onClick={continueAdding}>
+                  Add another
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {!saving && (
+                <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
+                  {canSubmit ? "press Enter ↵ to add" : "Enter an amount"}
+                </p>
+              )}
+              <Button type="submit" className="h-12 w-full text-base" disabled={!canSubmit || saving}>
+                {saving ? "Adding…" : canSubmit ? `Add ${formatINRWhole(paise)}` : "Add transaction"}
+              </Button>
+            </>
           )}
-          <Button type="submit" className="h-12 w-full text-base" disabled={!canSubmit || saving}>
-            {saving ? "Adding…" : canSubmit ? `Add ${formatINRWhole(paise)}` : "Add transaction"}
-          </Button>
         </div>
         </form>
       </SheetContent>
