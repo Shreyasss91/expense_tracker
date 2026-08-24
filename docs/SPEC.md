@@ -181,14 +181,14 @@ export const categories = pgTable('categories', {
 export const transactions = pgTable('transactions', {
   id: uuid('id').primaryKey(),         // Quick Add: crypto.randomUUID(). Seed: deterministic UUIDv5 (§8.1)
   memberId: uuid('member_id').references(() => members.id).notNull(),
-  categoryId: uuid('category_id').references(() => categories.id).notNull(),
+  categoryId: uuid('category_id').references(() => categories.id),  // NULLABLE (Amendment 20): NULL = uncategorized — a state, never a category row
   tag: transactionTagEnum('tag').notNull(), // All transactions are expenses; tag is always required (§5.2, Amendment 13)
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),  // Read as string; see §5.8
   note: text('note'),
   date: date('date', { mode: 'string' }).notNull(),   // YYYY-MM-DD, Asia/Kolkata calendar date (§5.7)
   time: time('time', { mode: 'string' }).notNull(),   // Postgres TIME; reads back as HH:MM:SS (§5.6)
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  reviewedAt: timestamp('reviewed_at'),  // NULL = not acknowledged; set only by explicit acknowledge (Amendment 18, 19 Aug 2026 — Review tab queue)
+  reviewedAt: timestamp('reviewed_at'),  // NULL = not acknowledged; set only by explicit acknowledge (Amendment 18, 19 Aug 2026 — Review queue, now inside the Ledger page)
 }, (t) => ({
   dateIdx: index('transactions_date_idx').on(t.date),
   memberIdx: index('transactions_member_id_idx').on(t.memberId),
@@ -203,7 +203,7 @@ export const transactions = pgTable('transactions', {
 
 **Note on `transactions.type` (Amendment 13, 17 Aug 2026):** The `type` column and `transactionTypeEnum` were **removed**. The ledger is now **expense-only** — all transactions are expenses, there is no income type, and the `transactions_tag_invariant` CHECK constraint was removed with it. The `tag` column is now `NOT NULL` since every transaction requires a tag.
 
-**Note on `transactions.reviewedAt` (Amendment 18, 19 Aug 2026):** nullable timestamp for the Review tab month-end reconciliation queue (§6.4). A transaction is pending review iff `reviewed_at IS NULL` AND its note is generic (empty/NULL or matches `GENERIC_NOTE_BLOCKLIST` or equals the category display name). Setting `reviewed_at` acknowledges "No more detail"; any note update resets it to NULL. Not exported in CSV (§6.6 stays 8 columns).
+**Note on `transactions.reviewedAt` (Amendment 18, updated by Amendment 20):** nullable timestamp for the month-end reconciliation queue (§6.4), which now lives **inside the Ledger page** as a pinned collapsible queue (`/review` redirects). A transaction is pending review iff `reviewed_at IS NULL` AND its note is generic (empty/NULL or matches `GENERIC_NOTE_BLOCKLIST` or equals the category display name — an uncategorized row can never match that clause). Setting `reviewed_at` acknowledges "No more detail" (per-row **Done**, or the batched **Acknowledge all**); any note update resets it to NULL. Not exported in CSV (§6.6 stays 7 columns).
 
 ```typescript
 export const budgets = pgTable('budgets', {
@@ -409,7 +409,10 @@ The blocklist follows the same governance model as the §6.2 keyword map — a c
 
 ### 6.1 Global Layout
 - **Header:** App Logo/Title (left), Member Switcher Dropdown (right), Settings icon (far right).
-- **Bottom Navigation (Mobile):** Dashboard · Transactions · **Quick Add (center, prominent FAB)**.
+- **Bottom Navigation (Mobile):** Dashboard · **Quick Add (center, prominent FAB —
+  hidden while a bulk-selection bar is open)** · Ledger. The Ledger item carries the
+  pending-review badge (destructive) or, when none pend, the uncategorized count (amber)
+  (Amendment 20 / UX pass).
 - **Theme:** Light by default; clean, minimal; shadcn/ui default palette. **Dark mode is permitted in v1.2** (owner amendment, 15 Aug 2026 — removed from the §11 exclusion list): a sun/moon toggle in the header switches between light and dark, the first visit defaults to the user's **system preference**, and the choice persists locally. The implementation is class-based (`next-themes` with a `.dark` variable block in `globals.css`); no redesign of the theme system is authorized.
 
 ### 6.2 The "Quick Add" Flow (Critical Path — optimize ruthlessly)
@@ -424,9 +427,26 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
 3. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“, or „Yesterday · 14:32“, or „12 Aug 2026 · 14:32“ once the date is more than a day away, with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. **The collapsed/expanded choice no longer persists (Amendment 11, 19 Aug 2026)** — every open of the sheet starts collapsed on today's date and the current time, on every device; tapping it open keeps it expanded only for the rest of that tab's session. *(Superseded: the choice previously persisted per device in `localStorage` — see `CHANGELOG.md`.)*
 4. **Amount + Tag row (Amendment 10, 19 Aug 2026):** the Amount input and the Tag selector share one `flex` row rather than stacking. **Amount** is a ₹-prefixed text input (`flex-1`, mobile decimal keypad) that sanitizes on every keystroke to a value that always fits `NUMERIC(12,2)` — digits and at most one decimal separator, at most 2 decimal digits, at most 10 integer digits — and is captured as integer paise (§5.8). **Tag** is a compact 2×2 cluster beside it: the currently selected tag renders large in the left column (spanning both rows, defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills), with the other two tags stacked as small tap-to-swap buttons in the right column — tapping one swaps it into the selected slot. A live `≈ ₹` preview (or "Enter a valid amount" once a submit was attempted with none) renders under the row.
 4a. **Template strip (Amendment 17, 19 Aug 2026):** rendered only when ≥ 1 template exists — a horizontal scrollable row of chips between the Date/Time row and the Amount+Tag row. Each chip shows `name · ₹whole` (e.g. "ICICI Term Insurance · ₹2,500"). Tap → **prefills** amount, category, tag, note from the template; date/time stay at their IST defaults (§5.7); every field remains editable; commit still only via the Add button. Prefill **overrides** last-entry memory for that open; a successful commit still updates last-entry memory (§6.2). Templates carry no member — the currently active member is stamped at commit time (§3.2).
-5. **Note (optional):** a single-line text input, 140 characters max — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both the tag and note already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount, category, date and time are never remembered).
-6. **Category:** grid of categories (name only, no emoji — Amendment 9) with per-category remaining-budget hints (§6.7) — tapping **selects** the category (highlighted, with a check); it no longer commits. Recently used categories float to the top of the grid (per-device `localStorage`, recorded on each successful commit — the edit-transaction dialog's grid orders the same way and records usage on edit saves); never-used categories keep the manual order from Settings (§6.5). When a note is typed, the grid shows up to **6 suggested categories** instead of the full grid — scored from the note's words against a curated keyword map per seed category plus the category names (an already-selected category stays pinned on top); clearing the note, or a note with no matches, falls back to the full grid; a **"Show all categories"** link next to the hint text expands back to the full grid and resets whenever the note changes. A **＋ Add** tile (dashed pill, at the end of the grid) opens an inline emoji + name form that creates the category (§5.3/§6.5) and immediately selects it — the edit-transaction dialog offers the same tile via the shared `useCreateCategory` hook.
-7. **Submit:** the sticky footer **Add transaction** button (pinned at the bottom, enabled once an amount and category are set) triggers the Server Action → optimistic UI update → toast confirmation. **Its label is dynamic (Amendment 10):** once valid it reads e.g. **"Add ₹1,250 · Dining Out"** (whole rupees, no decimals — `formatINRWhole`); while invalid it reads "Add transaction" and a small helper line above it names what's missing ("Enter an amount and pick a category" / "Enter an amount" / "Pick a category"). The fields live in a real `<form>`, so **Enter** submits once the form is valid; once valid, the helper line instead reads "press Enter ↵ to add". The `member_id` is read from the `active_member_id` cookie and validated against `members` (§3.2.1).
+5. **Note (optional):** a single-line text input, 140 characters max — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both the tag and note already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount and date/time are never remembered). While the field is empty, up to **five recent distinct notes** render as one-tap chips beneath it (per-device `quick-add:recent-notes`, UX pass 24 Aug 2026).
+6. **Category — none (Amendment 20, 24 Aug 2026).** Quick Add deliberately has **no
+   category surface**: entries commit without one (`category_id` NULL = *uncategorized*,
+   a transaction state, never a placeholder category row), and categories are assigned
+   afterwards in the Ledger — per-row via the edit dialog, or across many rows via bulk
+   assign (§6.4). The only exception: applying a **template** silently stamps that
+   template's own category at commit (no UI).
+7. **Submit / multi-entry:** the sticky footer **Add transaction** button (enabled once
+   an amount is entered) triggers the Server Action → optimistic UI update → toast.
+   **Its label is dynamic:** once valid it reads e.g. **"Add ₹1,250"** (whole rupees,
+   `formatINRWhole`); while invalid it reads "Add transaction" with a helper line above
+   ("Enter an amount"). The fields live in a real `<form>`, so **Enter** submits once
+   valid; the helper then reads "press Enter ↵ to add". The `member_id` comes from the
+   `active_member_id` cookie, validated against `members` (§3.2.1).
+   **Multi-entry mode (owner decision, 24 Aug 2026):** after a successful save the sheet
+   **stays open** — form reset per §6.2 defaults — and the footer swaps to a confirmation:
+   **"✓ Added ₹50 · N this trip"** with **Done** and **Add another** (refocuses amount);
+   the header pill flips to Done, and typing a new amount dismisses the banner directly.
+   An uncategorized save's success toast carries a **Categorize** action deep-linking to
+   the Ledger's `category=uncategorized` view.
 
 > **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. *(Same-day field order, owner request: **Date/Time** moved to the top — collapsed behind a „Today · 14:32“ summary in Quick Add, with a pencil revealing the pickers — followed by **Amount → Tag → Note → Category**; the edit-transaction dialog mirrors the same Date/Time-first order.)* See `CHANGELOG.md`.
 >
@@ -442,20 +462,25 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
-- **Summary Cards (expense-focused, owner iteration 16 Aug 2026):** Expense · Top category ·
-  Lifestyle spend · **Bills** · Largest spend. Bills is the month's `recurring`-tagged total
-  with its entry count (§5.2, §6.7 — the same figure the budget can exclude). Every card
-  links to the Ledger pre-filtered to the transactions it describes: `type=expense`,
-  `category=<topCategoryId>`, `tag=lifestyle`, `tag=recurring`, or `category=<id>&q=<note>`
-  for the largest single spend.
-- **Tag Breakdown row:** "₹X in bills · ₹Y in lifestyle · ₹Z in one-time buys" — 3 progress bars with %.
-- **Category Pie Chart:** Recharts PieChart of expense distribution.
-- **Member Split:** Horizontal bar chart (Dad vs Mom vs Son).
-- **6-Month Trend:** Line chart comparing monthly totals — the expense line (red) and
-  income line (green) plotted together, so income vs expense is visible as the gap
-  between them. (The standalone **Income / Net savings cards were removed** in the
-  expense-focused iteration, 16 Aug 2026 — the summary strip is now Expense · Top
-  category · Lifestyle spend · Bills · Largest spend.)
+- **Summary area (Layout pass, 24 Aug 2026):** a full-width **Expense hero** — the
+  month's total at display size with a "View in Ledger →" link and the **largest single
+  spend folded in as a drill-down subline** (`category=<id>&q=<note>`, or
+  `category=uncategorized` when uncategorized) — above a compact **3-up row: Top
+  category · Bills · Lifestyle spend**, each deep-linking into the pre-filtered Ledger.
+  A month-over-month delta ("▲ 9% vs Jul", red when spend rose / green when it fell)
+  renders under the hero total (UX pass, 24 Aug 2026), derived from the trend series.
+- **Budget card** immediately follows the summary area (money state before charts) —
+  total spent vs effective budget with inline edit/clear (§6.7).
+- **Tag Breakdown row:** three progress bars with % of total expense.
+- **Spending by Category:** Recharts pie + legend. **Uncategorized spend renders as an
+  explicit gray "Uncategorized" slice** so slices reconcile with the month's expense
+  total; the **Top-category tile deliberately ignores uncategorized spend** (Amendment 20).
+- **6-Month Trend:** single-series bar chart of monthly expense totals (expense-only
+  ledger since Amendment 13); months with no data plot as `0`, never a gap.
+- Per-member comparison (**Who spent**) was **removed by owner decision on 24 Aug 2026**
+  — member attribution lives in the Ledger's member filter, not the dashboard.
+- The month's transaction panel closes the page (full ledger rows: tap to edit,
+  swipe-delete, bulk assign/delete).
 
 All figures come from SQL aggregates (§7.2), never from client-side reduction over a fetched table.
 
@@ -488,37 +513,49 @@ The rows above are retained for the record and for any future income-driven surf
   plus **All** — quick month navigation. The `month` filter is URL-driven
   (`?month=yyyy-MM`); tapping a month **preserves every other active filter**, and
   **All** clears it (also reaching anything outside the window).
-- **Summary header:** directly under the strip, one card summarizing **exactly the
-  filtered set** — month + member + category + tag + type + search — showing **Expense ·
-  Lifestyle spend · Largest spend** and the entry count. Expense-focused by owner
-  iteration (16 Aug 2026): income and net-savings were dropped, replaced by lifestyle
-  and the largest single spend, mirroring the dashboard's summary cards (§6.3). With no
-  month selected it reports the all-time totals. Computed by a single SQL pass
-  (`getLedgerSummary`) over the **same `WHERE` clause as the list**, so the numbers
-  describe exactly what the filters describe — never just the visible page.
-- **Grouping:** By date ("Today", "Yesterday", "12 Aug 2026") — all three resolved in `Asia/Kolkata` (§5.7).
-- **List Item:** Emoji · Category · Note (truncated) · Member avatar · **₹Amount** (red=expense, green=income).
-- **Interactions:** Swipe-left delete (§6.4.1), tap to edit. **Edit sheet (Amendment 12,
-  19 Aug 2026):** tapping a row opens a **bottom sheet matching Quick Add's shell** —
-  grip handle, a header row with an **Edit transaction** pill button (saves — same
-  submit path as the sticky footer CTA) and a **member-reassignment dropdown chip**,
-  the same field order as Quick Add (Date/Time → Amount+Tag row → Note → Category, §6.2)
-  inside a scrollable body, and a sticky footer with a dynamic **"Save ₹1,250 · Dining
-  Out"** CTA. The member chip here reassigns *this transaction's* member — a local,
-  validated form field, distinct from the app-wide `active_member_id` cookie that Quick
-  Add's chip switches (§3.2.1, `SPEC_AMENDMENT_7_MEMBER_REASSIGNMENT.md`) — and the
-  standalone "Member" select row from the 18 Aug layout is gone now that it lives in the
-  header. **Delete** is a small icon button beside the sticky Save button, triggering the
-  same swipe-left undo flow (§6.4.1). **"Save as template"** button (type="button") in the footer creates a template from the current fields; default `name` = note (if non-generic) else category display name; toast "Template saved" (Amendment 17, 19 Aug 2026). *(Supersedes the centered-modal `Dialog` presentation used before 19 Aug 2026 — see `CHANGELOG.md`.)*
-- **Filters:** URL-driven pill toggles for Member, Category, Tag, **Type** (`income` /
-  `expense`) and Month, plus search — every filter (and the month strip) writes to the
-  URL (`?member=…&category=…&tag=…&type=…&month=…&q=…`), so filtered views are shareable
-  and server-rendered. **Filtering, sorting and paging all execute in SQL** (§7.3) —
-  never in the browser over a fully-fetched table.
-- **Budget bar:** when a month is selected, a spent-vs-budget bar renders directly under
-  the strip (§6.7) — month-scoped, ignoring the list's other filters.
-- **Paging:** Keyset pagination on the strict total order `date DESC, time DESC, created_at DESC, id DESC`, infinite scroll (§7.3). The same ordering is used by the list query and the cursor comparison.
-- **CSV Export button** (§6.6).
+- **Summary header (Layout pass, 24 Aug 2026):** directly under the strip, **one slim
+  card** describing **exactly the filtered set** — Expense · Lifestyle spend · Largest
+  spend and the entry count; with no month selected it reports all-time totals. Computed
+  by a single SQL pass (`getLedgerSummary`) over the **same `WHERE` as the list**. The
+  card also carries: the month's **spent-vs-budget bar** (when a total budget exists,
+  §6.7) with mid-month pacing for the current month ("≈ ₹X/day safe · N days left"); an
+  amber **uncategorized warning** ("N uncategorized · ₹X — review →") deep-linking to
+  `category=uncategorized` whenever the filtered set contains any.
+- **Review queue:** pinned between the summary card and the filters — a collapsible card
+  (collapsed = thin amber banner) listing pending-review rows grouped by month, with
+  per-row **Done** acknowledgement, **Acknowledge all**, tap-to-edit/categorize, and the
+  same bulk tooling as the list (Amendment 20). The bottom-nav badge rides the Ledger
+  item; `/review` redirects to `/transactions`.
+- **Grouping:** By date ("Today", "Yesterday", "12 Aug 2026") — resolved in IST (§5.7),
+  each group header showing the **group's summed spend** right-aligned.
+- **List Item:** Category emoji avatar (`?` + amber "Uncategorized" label when none) ·
+  Note or category name · time · tag · member avatar · **₹Amount** (red).
+- **Interactions:** Swipe-left delete (§6.4.1), tap to edit. **Edit sheet (Amendment 12;
+  Amendment 20 makes its category optional/clearable via a "None" tile):** tapping a row
+  opens a sheet matching Quick Add's shell — header **Edit transaction** pill +
+  **member-reassignment dropdown chip**, field order Date/Time → Amount+Tag → Note →
+  Category, sticky footer with dynamic "Save ₹1,250[ · Category]" CTA, delete icon, and
+  **Save as template** (requires a category — templates must have one). The member chip
+  reassigns *this transaction's* member only (§3.2.1, `SPEC_AMENDMENT_7_MEMBER_
+  REASSIGNMENT.md`). **On ≥lg viewports the edit sheet docks as a right-side panel**
+  instead of a bottom sheet (Layout pass).
+- **Bulk actions (Amendment 20):** long-press a row (or the Select control) arms multi-
+  select — checkboxes, count, and a sticky bar with **Assign**, **Delete**, All/Clear,
+  Esc-to-exit. Assign opens the shared category picker ordered by rank-weighted note
+  matches across the selection (with a None option); both operations are single batched
+  Server Actions (`assignCategory`, `deleteTransactions`, ≤500 ids) behind the §6.4.1
+  five-second Undo — assign-undo restores each row's *previous* category.
+- **Filters:** one scrollable row of Member chips · Tag chips · the Category select
+  (incl. **❔ Uncategorized**) · a Dates control opening an inline From–To panel; active
+  filters render as dismissible chips in a second row (with the category-rename pencil
+  and Clear-all). Everything is URL-driven
+  (`?member=…&category=…|uncategorized&tag=…&month=…&from=…&to=…&q=…`) — shareable,
+  server-rendered, invalid values dropped silently. **Filtering, sorting and paging all
+  execute in SQL** (§7.3), never in the browser.
+- **Paging:** Keyset pagination on the strict total order `date DESC, time DESC,
+  created_at DESC, id DESC`, infinite scroll (§7.3).
+- **CSV Export button** (§6.6) — passes the active filter set so exports describe the
+  current view; filename reflects the scope.
 
 #### 6.4.1 Delete with Undo (~5 seconds) — Normative
 Swipe-left delete on a device that gets handed between family members makes accidental deletion realistic. A confirmation dialog is rejected: it taxes every *intentional* delete to guard the rare accident, which contradicts the speed-first philosophy (§1).
@@ -533,17 +570,18 @@ Swipe-left delete on a device that gets handed between family members makes acci
 **No soft delete.** No `deleted_at` column, no tombstones, no restore UI, no filtering of deleted rows from queries. The undo window lives entirely in client state before the write, which is precisely why it costs no schema, no query complexity, and no scope growth.
 
 ### 6.5 Settings
-- Manage categories: **create (inline from Quick Add or the edit dialog, §6.2), rename, emoji, reorder**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3). New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; see `CHANGELOG.md`.)*
+- Manage categories: **create (inline from the edit dialog; the bulk picker and Quick Add do not create), rename, emoji, reorder**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3). New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; the "inline from Quick Add" wording by Amendment 20 — see `CHANGELOG.md`.)*
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized.
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
 - **Budgets (owner amendment, 16 Aug 2026):** a Budgets card edits monthly limits — total and/or per-category, scoped to one month or to "Every month" as the default (§6.7). The card also carries the global **"Exclude bills from budgets"** switch — recurring-tagged spend is then ignored by the total monthly limit (§6.7).
 
 ### 6.6 Canonical CSV Export — Normative
 
-The export uses the **same 8 columns, in the same order, as `seed.csv`**:
+The export uses the **same 7 columns, in the same order, as `seed.csv`** (8→7 in
+Amendment 13's expense-only ledger; the `type` column is gone):
 
 ```
-date,time,member,type,item,amount,category,tag
+date,time,member,item,amount,category,tag
 ```
 
 | Field | Export rule |
@@ -551,13 +589,17 @@ date,time,member,type,item,amount,category,tag
 | `date` | `YYYY-MM-DD`, as stored (IST calendar date, §5.7) |
 | `time` | **`HH:MM`** — seconds truncated, matching the CSV convention (§5.6) |
 | `member` | Member's **current display `name`** |
-| `type` | `expense` \| `income` |
 | `item` | The transaction's `note` field (the CSV's `item` column maps to `note`) |
 | `amount` | Plain decimal, 2 dp, **no `₹` symbol, no thousands separators, no `en-IN` grouping** (e.g. `1200000.00`) |
-| `category` | Category's **current display `name`** |
-| `tag` | `one_time` \| `recurring` \| `lifestyle`; **empty string** for income rows |
+| `category` | Category's **current display `name`**; an **empty cell for uncategorized rows** (`category_id IS NULL`, Amendment 20) |
+| `tag` | `one_time` \| `recurring` \| `lifestyle` |
 
-**Normalization:** UTF-8, LF line endings, header row always emitted, rows ordered `date ASC, created_at ASC`. Any field containing a comma, double-quote or newline is RFC 4180 quoted — the export must remain correct even though the historical `seed.csv` happens to need no quoting.
+**Normalization:** UTF-8, LF line endings, header row always emitted, rows ordered `date ASC, created_at ASC`. Any field containing a comma, double-quote or newline is RFC 4180 quoted.
+
+**Scope:** by default the export covers all transactions; when invoked from the Ledger
+it carries the active filter set and the filename reflects it
+(`ledger-{month|all}[-member|-tag|-uncategorized|-category|-range]-{IST date}.csv`),
+so it always describes exactly what the user was looking at (UX pass, 24 Aug 2026).
 
 **Scope of the symmetry — read carefully:** the export is *structurally compatible* with `seed.csv`, which makes it a genuine backup format and a valid input shape. It is **not** a claim that an export may be fed back through `npm run db:seed`. Seeding remains an explicit, controlled, developer-initiated operation against the canonical `seed.csv` (§8) — never an automatic round-trip, and never a synchronization mechanism.
 
