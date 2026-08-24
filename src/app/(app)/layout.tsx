@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
-import { getCategories, getMembers, getTemplates } from "@/lib/meta";
+import { getMembers, getTemplates } from "@/lib/meta";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { QuickAddProvider } from "@/components/quick-add/quick-add-context";
-import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
+import type { MemberOption } from "@/components/quick-add/types";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -14,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const cookieStore = await cookies();
   const activeMemberId = cookieStore.get("active_member_id")?.value;
 
-  const [memberRows, categoryRows, templateRows] = await Promise.all([getMembers(), getCategories(), getTemplates()]);
+  const [memberRows, templateRows] = await Promise.all([getMembers(), getTemplates()]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,
@@ -24,14 +24,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     color: m.color,
     sortOrder: m.sortOrder,
   }));
-  const categoryOptions: CategoryOption[] = categoryRows.map((c) => ({
-    id: c.id,
-    slug: c.slug,
-    name: c.name,
-    emoji: c.emoji,
-    color: c.color,
-    sortOrder: c.sortOrder,
-  }));
 
   const activeId =
     memberOptions.find((m) => m.id === activeMemberId)?.id ?? memberOptions[0]?.id ?? "";
@@ -39,7 +31,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <QuickAddProvider
       members={memberOptions}
-      categories={categoryOptions}
       templates={templateRows}
       activeMemberId={activeId}
     >

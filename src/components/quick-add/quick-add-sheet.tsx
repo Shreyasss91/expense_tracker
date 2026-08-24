@@ -24,7 +24,7 @@ import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
-import type { CategoryOption, MemberOption, TemplateOption } from "./types";
+import type { MemberOption, TemplateOption } from "./types";
 import { AmountTagRow, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
@@ -70,8 +70,6 @@ export function QuickAddSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   members: MemberOption[];
-  /** Kept for layout parity with the edit dialog; unused since Amendment 20. */
-  categories?: CategoryOption[];
   templates: TemplateOption[];
   activeMemberId: string;
   onClose: () => void;
