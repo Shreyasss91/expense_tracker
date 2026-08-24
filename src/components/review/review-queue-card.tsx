@@ -253,6 +253,24 @@ export function ReviewQueueCard({
     return [...map.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
   }, [rows]);
 
+  // Layout pass — collapsed state renders as a thin amber banner (reads as a
+  // notification, not a section); expanded keeps the full card.
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={toggleExpanded}
+        aria-expanded={false}
+        className="flex w-full items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-left transition-colors hover:bg-amber-500/20"
+      >
+        <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Review</span>
+        <span className="rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold leading-none text-destructive-foreground">{pendingCount}</span>
+        <span className="truncate text-[11px] text-muted-foreground">month-end reconciliation</span>
+        <ChevronDown className="ml-auto h-4 w-4 shrink-0 -rotate-90 text-muted-foreground" />
+      </button>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="p-3">
