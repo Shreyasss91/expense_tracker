@@ -1,6 +1,7 @@
 import { format, parse } from "date-fns";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
+import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
 import { formatINR } from "@/lib/money";
 import type { LedgerSummary } from "@/lib/query";
 
@@ -9,18 +10,24 @@ import type { LedgerSummary } from "@/lib/query";
  * set (month + member + category + tag + search). When no month is selected
  * it reports the all-time totals instead. Mirrors the dashboard's
  * expense-focused cards: total, lifestyle and the largest single spend.
- * Amendment 20 — when the filtered set contains uncategorized entries a
- * warning line links to the `category=uncategorized` view.
+ * Amendment 20 — when the filtered set contains uncategorized entries an
+ * amber warning line links to the `category=uncategorized` view.
+ * Layout pass — also absorbs the spent-vs-budget bar (previously a separate
+ * block above it) so the ledger's chrome is ONE slim card, getting the first
+ * transaction row into the opening viewport on mobile.
  */
 export function LedgerSummaryHeader({
   monthKey,
   summary,
   filtersQs = "",
+  monthBudget = null,
 }: {
   monthKey?: string;
   summary: LedgerSummary;
   /** Serialized extra filter params (member/tag/q…) preserved on the link. */
   filtersQs?: string;
+  /** §6.7 spent-vs-budget for the selected month; null when none/hidden. */
+  monthBudget?: { spentPaise: number; budgetPaise: number; billsPaise: number; excludeBills: boolean } | null;
 }) {
   const scope = monthKey ? format(parse(`${monthKey}-01`, "yyyy-MM-dd", new Date()), "MMMM yyyy") : "All time";
   return (
@@ -58,6 +65,18 @@ export function LedgerSummaryHeader({
             <span>❔ {summary.uncategorizedCount} uncategorized</span>
             <span className="tabular-nums">{formatINR(summary.uncategorizedPaise)} — review →</span>
           </Link>
+        )}
+        {monthBudget && (
+          <div className="mt-2 space-y-1 border-t pt-2">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-medium text-muted-foreground">Budget</span>
+              <BudgetRemaining spent={monthBudget.spentPaise} budget={monthBudget.budgetPaise} />
+            </div>
+            <BudgetBar spent={monthBudget.spentPaise} budget={monthBudget.budgetPaise} />
+            {monthBudget.excludeBills && monthBudget.billsPaise > 0 && (
+              <p className="text-[11px] text-muted-foreground">excluding {formatINR(monthBudget.billsPaise)} in bills</p>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
