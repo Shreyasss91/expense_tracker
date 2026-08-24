@@ -135,7 +135,9 @@ export const templates = pgTable("templates", {
   sortOrder: integer("sort_order").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  sortOrderIdx: index("templates_sort_order_idx").on(t.sortOrder),
+}));
 
 export type Template = typeof templates.$inferSelect;
 export type NewTemplate = typeof templates.$inferInsert;

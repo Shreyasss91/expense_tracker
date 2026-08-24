@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { QuickAddSheet } from "./quick-add-sheet";
-import type { CategoryOption, MemberOption } from "./types";
+import type { CategoryOption, MemberOption, TemplateOption } from "./types";
 
 interface QuickAddContextValue {
   open: () => void;
@@ -13,11 +13,13 @@ const QuickAddContext = createContext<QuickAddContextValue | null>(null);
 export function QuickAddProvider({
   members,
   categories,
+  templates,
   activeMemberId,
   children,
 }: {
   members: MemberOption[];
   categories: CategoryOption[];
+  templates: TemplateOption[];
   activeMemberId: string;
   children: ReactNode;
 }) {
@@ -33,6 +35,7 @@ export function QuickAddProvider({
         onOpenChange={setOpenState}
         members={members}
         categories={categories}
+        templates={templates}
         activeMemberId={activeMemberId}
         onClose={close}
       />

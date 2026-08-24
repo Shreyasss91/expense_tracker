@@ -14,6 +14,7 @@ import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
 import { isGenericNote } from "@/lib/generic-notes";
+import { pendingReviewWhere } from "@/lib/review-where";
 
 export async function createTransaction(raw: TransactionInput) {
   const parsed = transactionSchema.safeParse(raw);
@@ -47,7 +48,7 @@ export async function createTransaction(raw: TransactionInput) {
       note: data.note ?? null,
       date: data.date,
       time: `${data.time}:00`,
-      reviewedAt: isGenericNote(data.note) ? null : undefined, // NULL for generic notes (§6.4)
+      reviewedAt: isGenericNote(data.note ?? null) ? null : undefined, // NULL for generic notes (§6.4)
     })
     .returning();
 
@@ -73,8 +74,11 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
   if (!categoryExists) return { ok: false as const, error: "Unknown category" };
 
-  // Any note update resets reviewedAt to NULL if generic, otherwise clears it for re-eval (§6.4)
-  const reviewedAtValue = isGenericNote(data.note) ? null : undefined;
+  const [existing] = await db
+    .select({ note: transactions.note })
+    .from(transactions)
+    .where(eq(transactions.id, idCheck.data));
+  const noteChanged = (existing?.note ?? null) !== (data.note ?? null);
 
   const [row] = await db
     .update(transactions)
@@ -86,7 +90,9 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
       note: data.note ?? null,
       date: data.date,
       time: `${data.time}:00`,
-      reviewedAt: reviewedAtValue,
+      // Acknowledgement survives ordinary edits, but any note edit explicitly
+      // sends the row back through the Review queue (§6.4).
+      ...(noteChanged ? { reviewedAt: null } : {}),
     })
     .where(eq(transactions.id, idCheck.data))
     .returning();
@@ -141,7 +147,7 @@ export async function getPendingReviewCount(): Promise<number> {
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(transactions)
-    .where(sql`${transactions.reviewedAt} IS NULL`);
+    .where(pendingReviewWhere());
   return Number(result[0]?.count ?? 0);
 }
 

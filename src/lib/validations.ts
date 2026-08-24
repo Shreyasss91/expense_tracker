@@ -62,10 +62,17 @@ export const templateSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (v === "" ? null : v)),
-  sortOrder: z.number().int(),
+  sortOrder: z.number().int().min(0).optional(),
 });
 
 export type TemplateInput = z.infer<typeof templateSchema>;
+
+export const reviewNoteSchema = z
+  .string()
+  .trim()
+  .max(140)
+  .nullable()
+  .transform((value) => (value === "" ? null : value));
 
 export const updateCategorySchema = z.object({
   id: z.string().uuid(),

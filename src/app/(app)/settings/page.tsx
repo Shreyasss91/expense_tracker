@@ -2,20 +2,22 @@ import { addMonths, format, parse } from "date-fns";
 import { db } from "@/db";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { budgets } from "@/db/schema";
-import { getCategories, getMembers } from "@/lib/meta";
+import { getCategories, getMembers, getTemplates } from "@/lib/meta";
 import { monthKeyInIST } from "@/lib/dates";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { MembersManager } from "@/components/settings/members-manager";
 import { BudgetManager } from "@/components/settings/budget-manager";
+import { TemplatesManager } from "@/components/settings/templates-manager";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows, budgetRows, excludeBills] = await Promise.all([
+  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills] = await Promise.all([
     getMembers(),
     getCategories(),
+    getTemplates(),
     db.select().from(budgets),
     getExcludeBillsEnabled(db),
   ]);
@@ -57,6 +59,18 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <MembersManager members={memberOptions} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Templates</CardTitle>
+          <CardDescription className="text-xs">
+            Save recurring expenses for one-tap prefills in Quick Add. Templates never store a member; the active member is used when you add the transaction.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <TemplatesManager templates={templateRows} categories={categoryOptions} />
         </CardContent>
       </Card>
 
