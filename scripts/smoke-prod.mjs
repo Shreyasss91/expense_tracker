@@ -11,7 +11,7 @@
  *      drifts from the audited baseline (not seeded, or new transactions).
  *
  * Env:
- *   PROD_URL                 default https://kharchubook.vercel.app
+ *   PROD_URL                 default https://tokenscript.vercel.app
  *   FAMILY_MASTER_PASSWORD   production login password
  */
 import { config } from "dotenv";
@@ -22,7 +22,7 @@ import { performance } from "node:perf_hooks";
 import { login } from "./lib/live.mjs";
 import { parseCsv } from "./lib/csv.mjs";
 
-const BASE = process.env.PROD_URL ?? "https://kharchubook.vercel.app";
+const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
 const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
 const BUDGET_MS = Number(process.env.SMOKE_MAX_MS ?? 8000);
 const timings = [];
@@ -62,8 +62,8 @@ async function main() {
   const seedRows = parseCsv(seedCsv).slice(1);
   const expectedEntries = seedRows.length;
   const expectedPaise = seedRows.reduce((s, fields) => {
-    if (fields.length !== 8) throw new Error(`seed row has ${fields.length} fields`);
-    return s + Math.round(Number(fields[5]) * 100);
+    if (fields.length !== 7) throw new Error(`seed row has ${fields.length} fields`);
+    return s + Math.round(Number(fields[4]) * 100);
   }, 0);
   const expectedTotal = (expectedPaise / 100).toLocaleString("en-IN", {
     minimumFractionDigits: 2,

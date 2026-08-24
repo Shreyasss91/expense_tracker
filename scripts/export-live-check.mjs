@@ -12,7 +12,7 @@
  * multiset equality). Fails loudly on any drift.
  *
  * Env:
- *   PROD_URL                 default https://kharchubook.vercel.app
+ *   PROD_URL                 default https://tokenscript.vercel.app
  *   FAMILY_MASTER_PASSWORD   production login password
  */
 import { config } from "dotenv";
@@ -26,7 +26,7 @@ import { parseCsv } from "./lib/csv.mjs";
 const require = createRequire(import.meta.url);
 const { encodeReply } = require("next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.node.unbundled.development.js");
 
-const BASE = process.env.PROD_URL ?? "https://kharchubook.vercel.app";
+const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
 const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
 
 let failures = 0;

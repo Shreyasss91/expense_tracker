@@ -54,6 +54,34 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
   column order unchanged.
 - Verified: `tsc --noEmit` and `eslint` pass clean.
 
+### Amendment 20 follow-up pass — 24 August 2026
+
+- **Live verification:** `smoke:prod` passes against the seeded baseline (1,157 entries,
+  ₹23,96,855.39). Two script-side fixes were needed: `smoke-prod.mjs` still parsed the
+  pre-expense-only **8-column** CSV layout (stale since the 17 Aug amendment; now 7
+  columns, amount at index 4), and both live scripts defaulted to the retired
+  **kharchubook.vercel.app** domain (now tokenscript.vercel.app). `verify:export-live`
+  passes structurally (row count, header, formats); it reports exactly one data-vs-seed
+  divergence — row 1055's note was edited in-app ("Airtel recharge" → "Mobile
+  Recharge"), i.e. genuine usage drift, not a code regression.
+- **drizzle/meta snapshots tracked:** `.gitignore` no longer excludes `drizzle/meta/`.
+  The missing per-migration snapshots are why migration 0005 bundled unrelated drift;
+  future generates diff against the true latest snapshot.
+- **Dead code sweep:** orphaned `updateReviewNote` action removed (its only caller died
+  with review-client.tsx; note edits flow through the edit dialog's updateTransaction);
+  vestigial `categories` prop chain removed from QuickAddSheet/QuickAddProvider/layout
+  (layout no longer fetches categories solely to pass them down).
+- **UX polish from the owner follow-up list:** uncategorized count badge on the Ledger
+  nav item (amber, via new `getUncategorizedCount` + `useUncategorizedCount`, shown when
+  no review items pend); "All/Clear" select-all for loaded rows in the bulk bar; Esc
+  exits selection mode on desktop; "Acknowledge all" batch button on the Review queue
+  backed by a new `acknowledgeTransactionsReview(ids)` action (no undo toast —
+  acknowledgement is reversible by design, §6.4).
+- **Tests:** new DB-backed `test:categorize-roundtrip` (NULL insert, IS NULL filter,
+  LEFT-JOIN null shape, batched IN assign/clear, missing-FROM regression on
+  pendingReviewWhere, empty CSV cell); validation-test covers the optional-category
+  schema branch. All suites green against the live database.
+
 ---
 
 ## v1.2 Amendment — 19 August 2026 (owner decision: edit sheet parity with Quick Add)
