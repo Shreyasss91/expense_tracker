@@ -93,3 +93,5 @@ drizzle/meta/
 .next/
 out/
 ```
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
