@@ -1,21 +1,9 @@
-import { Metadata } from "next";
-import { getReviewPage } from "@/actions/review";
-import { getPendingReviewCount } from "@/actions/transactions";
-import { ReviewClient } from "./review-client";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Review — Family Ledger",
-};
-
-export default async function ReviewPage() {
-  const pendingCount = await getPendingReviewCount();
-  const initialData = await getReviewPage({ cursor: null });
-
-  return (
-    <ReviewClient
-      initialRows={initialData.rows}
-      nextCursor={initialData.nextCursor}
-      pendingCount={pendingCount}
-    />
-  );
+/**
+ * Amendment 20 — the Review tab merged into the Ledger page; this route only
+ * preserves old links and bookmarks.
+ */
+export default function ReviewPage() {
+  redirect("/transactions");
 }
