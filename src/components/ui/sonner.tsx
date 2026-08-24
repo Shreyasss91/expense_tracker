@@ -11,6 +11,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
+      // Owner request: toasts must never cover the mobile bottom nav
+      // (Dashboard | + | Ledger). The offset lifts every toast above the nav
+      // (~3.5rem bar) and the iOS home indicator; on desktop it simply floats
+      // the stack a little higher, which is harmless.
+      offset={`calc(4.75rem + env(safe-area-inset-bottom))`}
       icons={{
         success: (
           <CircleCheckIcon className="size-4" />
