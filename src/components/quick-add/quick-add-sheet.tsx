@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown } from "lucide-react";
@@ -17,22 +17,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { createTransaction } from "@/actions/transactions";
-import { getCategoryBudgetStatus, updateCategory } from "@/actions/settings";
 import { updateActiveMember } from "@/actions/member";
 import { emitLedgerMutation } from "@/lib/events";
-import { useCategoryUsage } from "@/lib/category-usage";
-import { suggestCategories } from "@/lib/category-suggestions";
-import { useCreateCategory } from "@/lib/use-create-category";
 import { formatINRWhole, paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption, TemplateOption } from "./types";
-import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
+import { AmountTagRow, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
-// tag + note already filled in; the amount, category, date and time never repeat.
+// tag + note already filled in; the amount, date and time never repeat.
+// Amendment 20 — categories are no longer part of Quick Add at all; they are
+// assigned afterwards in the Ledger (edit dialog / bulk assign).
 const LAST_ENTRY_KEY = "quick-add:last-entry";
 
 function loadLastEntry(): { tag: TransactionTag; note: string } {
@@ -65,7 +63,6 @@ export function QuickAddSheet({
   open,
   onOpenChange,
   members,
-  categories,
   templates,
   activeMemberId,
   onClose,
@@ -73,14 +70,16 @@ export function QuickAddSheet({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   members: MemberOption[];
-  categories: CategoryOption[];
+  /** Kept for layout parity with the edit dialog; unused since Amendment 20. */
+  categories?: CategoryOption[];
   templates: TemplateOption[];
   activeMemberId: string;
   onClose: () => void;
 }) {
   const [amount, setAmount] = useState("");
   const [tag, setTag] = useState<TransactionTag>("lifestyle");
-  const [selectedCategoryId, setSelectedCategoryId] = useState("");
+  // Hidden category stamped only via a template prefill — never a visible field.
+  const [templateCategoryId, setTemplateCategoryId] = useState<string | undefined>(undefined);
   const [date, setDate] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
   const [time, setTime] = useState(() => formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
   const [note, setNote] = useState("");
@@ -94,19 +93,8 @@ export function QuickAddSheet({
     setLocalActiveMemberId(activeMemberId);
   }, [activeMemberId]);
   // Amendment 11 §2 — always starts collapsed with today's date/default time on
-  // every open; no longer persisted, so it can't come back pre-expanded on a
-  // device where it was toggled open before. Still toggleable within the
-  // current session/tab (state lives on this always-mounted component).
+  // every open; still toggleable within the current session/tab.
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [renameEmoji, setRenameEmoji] = useState("");
-  const [renaming, setRenaming] = useState(false);
-  const [cats, setCats] = useState(categories);
-  const [showAllSuggestions, setShowAllSuggestions] = useState(false);
-  // §6.7 — remaining budget per category for the current date's month (expense only)
-  const [budgetRemaining, setBudgetRemaining] = useState<Map<string, number> | null>(null);
   // §6.2 — the last committed tag + note, restored on open and updated on save
   const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
   const router = useRouter();
@@ -118,17 +106,6 @@ export function QuickAddSheet({
     setTag(lastEntryRef.current.tag);
     setNote(lastEntryRef.current.note);
   }, []);
-
-  // Keep the local category copy in sync with server-provided data when not mid-edit,
-  // so renames done elsewhere (Settings) also land in this picker.
-  useEffect(() => {
-    if (!editMode && !renamingId) setCats(categories);
-  }, [categories, editMode, renamingId]);
-
-  // §6.9 — reset "show all" whenever the note changes so fresh input shows suggestions
-  useEffect(() => {
-    setShowAllSuggestions(false);
-  }, [note]);
 
   const paise = useMemo(() => Math.round(parseFloat(amount || "0") * 100) || 0, [amount]);
   const activeMember = members.find((m) => m.id === localActiveMemberId) ?? members[0];
@@ -145,76 +122,17 @@ export function QuickAddSheet({
       toast.error(res.error ?? "Could not switch member");
     }
   }
-  // §6.2 — recently used categories float to the top of the grid
-  const { orderedCategories, touchCategory } = useCategoryUsage(cats);
-
-  // §6.2 — when a note is typed, show up to 6 suggested categories instead of the
-  // full grid; fall back to the full grid when nothing matches. The already
-  // selected category stays pinned at the top so the selection never vanishes.
-  // §6.9 — "Show all" button lets the user expand suggestions to the full grid.
-  const noteTrimmed = note.trim();
-  const { shownCategories, suggestionsActive, hasMoreCategories } = useMemo(() => {
-    if (editMode || !noteTrimmed)
-      return { shownCategories: orderedCategories, suggestionsActive: false, hasMoreCategories: false };
-    const suggestions = suggestCategories(noteTrimmed, orderedCategories);
-    if (suggestions.length === 0)
-      return { shownCategories: orderedCategories, suggestionsActive: false, hasMoreCategories: false };
-    if (showAllSuggestions)
-      return { shownCategories: orderedCategories, suggestionsActive: false, hasMoreCategories: false };
-    const hasMore = suggestions.length < orderedCategories.length;
-    if (selectedCategoryId && !suggestions.some((c) => c.id === selectedCategoryId)) {
-      const selected = orderedCategories.find((c) => c.id === selectedCategoryId);
-      if (selected)
-        return { shownCategories: [selected, ...suggestions], suggestionsActive: true, hasMoreCategories: hasMore };
-    }
-    return { shownCategories: suggestions, suggestionsActive: true, hasMoreCategories: hasMore };
-  }, [noteTrimmed, orderedCategories, editMode, selectedCategoryId, showAllSuggestions]);
-
-  // §6.2 — inline "add a new category" flow (shared with the edit dialog)
-  const { open: openAddCategory, cancel: cancelAddCategory, addForm } = useCreateCategory(
-    useCallback((c: CategoryOption) => {
-      setCats((list) => [...list, c]);
-      setSelectedCategoryId(c.id);
-    }, []),
-  );
-
-  // §6.7 — fetch remaining budget per category for the transaction's month; only
-  // meaningful for expenses, and only once the amount is set. Debounced so the
-  // per-keystroke amount changes on the single page don't spam the server action.
-  useEffect(() => {
-    if (paise <= 0) {
-      setBudgetRemaining(null);
-      return;
-    }
-    let cancelled = false;
-    const timer = setTimeout(() => {
-      void getCategoryBudgetStatus(date.slice(0, 7)).then((res) => {
-        if (cancelled) return;
-        setBudgetRemaining(res.ok ? new Map(res.categories.map((c) => [c.categoryId, c.remainingPaise])) : null);
-      });
-    }, 300);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [paise, date]);
 
   function reset() {
     setAmount("");
     setTag(lastEntryRef.current.tag);
-    setSelectedCategoryId("");
+    setTemplateCategoryId(undefined);
     setNote(lastEntryRef.current.note);
     setError(null);
     setDate(formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
-    setEditMode(false);
-    setRenamingId(null);
-    setRenameValue("");
-    setRenameEmoji("");
     setShowDatePicker(false);
-    setShowAllSuggestions(false);
     setSubmitAttempted(false);
-    cancelAddCategory();
   }
 
   async function submit() {
@@ -223,20 +141,20 @@ export function QuickAddSheet({
       return;
     }
     const member = members.find((m) => m.id === localActiveMemberId) ?? members[0];
-    const category = cats.find((c) => c.id === selectedCategoryId);
-    if (!member || !category) {
-      setError("Pick a category");
+    if (!member) {
+      setError("Pick a member");
       return;
     }
 
     // §6.2 submit — fully optimistic: build the row locally and apply it to the
     // ledger immediately; the server action confirms (tempId → real id) or
-    // reverts (row removed) when it resolves.
+    // reverts (row removed) when it resolves. Uncategorized rows carry a null
+    // category (Amendment 20).
     const tempId = `temp-${crypto.randomUUID()}`;
     const optimisticRow: TransactionListRow = {
       id: tempId,
       memberId: member.id,
-      categoryId: category.id,
+      categoryId: templateCategoryId ?? null,
       tag,
       amount: paiseToDbString(paise),
       note: note || null,
@@ -245,23 +163,22 @@ export function QuickAddSheet({
       createdAt: new Date().toISOString(),
       reviewedAt: null,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
-      category: { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug },
+      category: null,
     };
     emitLedgerMutation({ kind: "create", tempId, row: optimisticRow });
 
     setSaving(true);
-    const base = {
-      memberId: localActiveMemberId, // server reads the cookie anyway (§6.2)
-      categoryId: category.id,
-      amount: paise,
-      date,
-      time,
-      note: note || null,
-    };
-    const payload = { ...base, tag };
     let res: Awaited<ReturnType<typeof createTransaction>>;
     try {
-      res = await createTransaction(payload);
+      res = await createTransaction({
+        memberId: localActiveMemberId, // server reads the cookie anyway (§6.2)
+        categoryId: templateCategoryId ?? null,
+        amount: paise,
+        date,
+        time,
+        note: note || null,
+        tag,
+      });
     } catch {
       emitLedgerMutation({ kind: "create-revert", tempId });
       setSaving(false);
@@ -274,11 +191,9 @@ export function QuickAddSheet({
       toast.success("Transaction added");
       // §6.7 — warn when this expense pushed the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
-      // §6.2 — remember the committed tag/note and category usage so repeat entries
-      // start filled in and recently used categories float to the top of the grid
+      // §6.2 — remember the committed tag/note so repeat entries start filled in
       lastEntryRef.current = { tag, note };
       saveLastEntry(lastEntryRef.current);
-      touchCategory(category.id);
       reset();
       onClose();
     } else {
@@ -287,57 +202,14 @@ export function QuickAddSheet({
     }
   }
 
-  function startRename(c: CategoryOption) {
-    setRenamingId(c.id);
-    setRenameValue(c.name);
-    setRenameEmoji(c.emoji);
-  }
-
-  function cancelRename() {
-    setRenamingId(null);
-    setRenameValue("");
-    setRenameEmoji("");
-  }
-
-  async function saveRename(c: CategoryOption) {
-    if (renaming) return;
-    const name = renameValue.trim();
-    const emoji = renameEmoji.trim();
-    if ((!name || name === c.name) && emoji === c.emoji) {
-      cancelRename();
-      return;
-    }
-    const nextName = name || c.name;
-    const nextEmoji = emoji || c.emoji;
-    const prev = cats;
-    // optimistic — the ledger already joins names fresh, so a refetch shows it everywhere
-    setCats((list) => list.map((x) => (x.id === c.id ? { ...x, name: nextName, emoji: nextEmoji } : x)));
-    setRenaming(true);
-    const res = await updateCategory({ id: c.id, name: nextName, emoji: nextEmoji, sortOrder: c.sortOrder });
-    setRenaming(false);
-    if (res.ok) {
-      toast.success("Category updated");
-      emitLedgerMutation({ kind: "refetch" });
-      router.refresh();
-      setEditMode(false);
-      setRenamingId(null);
-      setRenameValue("");
-      setRenameEmoji("");
-    } else {
-      setCats(prev);
-      setRenamingId(null);
-      setRenameValue("");
-      setRenameEmoji("");
-      toast.error(res.error ?? "Could not update");
-    }
-  }
-
-  const canSubmit = paise > 0 && selectedCategoryId !== "";
+  const canSubmit = paise > 0;
 
   function applyTemplate(template: TemplateOption) {
     setAmount(String(template.amountPaise / 100));
     setTag(template.tag);
-    setSelectedCategoryId(template.categoryId);
+    // Templates carry their category — it rides along invisibly and is stamped
+    // at commit; every other entry lands uncategorized (Amendment 20).
+    setTemplateCategoryId(template.categoryId);
     setNote(template.note ?? "");
     setError(null);
     setSubmitAttempted(false);
@@ -397,8 +269,8 @@ export function QuickAddSheet({
         >
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2">
           {/* date/time sit at the top — their defaults are rarely changed, so the
-              frequently edited fields (Amount → Tag → Note → Category) stay together;
-              the pickers stay collapsed behind a summary until tapped */}
+              frequently edited fields stay together; the pickers stay collapsed
+              behind a summary until tapped */}
           <DateTimeField
             date={date}
             time={time}
@@ -452,64 +324,19 @@ export function QuickAddSheet({
             />
           </div>
 
-          <CategoryGrid
-            categories={shownCategories}
-            selectedId={selectedCategoryId}
-            onSelect={setSelectedCategoryId}
-            budgetRemaining={budgetRemaining}
-            showBudgetHints={!editMode}
-            hint={
-              suggestionsActive
-                ? "Suggested from your note — tap to select"
-                : "Tap a category to select"
-            }
-            showAllLink={
-              suggestionsActive && hasMoreCategories ? (
-                <button
-                  type="button"
-                  onClick={() => setShowAllSuggestions(true)}
-                  className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
-                >
-                  Show all categories
-                </button>
-              ) : undefined
-            }
-            editMode={editMode}
-            onToggleEditMode={() => setEditMode(true)}
-            onExitEditMode={() => { setEditMode(false); setRenamingId(null); }}
-            renamingId={renamingId}
-            renameValue={renameValue}
-            renameEmoji={renameEmoji}
-            renaming={renaming}
-            onRenameValueChange={setRenameValue}
-            onRenameEmojiChange={setRenameEmoji}
-            onStartRename={startRename}
-            onSaveRename={(c) => void saveRename(c)}
-            onCancelRename={cancelRename}
-            onAddCategory={openAddCategory}
-            addForm={addForm}
-          />
+          {/* Amendment 20 — no category picker here. Categorize later in the
+              Ledger: tap a row to edit, or select many and assign at once. */}
         </div>
 
         <div className="border-t border-muted-foreground/10 pt-3">
           {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
           {!saving && (
             <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
-              {canSubmit
-                ? "press Enter ↵ to add"
-                : paise <= 0 && !selectedCategoryId
-                  ? "Enter an amount and pick a category"
-                  : paise <= 0
-                    ? "Enter an amount"
-                    : "Pick a category"}
+              {canSubmit ? "press Enter ↵ to add" : "Enter an amount"}
             </p>
           )}
           <Button type="submit" className="h-12 w-full text-base" disabled={!canSubmit || saving}>
-            {saving
-              ? "Adding…"
-              : canSubmit
-                ? `Add ${formatINRWhole(paise)} · ${cats.find((c) => c.id === selectedCategoryId)?.name ?? ""}`
-                : "Add transaction"}
+            {saving ? "Adding…" : canSubmit ? `Add ${formatINRWhole(paise)}` : "Add transaction"}
           </Button>
         </div>
         </form>
