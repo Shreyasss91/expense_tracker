@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
+import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
 import { todayInIST } from "@/lib/dates";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
@@ -42,10 +43,10 @@ export async function createTransaction(raw: TransactionInput) {
     memberId = memberIdCheck.data;
   }
 
-  // Amendment 20 — the category is optional; when present it must exist.
+  // Amendment 20 — the category is optional; when present it must exist and
+  // be a leaf (groups are never directly assignable).
   if (data.categoryId) {
-    const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
-    if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+    if (!(await isAssignableCategory(db, data.categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
   }
 
   const paise = data.amount;
@@ -85,8 +86,7 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   const memberExists = await db.query.members.findFirst({ where: eq(members.id, data.memberId) });
   if (!memberExists) return { ok: false as const, error: "Unknown member" };
   if (data.categoryId) {
-    const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
-    if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+    if (!(await isAssignableCategory(db, data.categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
   }
 
   const [existing] = await db
@@ -137,8 +137,7 @@ export async function assignCategory(ids: string[], categoryId: string | null): 
   if (checkedIds.length !== ids.length) return { ok: false as const, error: "Invalid transaction id" };
 
   if (categoryId !== null) {
-    const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, categoryId) });
-    if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+    if (!(await isAssignableCategory(db, categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
   }
 
   const rows = await db

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   date,
   index,
   integer,
@@ -35,6 +36,15 @@ export const categories = pgTable("categories", {
   emoji: text("emoji").notNull(),
   color: text("color").notNull(),
   sortOrder: integer("sort_order").notNull(),
+  /**
+   * Two-level hierarchy. NULL = a group row (top level, never directly
+   * assignable to a transaction/template/budget); non-NULL = a leaf whose
+   * parent must itself be a top-level row. Depth is capped at exactly 2 by
+   * the mutation actions — a child can never gain a parent of its own.
+   * Every selectable category is therefore a leaf, and every rupee rolls up
+   * to exactly one group.
+   */
+  parentId: uuid("parent_id").references((): AnyPgColumn => categories.id),
 });
 
 export const transactions = pgTable(

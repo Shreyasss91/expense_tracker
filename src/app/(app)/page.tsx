@@ -196,7 +196,7 @@ export default async function DashboardPage({
     id: m.id, slug: m.slug, name: m.name, emoji: m.emoji, color: m.color, sortOrder: m.sortOrder,
   }));
   const categoryOptions = categoryRows.map((c) => ({
-    id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder,
+    id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder, parentId: c.parentId,
   }));
   // Per-category spend for the budget card's category rows (§6.7)
   const catSpentPaise = new Map(data.catRows.map((r) => [r.id, rupeesToPaise(r.total)]));

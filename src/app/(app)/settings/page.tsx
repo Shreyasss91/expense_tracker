@@ -45,6 +45,7 @@ export default async function SettingsPage() {
     emoji: c.emoji,
     color: c.color,
     sortOrder: c.sortOrder,
+    parentId: c.parentId,
   }));
 
   return (

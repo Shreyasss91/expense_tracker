@@ -59,6 +59,7 @@ export default async function TransactionsPage({
     emoji: c.emoji,
     color: c.color,
     sortOrder: c.sortOrder,
+    parentId: c.parentId,
   }));
 
   // Scope params preserved on the summary's "uncategorized" deep link (the

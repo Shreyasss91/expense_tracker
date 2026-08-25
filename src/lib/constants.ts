@@ -79,3 +79,43 @@ export const TRANSACTION_TAG_LABELS: Record<(typeof TRANSACTION_TAGS)[number], s
   recurring: "Recurring",
   lifestyle: "Lifestyle",
 };
+
+/**
+ * The seven household groups (two-level category hierarchy). Group slugs are
+ * prefixed "grp-" so they can never collide with a user-created category slug.
+ * Groups are top-level rows: never directly assignable to a transaction,
+ * template or budget — only their leaves are. Mirrored by the backfill in
+ * drizzle/0008_category_hierarchy.sql; keep the two in sync.
+ */
+export const SEED_CATEGORY_GROUPS = [
+  { slug: "grp-getting-around", name: "Getting Around", emoji: "🚗", color: "#0ea5e9", sortOrder: 1 },
+  { slug: "grp-food-provisions", name: "Food & Provisions", emoji: "🍲", color: "#f59e0b", sortOrder: 2 },
+  { slug: "grp-people-care", name: "People & Care", emoji: "👨‍👩‍👧", color: "#8b5cf6", sortOrder: 3 },
+  { slug: "grp-home-bills", name: "Home & Bills", emoji: "🏠", color: "#10b981", sortOrder: 4 },
+  { slug: "grp-wealth-protection", name: "Wealth & Protection", emoji: "💰", color: "#6366f1", sortOrder: 5 },
+  { slug: "grp-lifestyle-giving", name: "Lifestyle & Giving", emoji: "🎉", color: "#ec4899", sortOrder: 6 },
+  { slug: "grp-other", name: "Other", emoji: "🧺", color: "#9ca3af", sortOrder: 7 },
+] as const;
+
+/** Leaf slug → the group slug it belongs under (seed + fresh-setup parity with migration 0008). */
+export const CATEGORY_GROUP_OF_LEAF: Record<string, string> = {
+  fuel: "grp-getting-around",
+  "vehicle-maintenance": "grp-getting-around",
+  "transport-parking": "grp-getting-around",
+  "groceries-household": "grp-food-provisions",
+  "dining-out": "grp-food-provisions",
+  "farm-garden": "grp-food-provisions",
+  kids: "grp-people-care",
+  education: "grp-people-care",
+  "health-medical": "grp-people-care",
+  "personal-care-fitness": "grp-people-care",
+  clothing: "grp-people-care",
+  "home-furniture": "grp-home-bills",
+  "utilities-recharges": "grp-home-bills",
+  "property-investments": "grp-wealth-protection",
+  "insurance-finance": "grp-wealth-protection",
+  "travel-trips": "grp-lifestyle-giving",
+  "entertainment-outings": "grp-lifestyle-giving",
+  "religion-gifts": "grp-lifestyle-giving",
+  misc: "grp-other",
+};

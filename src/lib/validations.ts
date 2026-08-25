@@ -89,10 +89,25 @@ export const updateCategorySchema = z.object({
   sortOrder: z.number().int(),
 });
 
-/** §6.2/§6.5 — inline category creation from Quick Add; emoji defaults to 🏷️ when omitted. */
+/** §6.2/§6.5 — inline category creation from Quick Add; emoji defaults to 🏷️ when omitted.
+ * Two-level hierarchy: `parentId` names the destination group (a top-level row);
+ * when omitted the server files the new leaf under the "Other" group. */
 export const createCategorySchema = z.object({
   name: z.string().trim().min(1).max(50),
   emoji: z.string().trim().max(8).optional(),
+  parentId: z.string().uuid().optional(),
+});
+
+/** Settings — create a new top-level group (container for leaf categories). */
+export const createCategoryGroupSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  emoji: z.string().trim().max(8).optional(),
+});
+
+/** Settings — move a leaf category to another top-level group. */
+export const moveCategoryToGroupSchema = z.object({
+  categoryId: z.string().uuid(),
+  groupId: z.string().uuid(),
 });
 
 export const updateMemberSchema = z.object({

@@ -13,13 +13,16 @@ config({ path: ".env.local" });
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { and, eq, isNull } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
 import { v5 as uuidv5 } from "uuid";
 import {
+  CATEGORY_GROUP_OF_LEAF,
   CATEGORY_SLUG_MAP,
   MEMBER_SLUG_MAP,
   SEED_CATEGORIES,
+  SEED_CATEGORY_GROUPS,
   SEED_MEMBERS,
   SEED_NAMESPACE,
   TRANSACTION_TAGS,
@@ -55,6 +58,23 @@ async function main() {
   // 2. Seed the 19 categories through the literal map in §5.3.
   for (const c of SEED_CATEGORIES) {
     await db.insert(categories).values({ ...c }).onConflictDoNothing({ target: categories.slug });
+  }
+  // 3. Seed the seven hierarchy groups, then parent each leaf under its group
+  //    (same mapping as migration 0008 — fresh setups match migrated ones).
+  for (const g of SEED_CATEGORY_GROUPS) {
+    await db.insert(categories).values({ ...g }).onConflictDoNothing({ target: categories.slug });
+  }
+  const groupRows = await db.select().from(categories);
+  const categoryIdBySlugAll = new Map(groupRows.map((c) => [c.slug, c.id]));
+  for (const c of SEED_CATEGORIES) {
+    const groupSlug = CATEGORY_GROUP_OF_LEAF[c.slug];
+    if (!groupSlug) throw new Error(`No group mapped for category slug: ${c.slug}`);
+    const parentId = categoryIdBySlugAll.get(groupSlug);
+    if (!parentId) throw new Error(`Missing resolved id for group=${groupSlug}`);
+    await db
+      .update(categories)
+      .set({ parentId })
+      .where(and(eq(categories.slug, c.slug), isNull(categories.parentId)));
   }
 
   // Resolve slug → UUID from the DB. Never join on name.

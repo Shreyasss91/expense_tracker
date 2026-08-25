@@ -14,6 +14,12 @@ export interface CategoryOption {
   emoji: string;
   color: string;
   sortOrder: number;
+  /**
+   * Two-level hierarchy — NULL = a group row (never selectable), non-NULL =
+   * the id of the group this leaf belongs under. Only leaves are assignable
+   * to transactions/templates/budgets.
+   */
+  parentId: string | null;
 }
 
 export interface TemplateOption {

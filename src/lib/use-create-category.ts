@@ -14,7 +14,7 @@ import type { AddCategoryForm } from "@/components/transactions/transaction-fiel
  * createCategory Server Action, and hands the created category to onCreated so
  * the caller can add it to its local grid and select it.
  */
-export function useCreateCategory(onCreated: (category: CategoryOption) => void) {
+export function useCreateCategory(onCreated: (category: CategoryOption) => void, groupId?: string) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
@@ -35,11 +35,11 @@ export function useCreateCategory(onCreated: (category: CategoryOption) => void)
     if (saving) return;
     setSaving(true);
     setError(null);
-    const res = await createCategory({ name, emoji });
+    const res = await createCategory({ name, emoji, ...(groupId ? { parentId: groupId } : {}) });
     setSaving(false);
     if (res.ok) {
       const c = res.category;
-      onCreated({ id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder });
+      onCreated({ id: c.id, slug: c.slug, name: c.name, emoji: c.emoji, color: c.color, sortOrder: c.sortOrder, parentId: c.parentId });
       recordRecentCategory(c.id);
       cancel();
       toast.success("Category added");
@@ -47,7 +47,7 @@ export function useCreateCategory(onCreated: (category: CategoryOption) => void)
     } else {
       setError(res.error ?? "Could not add category");
     }
-  }, [saving, name, emoji, onCreated, cancel, router]);
+  }, [saving, name, emoji, groupId, onCreated, cancel, router]);
 
   const addForm: AddCategoryForm | undefined = adding
     ? {

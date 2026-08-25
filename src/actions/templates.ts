@@ -4,7 +4,8 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, members, templates } from "@/db/schema";
+import { members, templates } from "@/db/schema";
+import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
 import { idSchema, templateSchema, type TemplateInput } from "@/lib/validations";
 
@@ -14,9 +15,8 @@ export async function createTemplate(raw: TemplateInput) {
 
   const data = parsed.data;
 
-  // Validate category exists (no member check — templates carry no member)
-  const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
-  if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  // Validate category exists and is a leaf (groups are never assignable)
+  if (!(await isAssignableCategory(db, data.categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
 
   // Recurring auto-entry — the chosen member must be real when set.
   if (data.memberId) {
@@ -56,8 +56,7 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
   if (!parsed.success) return { ok: false as const, error: "Invalid template data" };
   const data = parsed.data;
 
-  const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
-  if (!categoryExists) return { ok: false as const, error: "Unknown category" };
+  if (!(await isAssignableCategory(db, data.categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
 
   if (data.memberId) {
     const memberExists = await db.query.members.findFirst({ where: eq(members.id, data.memberId) });
