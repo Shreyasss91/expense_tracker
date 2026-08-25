@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { setAppSetting, EXCLUDE_BILLS_KEY } from "@/db/app-settings-mutations";
-import { renameCategory, isAssignableCategory } from "@/db/category-mutations";
+import { isAssignableCategory } from "@/db/category-mutations";
 import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations";
 import { categories, members, transactions } from "@/db/schema";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
@@ -185,20 +185,6 @@ export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) 
   revalidatePath("/transactions");
   revalidatePath("/settings");
   revalidateTag("transactions");
-  revalidateTag("categories");
-  return { ok: true as const };
-}
-
-export async function reorderCategories(ids: string[]) {
-  const existing = await db.select({ id: categories.id }).from(categories);
-  const parsed = validateCompleteUniqueIds(ids, existing.map((row) => row.id));
-  if (!parsed) return { ok: false as const, error: "Invalid category order" };
-  // Plain sequential updates — the neon-http driver has no transaction support.
-  for (let i = 0; i < parsed.length; i++) {
-    await db.update(categories).set({ sortOrder: i + 1 }).where(eq(categories.id, parsed[i]));
-  }
-  revalidatePath("/transactions");
-  revalidatePath("/settings");
   revalidateTag("categories");
   return { ok: true as const };
 }

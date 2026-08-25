@@ -81,7 +81,9 @@ export default async function SettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Categories</CardTitle>
           <CardDescription className="text-xs">
-            Create from Quick Add, rename, change emoji, reorder. Deletion is not available — history always keeps its category.
+            Categories live in groups — pick a group in the ledger filter or tap one open in the picker.
+            Rename, re-emoji, reorder, move categories between groups, add new ones per group. Only
+            categories (never groups) are picked for transactions; deletion is not available.
           </CardDescription>
         </CardHeader>
         <CardContent>
