@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -47,7 +49,13 @@ export function FiltersBar({
   const [toDraft, setToDraft] = useState(filters.to ?? "");
 
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
+  const selectedGroup = categories.find((c) => c.id === filters.groupId && c.parentId === null);
   const selectedMemberChip = members.find((m) => m.id === filters.memberId);
+
+  // Two-level taxonomy — groups with their leaves, ordered by sortOrder.
+  const groupRows = [...categories].filter((c) => c.parentId === null).sort((a, b) => a.sortOrder - b.sortOrder);
+  const childrenOf = (id: string) =>
+    categories.filter((c) => c.parentId === id).sort((a, b) => a.sortOrder - b.sortOrder);
 
   // The last q this component pushed into the URL. The URL-sync effect below
   // ignores values that match it, so an in-flight navigation landing mid-typing
@@ -192,15 +200,26 @@ export function FiltersBar({
           </button>
         ))}
         <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
+        {/* Two-level category filter — groups as labelled sections, leaves
+            nested under each. Values carry a g:/c: prefix so the change
+            handler knows which filter slot to write; picking any of the
+            three (leaf / group / uncategorized) clears the others. */}
         <Select
-          value={filters.uncategorized ? UNCATEGORIZED : filters.categoryId ?? ""}
-          onValueChange={(v) =>
-            push({
-              ...filters,
-              categoryId: v && v !== UNCATEGORIZED ? v : undefined,
-              uncategorized: v === UNCATEGORIZED || undefined,
-            })
+          value={
+            filters.uncategorized
+              ? UNCATEGORIZED
+              : filters.categoryId
+                ? `c:${filters.categoryId}`
+                : filters.groupId
+                  ? `g:${filters.groupId}`
+                  : ""
           }
+          onValueChange={(v) => {
+            if (v === "") push({ ...filters, categoryId: undefined, groupId: undefined, uncategorized: undefined });
+            else if (v === UNCATEGORIZED) push({ ...filters, categoryId: undefined, groupId: undefined, uncategorized: true });
+            else if (v.startsWith("g:")) push({ ...filters, categoryId: undefined, groupId: v.slice(2), uncategorized: undefined });
+            else push({ ...filters, categoryId: v.slice(2), groupId: undefined, uncategorized: undefined });
+          }}
         >
           <SelectTrigger className="h-8 w-36 shrink-0 text-xs">
             <SelectValue placeholder="All categories" />
@@ -209,10 +228,17 @@ export function FiltersBar({
             <SelectItem value="">All categories</SelectItem>
             {/* Amendment 20 — rows with no category assigned */}
             <SelectItem value={UNCATEGORIZED}>❔ Uncategorized</SelectItem>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.emoji} {c.name}
-              </SelectItem>
+            {groupRows.map((g) => (
+              <SelectGroup key={g.id}>
+                <SelectLabel className="text-[11px] font-semibold text-muted-foreground">
+                  {g.emoji} {g.name}
+                </SelectLabel>
+                {childrenOf(g.id).map((c) => (
+                  <SelectItem key={c.id} value={`c:${c.id}`} className="pl-6 text-xs">
+                    {c.emoji} {c.name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             ))}
           </SelectContent>
         </Select>
@@ -260,7 +286,7 @@ export function FiltersBar({
       )}
 
       {/* active-filter chips — only rendered while something is set */}
-      {(filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.from || filters.to || filters.q?.trim()) && (
+      {(filters.memberId || filters.tag || filters.categoryId || filters.groupId || filters.uncategorized || filters.from || filters.to || filters.q?.trim()) && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Active</span>
           {selectedMemberChip && (
@@ -277,6 +303,19 @@ export function FiltersBar({
             <button type="button" className={cn(pill(false), "text-amber-700 dark:text-amber-400")} onClick={() => push({ ...filters, uncategorized: undefined })}>
               ❔ Uncategorized <X className="ml-0.5 inline h-3 w-3" />
             </button>
+          )}
+          {filters.groupId && selectedGroup && (
+            <span className={cn(pill(true), "max-w-44")}>
+              {selectedGroup.emoji} {selectedGroup.name} · group
+              <button
+                type="button"
+                aria-label={`Clear ${selectedGroup.name} filter`}
+                onClick={() => push({ ...filters, groupId: undefined })}
+                className="ml-1 inline-flex"
+              >
+                <X className="inline h-3 w-3" />
+              </button>
+            </span>
           )}
           {(filters.from || filters.to) && (
             <button type="button" className={pill(false)} onClick={clearRange}>

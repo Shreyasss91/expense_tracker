@@ -28,12 +28,21 @@ function compareRows(a: TransactionListRow, b: TransactionListRow): number {
 
 /**
  * Mirror of the server-side WHERE clause so optimistic rows only appear when
- * they actually satisfy the active filters (member/category/tag/month/search).
+ * they actually satisfy the active filters (member/category/group/tag/month/
+ * search). Group filters resolve against the client's category list — the
+ * same leaves expandGroupFilter() fetches server-side.
  */
-function matchesFilters(row: TransactionListRow, f: TransactionListFilters): boolean {
+function matchesFilters(
+  row: TransactionListRow,
+  f: TransactionListFilters,
+  categories: CategoryOption[] = [],
+): boolean {
   if (f.memberId && row.memberId !== f.memberId) return false;
   if (f.categoryId) {
     if (row.categoryId !== f.categoryId) return false;
+  } else if (f.groupId) {
+    const childIds = new Set(categories.filter((c) => c.parentId === f.groupId).map((c) => c.id));
+    if (row.categoryId === null || !childIds.has(row.categoryId)) return false;
   } else if (f.uncategorized && row.categoryId !== null) return false;
   if (f.tag && row.tag !== f.tag) return false;
   if (f.month && !row.date.startsWith(f.month)) return false;
@@ -105,7 +114,7 @@ export function TransactionsList({
       const m = (e as CustomEvent<LedgerMutation>).detail;
       switch (m.kind) {
         case "create": {
-          if (!matchesFilters(m.row, filters)) return;
+          if (!matchesFilters(m.row, filters, categories)) return;
           setRows((prev) => [...prev.filter((r) => r.id !== m.tempId), m.row].sort(compareRows));
           break;
         }
@@ -123,10 +132,10 @@ export function TransactionsList({
             if (!exists) {
               // e.g. a failed-edit revert restoring a row that was optimistically
               // removed because the new values stopped matching the active filters
-              if (!matchesFilters(m.row, filters)) return prev;
+              if (!matchesFilters(m.row, filters, categories)) return prev;
               return [...prev, m.row].sort(compareRows);
             }
-            if (!matchesFilters(m.row, filters)) return prev.filter((r) => r.id !== m.id);
+            if (!matchesFilters(m.row, filters, categories)) return prev.filter((r) => r.id !== m.id);
             return prev.map((r) => (r.id === m.id ? m.row : r)).sort(compareRows);
           });
           break;
@@ -144,7 +153,7 @@ export function TransactionsList({
     };
     window.addEventListener(LEDGER_MUTATION_EVENT, onMutation);
     return () => window.removeEventListener(LEDGER_MUTATION_EVENT, onMutation);
-  }, [filters, refreshFirstPage]);
+  }, [filters, refreshFirstPage, categories]);
 
   // §7.3 infinite scroll — keyset pagination, page size 50
   useEffect(() => {

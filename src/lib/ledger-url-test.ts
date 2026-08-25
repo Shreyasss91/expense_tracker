@@ -8,7 +8,7 @@
  * exercises `buildLedgerUrl` and `parseLedgerSearchParams` directly — no DB,
  * no server-only, pure module.
  */
-import { buildLedgerUrl, parseLedgerSearchParams, type LedgerFilters } from "./ledger-url";
+import { buildLedgerUrl, parseLedgerSearchParams, UNCATEGORIZED, type LedgerFilters } from "./ledger-url";
 
 let failures = 0;
 function check(cond: boolean, msg: string) {
@@ -21,6 +21,7 @@ function check(cond: boolean, msg: string) {
 
 const UUID_A = "00000000-0000-4000-8000-00000000000a";
 const UUID_B = "00000000-0000-4000-8000-00000000000b";
+const UUID_G = "00000000-0000-4000-8000-00000000000c";
 
 function paramsOf(url: string): URLSearchParams {
   return new URLSearchParams(url.split("?")[1] ?? "");
@@ -114,6 +115,26 @@ function main() {
       round.filters.search === "petrol",
     "parse ∘ buildLedgerUrl round-trips the full filter set",
   );
+
+  // --- Group filter (two-level hierarchy): serialization, precedence, drops.
+  const groupOnly = buildLedgerUrl({ groupId: UUID_G, month: "2026-08" });
+  const gp = paramsOf(groupOnly);
+  check(gp.get("group") === UUID_G && !gp.has("category"), "groupId → ?group (no category param)");
+
+  const parsedGroup = parseLedgerSearchParams({ group: UUID_G, month: "2026-08" });
+  check(parsedGroup.filters.groupId === UUID_G && parsedGroup.filters.categoryId === undefined && !parsedGroup.filters.uncategorized, "parse: ?group decodes to groupId alone");
+
+  // A leaf selection always beats a group in the same URL — the builder never
+  // emits both, but deep links might carry leftovers.
+  const both = parseLedgerSearchParams({ category: UUID_B, group: UUID_G });
+  check(both.filters.categoryId === UUID_B && both.filters.groupId === undefined, "leaf category wins over group when both appear");
+
+  // Uncategorized beats group too.
+  const uncat = parseLedgerSearchParams({ category: UNCATEGORIZED, group: UUID_G });
+  check(uncat.filters.uncategorized === true && uncat.filters.groupId === undefined, "uncategorized wins over group when both appear");
+
+  const dirtyGroup = parseLedgerSearchParams({ group: "not-a-uuid" });
+  check(dirtyGroup.filters.groupId === undefined, "invalid group UUID dropped");
 
   if (failures > 0) {
     console.error(`✗ Ledger URL composition FAILED (${failures} check(s) failed)`);

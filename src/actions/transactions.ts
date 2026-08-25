@@ -10,7 +10,7 @@ import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
 import { todayInIST } from "@/lib/dates";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
-import { buildWhere, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
+import { buildWhere, expandGroupFilter, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
@@ -248,7 +248,7 @@ export async function getTransactionsPage(args: {
   cursor: Cursor | null;
   filters: TransactionListFilters;
 }): Promise<{ rows: ReturnType<typeof mapRow>[]; nextCursor: Cursor | null }> {
-  const where = buildWhere(args.filters, args.cursor);
+  const where = buildWhere(await expandGroupFilter(args.filters), args.cursor);
 
   const rows = await db
     .select({
@@ -297,7 +297,7 @@ export async function getTransactionsPage(args: {
  * exactly what the user was looking at.
  */
 export async function exportCsv(filters?: TransactionListFilters): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
-  const where = filters && Object.keys(filters).length > 0 ? buildWhere(filters, null) : undefined;
+  const where = filters && Object.keys(filters).length > 0 ? buildWhere(await expandGroupFilter(filters), null) : undefined;
 
   const rows = await db
     .select({
@@ -334,6 +334,7 @@ export async function exportCsv(filters?: TransactionListFilters): Promise<{ ok:
   if (filters?.tag) parts.push(filters.tag);
   if (filters?.uncategorized) parts.push("uncategorized");
   if (filters?.categoryId) parts.push("category");
+  if (filters?.groupId) parts.push("group");
   if (filters?.from || filters?.to) parts.push("range");
   return { ok: true as const, csv, filename: `ledger-${parts.join("-")}-${todayInIST()}.csv` };
 }

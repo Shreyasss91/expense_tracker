@@ -11,7 +11,14 @@ import type { TransactionListFilters } from "./query";
 /** The filter state as carried by the ledger URL. `q` is the search text. */
 export interface LedgerFilters {
   memberId?: string;
+  /** Leaf-category filter — serialized as `category=<uuid>`. */
   categoryId?: string;
+  /**
+   * Group filter (two-level hierarchy) — serialized as `group=<uuid>`.
+   * Mutually exclusive with categoryId/uncategorized: a leaf selection
+   * always wins, and the URL carries at most one of the three.
+   */
+  groupId?: string;
   /** Amendment 20 — serialized as `category=uncategorized`. */
   uncategorized?: boolean;
   tag?: "one_time" | "recurring" | "lifestyle";
@@ -31,6 +38,7 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
   if (filters.memberId) params.set("member", filters.memberId);
   if (filters.uncategorized) params.set("category", UNCATEGORIZED);
   else if (filters.categoryId) params.set("category", filters.categoryId);
+  else if (filters.groupId) params.set("group", filters.groupId);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.month) params.set("month", filters.month);
   if (filters.from) params.set("from", filters.from);
@@ -55,12 +63,16 @@ export function parseLedgerSearchParams(
 
   const rawTag = read(sp.tag);
   const rawCategory = read(sp.category);
+  const rawGroup = read(sp.group);
   const filters: TransactionListFilters = {
     memberId: (() => {
       const v = read(sp.member);
       return v && uuid.safeParse(v).success ? v : undefined;
     })(),
     categoryId: rawCategory && rawCategory !== UNCATEGORIZED && uuid.safeParse(rawCategory).success ? rawCategory : undefined,
+    // Group filter only survives when no leaf/uncategorized selection exists.
+    groupId:
+      !rawCategory && rawGroup && uuid.safeParse(rawGroup).success ? rawGroup : undefined,
     uncategorized: rawCategory === UNCATEGORIZED,
     tag: rawTag && (TRANSACTION_TAGS as readonly string[]).includes(rawTag) ? (rawTag as TransactionListFilters["tag"]) : undefined,
     month: (() => {

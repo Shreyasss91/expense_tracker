@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, ilike, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { transactions } from "@/db/schema";
+import { categories, transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
 import { monthKeySchema } from "@/lib/validations";
 
@@ -8,7 +8,16 @@ export const PAGE_SIZE = 50; // §7.3
 
 export interface TransactionListFilters {
   memberId?: string;
+  /** Leaf-category filter (?category=<uuid>). Wins over groupId/uncategorized. */
   categoryId?: string;
+  /**
+   * Group filter (?group=<uuid>) — matches any transaction whose leaf
+   * belongs to the group. Never queried directly: expandGroupFilter()
+   * resolves it to `categoryIds` before buildWhere runs.
+   */
+  groupId?: string;
+  /** Internal — the expanded form of groupId (leaf ids of that group). */
+  categoryIds?: string[];
   /** Amendment 20 — `category=uncategorized` in the URL; rows with NULL category_id. */
   uncategorized?: boolean;
   tag?: "one_time" | "recurring" | "lifestyle";
@@ -37,8 +46,13 @@ function monthEnd(monthKey: string): string {
 export function buildWhere(filters: TransactionListFilters, cursor: Cursor | null): SQL | undefined {
   const conds: SQL[] = [];
   if (filters.memberId) conds.push(eq(transactions.memberId, filters.memberId));
+  // Category precedence: exact leaf > group expansion > uncategorized.
   if (filters.categoryId) conds.push(eq(transactions.categoryId, filters.categoryId));
-  else if (filters.uncategorized) conds.push(isNull(transactions.categoryId));
+  else if (filters.categoryIds !== undefined) {
+    // A group with no children matches nothing — an explicit FALSE keeps the
+    // semantics honest instead of silently widening to "everything".
+    conds.push(filters.categoryIds.length > 0 ? inArray(transactions.categoryId, filters.categoryIds) : sql`false`);
+  } else if (filters.uncategorized) conds.push(isNull(transactions.categoryId));
   if (filters.tag) conds.push(eq(transactions.tag, filters.tag));
   if (filters.month) {
     const month = monthKeySchema.parse(filters.month);
@@ -71,8 +85,22 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
   return conds.length ? and(...conds) : undefined;
 }
 
-export function mapRow(row: {
-  id: string;
+/**
+ * Resolve the group filter into its leaf-id list before buildWhere runs
+ * (buildWhere is sync; this is the only async step). Precedence: an exact
+ * categoryId or uncategorized flag suppresses the group filter entirely —
+ * the URL builder never emits both, but deep links might.
+ */
+export async function expandGroupFilter<T extends TransactionListFilters>(filters: T): Promise<T> {
+  if (!filters.groupId || filters.categoryId || filters.uncategorized) return filters;
+  const children = await db
+    .select({ id: categories.id })
+    .from(categories)
+    .where(eq(categories.parentId, filters.groupId));
+  return { ...filters, categoryIds: children.map((c) => c.id) };
+}
+
+export function mapRow(row: {  id: string;
   memberId: string;
   categoryId: string | null;
   tag: string | null;
@@ -165,7 +193,7 @@ export interface LedgerSummary {
  * largest single spend in the filtered set.
  */
 export async function getLedgerSummary(filters: TransactionListFilters): Promise<LedgerSummary> {
-  const where = buildWhere(filters, null);
+  const where = buildWhere(await expandGroupFilter(filters), null);
   const rows = await db
     .select({
       expense: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
