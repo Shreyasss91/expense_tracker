@@ -7,6 +7,63 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Nested categories pass — 25 August 2026 (owner request: "too many categories"; two-level taxonomy, leaf-only assignment)
+
+Recorded as a pass: additive schema + UX; existing §-semantics preserved (every rupee still
+lives on exactly one category row; slugs immutable; uncategorized remains a state).
+
+### Schema & invariants
+
+- **Two-level hierarchy:** `categories.parent_id` (nullable self-FK), migration
+  `drizzle/0008_category_hierarchy.sql` — idempotent, applied to production. NULL = a GROUP
+  (rollup container, never assignable); non-NULL = a LEAF whose parent is a top-level row.
+  Depth is capped at exactly 2 by the mutation actions, not by convention.
+- **The seven household groups** (Getting Around / Food & Provisions / People & Care /
+  Home & Bills / Wealth & Protection / Lifestyle & Giving / Other) parent the 19 former flat
+  categories; group slugs carry a reserved `grp-` prefix and can never collide with user
+  categories. Seed (`SEED_CATEGORY_GROUPS` + `CATEGORY_GROUP_OF_LEAF`) mirrors the migration,
+  so fresh `db:setup` databases match migrated ones.
+- **Leaf-only assignment is enforced server-side** via `isAssignableCategory()`:
+  create/update/bulk-assign transaction, template create/update, and budget saves all reject
+  group ids. Budgets remain leaf-only + total (owner decision) — a group's limit is the sum
+  of its children, never a stored row.
+- New actions: `createCategoryGroup`, `moveCategoryToGroup`, `reorderCategoryGroups`,
+  `reorderCategoriesUnder`; inline `createCategory` now files new leaves into a chosen group
+  (default: Other) so they are immediately assignable and roll up correctly.
+
+### Surfaces
+
+- **Dashboard pie:** renders GROUP slices (~7) with per-group MoM chips; tap a legend row to
+  drill into its categories in place ("All groups" returns). Uncategorized stays its own
+  explicit slice. Both levels aggregate client-side from one cached query (leaf rows now
+  LEFT JOIN their parent's display fields).
+- **Pickers** (edit dialog, bulk assign, review): accordion sections — headers expand/collapse
+  and are never selectable; leaves inside keep budget hints/rename/add. One-tap chip rows on
+  top: Suggested (note matches) and Recent (household's most-used, derived from the ledger,
+  cached under the transactions tag). The selected leaf's group auto-expands.
+- **Ledger filter:** `?group=<uuid>` deep link; picker shows groups as labelled sections with
+  nested leaves; active group gets its own chip. Mutual exclusion with
+  `?category=`/uncategorized is normative (leaf > uncategorized > group); expansion happens
+  once via `expandGroupFilter()` so list, summary and CSV export always describe the same set.
+  An empty group matches nothing (explicit FALSE), never everything.
+- **Settings → Categories:** tree editor — rename/emoji/reorder groups, reorder leaves within
+  a group, move a leaf between groups, add categories per group, create groups. Deletion
+  still unavailable. Templates' selects, the split dialog's selects and the budget manager
+  are leaves-only (budget manager renders grouped sections); the old flat
+  `reorderCategories` action is deleted.
+
+### Tests
+
+- `npm run test:hierarchy` — round-trip against the real DB: group/leaf persistence,
+  assignability matrix (leaf ✓ / group ✗ / unknown ✗), rollup join attribution, depth guard.
+- `npm run test:ledger-url` extended for `?group=`: serialization, precedence rules,
+  invalid-UUID dropping.
+- `smoke:prod` baseline semantics changed from exact-equality to LOSS-detection (≥ seed):
+  auto-recurring and real usage legitimately grow prod; falling under the seeded baseline is
+  the failure.
+
+---
+
 ## UX/PWA pass — 25 August 2026 (owner request: install fix, offline capture, pacing, deltas, splits, auto-recurring; no frozen-section rewrites)
 
 Recorded as a pass rather than a numbered amendment: every change below is additive UX
