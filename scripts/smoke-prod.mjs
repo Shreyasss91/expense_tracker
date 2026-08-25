@@ -93,6 +93,40 @@ async function main() {
   check(loginPage.status === 200, `GET /login → ${loginPage.status}`);
   check(/Family Ledger/i.test(loginHtml) && /password/i.test(loginHtml), "login page renders the form");
 
+  // ── PWA installability guard ────────────────────────────────────────────
+  // These endpoints MUST stay public and machine-readable: browsers fetch
+  // them WITHOUT cookies, and if auth middleware ever intercepts them again
+  // (the original "Add to Home Screen never shows" bug) the manifest check
+  // below fails loudly instead of the prompt silently disappearing.
+  const manifest = await timed("GET /manifest.webmanifest", () =>
+    fetch(`${BASE}/manifest.webmanifest`, { signal: AbortSignal.timeout(60000) }),
+  );
+  check(manifest.status === 200, `GET /manifest.webmanifest → ${manifest.status}`);
+  check(
+    (manifest.headers.get("content-type") ?? "").includes("application/manifest"),
+    `manifest served with a manifest content-type (${manifest.headers.get("content-type")})`,
+  );
+  let manifestJson = null;
+  try {
+    manifestJson = JSON.parse(await manifest.text());
+  } catch {
+    // HTML login page landing here is exactly the regression this guards
+  }
+  check(manifestJson !== null && manifestJson.name === "Family Ledger", "manifest parses as JSON with the app name");
+  check(
+    manifestJson !== null && Array.isArray(manifestJson.icons) && manifestJson.icons.length > 0,
+    "manifest declares at least one icon",
+  );
+  const iconHead = await timed("GET /icon", () =>
+    fetch(`${BASE}/icon`, { redirect: "manual", signal: AbortSignal.timeout(60000) }),
+  );
+  check(
+    iconHead.status === 200 && (iconHead.headers.get("content-type") ?? "").includes("image/png"),
+    `icon route serves a PNG without redirect (${iconHead.status} ${iconHead.headers.get("content-type")})`,
+  );
+  const sw = await timed("GET /sw.js", () => fetch(`${BASE}/sw.js`, { signal: AbortSignal.timeout(60000) }));
+  check(sw.status === 200 && (sw.headers.get("content-type") ?? "").includes("javascript"), `GET /sw.js → ${sw.status} (service worker reachable)`);
+
   const client = await login(BASE, PASSWORD);
   const timedFetch = (path) => timed(`GET ${path}`, () => client.fetch(path));
   check(true, "credentials login succeeded (session cookie issued)");
