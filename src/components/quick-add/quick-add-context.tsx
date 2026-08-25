@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { QuickAddSheet } from "./quick-add-sheet";
 import type { MemberOption, TemplateOption } from "./types";
 
@@ -24,6 +24,17 @@ export function QuickAddProvider({
   const [openState, setOpenState] = useState(false);
   const open = useCallback(() => setOpenState(true), []);
   const close = useCallback(() => setOpenState(false), []);
+
+  // Manifest shortcut deep link — "/?new=1" (Android long-press → "Add
+  // expense") opens the sheet once on arrival. The param is read, not
+  // cleared: it only acts on initial mount, so refreshes on other pages
+  // are unaffected.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("new") === "1") {
+      setOpenState(true);
+    }
+  }, []);
 
   return (
     <QuickAddContext.Provider value={{ open }}>

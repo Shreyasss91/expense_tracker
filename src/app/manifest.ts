@@ -25,6 +25,22 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#09090b",
     theme_color: "#171717",
     categories: ["finance", "productivity"],
+    // Android long-press app shortcuts. "Add expense" deep-links with ?new=1,
+    // which QuickAddProvider consumes on mount to open the sheet directly.
+    shortcuts: [
+      {
+        name: "Add expense",
+        short_name: "Add",
+        description: "Log a new expense with Quick Add",
+        url: "/?new=1",
+      },
+      {
+        name: "Ledger",
+        short_name: "Ledger",
+        description: "Browse and edit transactions",
+        url: "/transactions",
+      },
+    ],
     icons: [
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
