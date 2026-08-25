@@ -21,16 +21,26 @@ export async function createTransaction(raw: TransactionInput) {
   if (!parsed.success) return { ok: false as const, error: "Invalid transaction data" };
 
   const data = parsed.data;
+  // Member resolution: the payload's memberId wins when it names a real
+  // member — offline Quick Add replays queued entries later, possibly under
+  // a different active_member_id cookie, and the entry must land under the
+  // member who captured it. Falls back to the cookie (§6.2 normal path).
   const cookieStore = await cookies();
-  const activeMemberId = cookieStore.get("active_member_id")?.value;
-  const memberIdCheck = idSchema.safeParse(activeMemberId);
-  if (!memberIdCheck.success) {
-    return { ok: false as const, error: "No active member selected — pick a member in the header" };
+  let memberId: string | null = null;
+  if (data.memberId) {
+    const byPayload = await db.query.members.findFirst({ where: eq(members.id, data.memberId) });
+    if (byPayload) memberId = byPayload.id;
   }
-  const memberId = memberIdCheck.data;
-
-  const memberExists = await db.query.members.findFirst({ where: eq(members.id, memberId) });
-  if (!memberExists) return { ok: false as const, error: "Unknown member" };
+  if (!memberId) {
+    const activeMemberId = cookieStore.get("active_member_id")?.value;
+    const memberIdCheck = idSchema.safeParse(activeMemberId);
+    if (!memberIdCheck.success) {
+      return { ok: false as const, error: "No active member selected — pick a member in the header" };
+    }
+    const memberExists = await db.query.members.findFirst({ where: eq(members.id, memberIdCheck.data) });
+    if (!memberExists) return { ok: false as const, error: "Unknown member" };
+    memberId = memberIdCheck.data;
+  }
 
   // Amendment 20 — the category is optional; when present it must exist.
   if (data.categoryId) {

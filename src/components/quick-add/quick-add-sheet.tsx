@@ -19,6 +19,7 @@ import {
 import { createTransaction } from "@/actions/transactions";
 import { updateActiveMember } from "@/actions/member";
 import { emitLedgerMutation } from "@/lib/events";
+import { enqueuePendingAdd } from "@/lib/offline-queue";
 import { formatINRWhole, paiseToDbString } from "@/lib/money";
 import { budgetAlertMessage } from "@/lib/budget-alert";
 import { formatInTimeZone } from "date-fns-tz";
@@ -203,6 +204,37 @@ export function QuickAddSheet({
       category: null,
     };
     emitLedgerMutation({ kind: "create", tempId, row: optimisticRow });
+
+    // Offline — commit to the device queue instead of the server. The row
+    // stays in the ledger optimistically; the sync manager replays it through
+    // the same action when connectivity returns (and after reloads, since the
+    // queue lives in IndexedDB).
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      await enqueuePendingAdd({
+        clientId: crypto.randomUUID(),
+        payload: {
+          memberId: localActiveMemberId,
+          categoryId: templateCategoryId ?? null,
+          amount: paise,
+          date,
+          time,
+          note: note || null,
+          tag,
+        },
+        createdAt: Date.now(),
+      });
+      // same memory/multi-entry flow as an online save — capture stays friction-free
+      lastEntryRef.current = { tag, note };
+      saveLastEntry(lastEntryRef.current);
+      setRecentNotes((prev) => rememberNote(note, prev));
+      const savedPaise = paise;
+      reset();
+      setLastAddedPaise(savedPaise);
+      setAddedCount((c) => c + 1);
+      setJustAdded(true);
+      toast.info("Saved offline — it'll sync when you're back online", { duration: 6000 });
+      return;
+    }
 
     setSaving(true);
     let res: Awaited<ReturnType<typeof createTransaction>>;

@@ -5,6 +5,7 @@ import { getMembers, getTemplates } from "@/lib/meta";
 import { AppHeader } from "@/components/app-header";
 import { BottomNav } from "@/components/bottom-nav";
 import { QuickAddProvider } from "@/components/quick-add/quick-add-context";
+import { OfflineSyncManager } from "@/components/pwa/offline-sync";
 import type { MemberOption } from "@/components/quick-add/types";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppHeader members={memberOptions} activeMemberId={activeId} />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-32 pt-4 md:pb-10">{children}</main>
       <BottomNav />
+      {/* Offline Quick Add — replays queued entries whenever connectivity returns */}
+      <OfflineSyncManager />
     </QuickAddProvider>
   );
 }

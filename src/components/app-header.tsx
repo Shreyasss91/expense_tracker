@@ -5,6 +5,8 @@ import { Settings, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MemberSwitcher } from "@/components/member-switcher";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { InstallButton } from "@/components/pwa/install-button";
+import { PendingSyncPill } from "@/components/pwa/offline-sync";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
 import type { MemberOption } from "@/components/quick-add/types";
 
@@ -25,9 +27,11 @@ export function AppHeader({
           <span className="hidden font-semibold tracking-tight min-[400px]:inline">Family Ledger</span>
         </Link>
         <div className="ml-auto flex items-center gap-0.5">
+          <PendingSyncPill />
           <Button variant="ghost" size="icon" className="hidden h-9 w-9 sm:inline-flex" onClick={open} aria-label="Quick add">
             <Plus className="h-5 w-5" />
           </Button>
+          <InstallButton />
           <ThemeToggle />
           <MemberSwitcher members={members} activeMemberId={activeMemberId} />
           <Button variant="ghost" size="icon" className="h-9 w-9" asChild aria-label="Settings">
