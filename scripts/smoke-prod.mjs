@@ -6,9 +6,11 @@
  *   2. login page renders
  *   3. credentials login succeeds (session cookie issued)
  *   4. dashboard renders all its sections
- *   5. ledger summary shows the EXACT seeded totals, derived from
- *      seed.csv (entry count + all-time expense) — fails loudly if prod
- *      drifts from the audited baseline (not seeded, or new transactions).
+ *   5. ledger summary is present and never below the SEED BASELINE derived
+ *      from seed.csv (entry count + all-time expense) — prod may legitimately
+ *      EXCEED the baseline (the daily recurring cron auto-stamps bills, and
+ *      humans add expenses), but dropping under it means seeded history was
+ *      lost, so that fails loudly.
  *
  * Env:
  *   PROD_URL                 default https://tokenscript.vercel.app
@@ -71,7 +73,7 @@ async function main() {
   });
   const expectedEntriesStr = expectedEntries.toLocaleString("en-IN");
 
-  console.log(`Smoke: ${BASE} (expect ${expectedEntriesStr} entries, all-time expense ₹${expectedTotal}, budget ${BUDGET_MS}ms/request)`);
+  console.log(`Smoke: ${BASE} (baseline ≥ ${expectedEntriesStr} entries, all-time expense ≥ ₹${expectedTotal}, budget ${BUDGET_MS}ms/request)`);
 
   const home = await timed("GET / (redirect)", () => fetch(`${BASE}/`, { redirect: "manual", signal: AbortSignal.timeout(60000) }));
   check(home.status === 307, `GET / → ${home.status} (redirect)`);
@@ -143,8 +145,28 @@ async function main() {
   const ledgerText = stripReactComments(await ledger.text());
   check(ledger.status === 200, `GET /transactions → ${ledger.status}`);
   check(ledgerText.includes("All time"), "ledger summary shows all-time scope");
-  check(ledgerText.includes(`${expectedEntriesStr} entries`), `summary shows ${expectedEntriesStr} entries`);
-  check(ledgerText.includes(expectedTotal), `summary shows all-time expense ₹${expectedTotal}`);
+
+  // Seed baseline — LOSS detection, not exactness. The daily recurring cron
+  // auto-stamps bills and humans add expenses, so prod legitimately grows;
+  // falling BELOW the baseline is the only failure (seeded history lost).
+  const countMatch = ledgerText.match(/([\d,]+)\s+entries?/);
+  check(countMatch !== null, "summary renders an entry count");
+  if (countMatch) {
+    const actualEntries = Number(countMatch[1].replace(/,/g, ""));
+    check(
+      actualEntries >= expectedEntries,
+      `summary shows ≥ ${expectedEntriesStr} entries (actual ${actualEntries.toLocaleString("en-IN")})`,
+    );
+  }
+  const rupeeMatch = ledgerText.match(/₹\s*([\d,]+\.\d{2})/); // first ₹ on the page = the expense total
+  check(rupeeMatch !== null, "summary renders an all-time expense amount");
+  if (rupeeMatch) {
+    const actualPaise = Math.round(Number(rupeeMatch[1].replace(/,/g, "")) * 100);
+    check(
+      actualPaise >= expectedPaise,
+      `summary shows all-time expense ≥ ₹${expectedTotal} (actual ₹${rupeeMatch[1]})`,
+    );
+  }
 
   const slow = timings.filter((t) => t.ms > BUDGET_MS);
   check(slow.length === 0, `all requests within ${BUDGET_MS}ms budget (slowest: ${slow.length ? slow[0].label : "—"})`);
@@ -156,8 +178,8 @@ async function main() {
     process.exitCode = 1;
   } else {
     console.log(
-      `✓ Smoke OK — ${BASE} boots, logs in, renders the seeded totals (${expectedEntriesStr} entries, ₹${expectedTotal}), ` +
-        `all requests within ${BUDGET_MS}ms.`,
+      `✓ Smoke OK — ${BASE} boots, logs in, renders the dashboard, and the ledger holds at least the ` +
+        `seeded history (${expectedEntriesStr} entries, ₹${expectedTotal}), all requests within ${BUDGET_MS}ms.`,
     );
     console.log(`    timings: ${summary}`);
   }
