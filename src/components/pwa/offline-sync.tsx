@@ -53,7 +53,15 @@ async function runSync() {
   if (remaining === 0 && synced > 0) {
     toast.success(`Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}`);
   } else if (blocked) {
-    toast.warning(`${remaining} offline ${remaining === 1 ? "entry needs" : "entries need"} attention — open one from the Ledger`);
+    toast.warning(`${remaining} offline ${remaining === 1 ? "entry needs" : "entries need"} attention`, {
+      duration: 8000,
+      action: {
+        label: "Review",
+        onClick: () => {
+          window.location.assign("/settings#offline-entries");
+        },
+      },
+    });
   }
 }
 
