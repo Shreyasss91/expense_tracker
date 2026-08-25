@@ -1,4 +1,5 @@
 import { formatINR } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 /** §6.7 — spent-vs-budget bar. The fill's colour ramps deep green → deep red
  * across the band (0% → 100% of the budget). When spent exceeds the budget the
@@ -6,7 +7,18 @@ import { formatINR } from "@/lib/money";
  * is visible as bar length and the whole bar still fits its container. A tick
  * marks the 100% point — the budget limit — partitioning the band from the
  * overflow. */
-export function BudgetBar({ spent, budget, className = "h-1.5" }: { spent: number; budget: number; className?: string }) {
+export function BudgetBar({
+  spent,
+  budget,
+  className = "h-1.5",
+  /** UX pass — subtle attention pulse on the overflow segment once the budget is blown. */
+  pulseOver = false,
+}: {
+  spent: number;
+  budget: number;
+  className?: string;
+  pulseOver?: boolean;
+}) {
   // §6.3.1: never divide by zero — a zero budget renders an empty bar.
   const pct = budget > 0 ? (spent / budget) * 100 : 0;
   if (pct <= 0) return <div className={`relative w-full rounded-full bg-muted ${className}`} />;
@@ -42,7 +54,7 @@ export function BudgetBar({ spent, budget, className = "h-1.5" }: { spent: numbe
       {/* Overflow: the spend past 100% of budget, in the deepest red. */}
       {over && (
         <div
-          className="absolute inset-y-0 rounded-r-full transition-all"
+          className={cn("absolute inset-y-0 rounded-r-full transition-all", pulseOver && "animate-pulse")}
           style={{ left: `${bandPct}%`, width: `${100 - bandPct}%`, background: OVER_BUDGET_COLOR }}
         />
       )}

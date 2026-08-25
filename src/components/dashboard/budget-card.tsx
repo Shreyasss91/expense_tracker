@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { setTotalBudget } from "@/actions/settings";
 import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
 import { formatINR } from "@/lib/money";
+import { cn } from "@/lib/utils";
 
 /**
  * §6.7 — the Overview Budget card. Shows the total spent vs the effective
@@ -24,6 +25,7 @@ export function BudgetCard({
   billsPaise,
   excludeBills,
   hasCategoryBudgets,
+  pacing,
 }: {
   monthKey: string;
   totalPaise: number | null;
@@ -33,6 +35,8 @@ export function BudgetCard({
   /** Global setting: subtract recurring spend from the total-budget comparison. */
   excludeBills: boolean;
   hasCategoryBudgets: boolean;
+  /** UX pass — day-of-month context for the pacing line; null for past/future months. */
+  pacing?: { dayOfMonth: number; daysInMonth: number } | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -83,11 +87,12 @@ export function BudgetCard({
           <span className="font-semibold tabular-nums">{formatINR(spentPaise)}</span>
           <span className="text-xs text-muted-foreground">of {formatINR(totalPaise)}</span>
         </div>
-        <BudgetBar spent={spentPaise} budget={totalPaise} />
+        <BudgetBar spent={spentPaise} budget={totalPaise} pulseOver />
         <BudgetRemaining spent={spentPaise} budget={totalPaise} />
         {excludeBills && billsPaise > 0 && (
           <p className="text-[11px] text-muted-foreground">excluding {formatINR(billsPaise)} in bills</p>
         )}
+        {pacing && <BudgetPacing spent={spentPaise} budget={totalPaise} pacing={pacing} />}
       </div>
     );
 
@@ -133,5 +138,43 @@ export function BudgetCard({
         </Button>
       )}
     </div>
+  );
+}
+
+/**
+ * UX pass — pacing line for the running month: the safe daily spend for what's
+ * left ("₹X/day · Nd left") plus a pace verdict against the straight-line ideal
+ * (budget × day/days). "On pace" hides itself when within ₹50 of ideal so the
+ * line stays quiet when things are fine.
+ */
+function BudgetPacing({
+  spent,
+  budget,
+  pacing,
+}: {
+  spent: number;
+  budget: number;
+  pacing: { dayOfMonth: number; daysInMonth: number };
+}) {
+  const daysLeft = pacing.daysInMonth - pacing.dayOfMonth + 1;
+  const remaining = Math.max(0, budget - spent);
+  const perDay = Math.floor(remaining / daysLeft / 100) * 100; // whole-rupee readability
+  const expectedByNow = Math.round((budget * pacing.dayOfMonth) / pacing.daysInMonth);
+  const paceDeltaPaise = spent - expectedByNow;
+  const onPace = Math.abs(paceDeltaPaise) < 5000;
+
+  return (
+    <p className="text-[11px] tabular-nums text-muted-foreground">
+      <span className="font-medium text-foreground">{formatINR(perDay)}</span>/day left ·{" "}
+      {daysLeft} day{daysLeft === 1 ? "" : "s"}
+      {!onPace && (
+        <>
+          {" · "}
+          <span className={cn("font-medium", paceDeltaPaise > 0 ? "text-red-600" : "text-emerald-600")}>
+            {formatINR(Math.abs(paceDeltaPaise))} {paceDeltaPaise > 0 ? "over" : "under"} pace
+          </span>
+        </>
+      )}
+    </p>
   );
 }

@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { categories, transactions } from "@/db/schema";
 import { formatINR, rupeesToPaise } from "@/lib/money";
-import { monthEndInIST, monthKeyInIST } from "@/lib/dates";
+import { monthEndInIST, monthKeyInIST, todayInIST } from "@/lib/dates";
 import { getCategories, getMembers } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
@@ -33,7 +33,7 @@ const getDashboardData = unstable_cache(
     const end = monthEndInIST(baseDate);
     const range = and(gte(transactions.date, start), lte(transactions.date, end));
 
-    const [totalsTags, catRows, trendRows, largestRows, budgetRows] = await Promise.all([
+    const [totalsTags, catRows, prevCatRows, trendRows, largestRows, budgetRows] = await Promise.all([
       // expense + all three expense tags in a single pass over the month
       db
         .select({
@@ -58,6 +58,21 @@ const getDashboardData = unstable_cache(
         .leftJoin(categories, eq(transactions.categoryId, categories.id))
         .where(and(gte(transactions.date, start), lte(transactions.date, end)))
         .groupBy(categories.id, categories.name, categories.emoji, categories.color),
+      // UX pass — same shape for the previous month, for per-category MoM deltas
+      db
+        .select({
+          id: categories.id,
+          total: sql<string>`SUM(${transactions.amount})`,
+        })
+        .from(transactions)
+        .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .where(
+          and(
+            gte(transactions.date, `${format(addMonths(baseDate, -1), "yyyy-MM")}-01`),
+            lte(transactions.date, monthEndInIST(addMonths(baseDate, -1))),
+          ),
+        )
+        .groupBy(categories.id),
       db
         .select({
           month: sql<string>`substring(${transactions.date}::text from 1 for 7)`,
@@ -152,6 +167,9 @@ const getDashboardData = unstable_cache(
       },
       tags,
       catRows,
+      // UX pass — previous-month totals keyed by category id (null = uncategorized)
+      // for the pie legend's MoM delta chips.
+      catPrev: Object.fromEntries(prevCatRows.map((r) => [String(r.id), rupeesToPaise(r.total)])) as Record<string, number>,
       trend,
     };
   },
@@ -191,6 +209,17 @@ export default async function DashboardPage({
       ? ((data.expensePaise - prevTrend.expensePaise) / prevTrend.expensePaise) * 100
       : null;
   const prevMonthLabel = format(addMonths(parse(`${monthKey}-01`, "yyyy-MM-dd", new Date()), -1), "MMM");
+
+  // UX pass — pacing context for the budget card. Computed on the server from
+  // IST "today" (never new Date() on the client — §5.7) so hydration matches.
+  // Only meaningful for the running month; past/future months get no line.
+  const todayKey = todayInIST();
+  const [py, pm] = monthKey.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(py, pm, 0)).getUTCDate();
+  const pacing =
+    monthKey === monthKeyInIST()
+      ? { dayOfMonth: Number(todayKey.slice(8, 10)), daysInMonth }
+      : null;
 
   return (
     <div className="space-y-4">
@@ -287,6 +316,7 @@ export default async function DashboardPage({
             billsPaise={data.billsPaise}
             excludeBills={excludeBills}
             hasCategoryBudgets={data.budget.categories.length > 0}
+            pacing={pacing}
           />
         </CardContent>
       </Card>
@@ -314,6 +344,7 @@ export default async function DashboardPage({
               emoji: r.emoji ?? "❔",
               color: r.color ?? "#9ca3af",
               paise: rupeesToPaise(r.total),
+              prevPaise: data.catPrev[String(r.id)] ?? 0,
             }))}
           />
           {/* §6.7 — per-category budget bars live with the category spend */}

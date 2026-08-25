@@ -19,6 +19,8 @@ export interface CategorySlice {
   emoji: string;
   color: string;
   paise: number;
+  /** UX pass — last month's total for the same category; MoM delta chip in the legend. */
+  prevPaise?: number;
 }
 
 export interface TrendPoint {
@@ -42,6 +44,34 @@ function inr(v: number) {
 export function pct(value: number, total: number): number | null {
   if (total <= 0) return null;
   return (value / total) * 100;
+}
+
+/**
+ * UX pass — month-over-month chip in the pie legend. ▲ red when the category
+ * grew vs last month, ▼ green when it shrank; "new" for spend with no
+ * last-month baseline. Hidden entirely when there's nothing to compare
+ * (no current and no previous spend) so quiet categories stay quiet.
+ */
+function CategoryDelta({ current, previous }: { current: number; previous?: number }) {
+  if (previous === undefined || (current === 0 && previous === 0)) return null;
+  if (previous === 0) {
+    return (
+      <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">new</span>
+    );
+  }
+  const change = ((current - previous) / previous) * 100;
+  if (Math.abs(change) < 1) {
+    return <span className="shrink-0 text-[10px] font-medium tabular-nums text-muted-foreground">—</span>;
+  }
+  const up = change > 0;
+  return (
+    <span
+      className={`shrink-0 text-[10px] font-medium tabular-nums ${up ? "text-red-600" : "text-emerald-600"}`}
+    >
+      {up ? "▲" : "▼"}
+      {Math.abs(change).toFixed(0)}%
+    </span>
+  );
 }
 
 export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
@@ -85,6 +115,7 @@ export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
                 <span className="truncate">
                   {s.emoji} {s.name}
                 </span>
+                <CategoryDelta current={s.paise} previous={s.prevPaise} />
                 <span className="ml-auto tabular-nums font-medium">{formatINR(s.paise)}</span>
                 <span className="w-12 text-right tabular-nums text-muted-foreground">
                   {p === null ? "—" : `${p.toFixed(0)}%`}
