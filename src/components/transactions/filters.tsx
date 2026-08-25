@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Search, X, Pencil, Check, Calendar } from "lucide-react";
@@ -49,8 +49,19 @@ export function FiltersBar({
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
   const selectedMemberChip = members.find((m) => m.id === filters.memberId);
 
+  // The last q this component pushed into the URL. The URL-sync effect below
+  // ignores values that match it, so an in-flight navigation landing mid-typing
+  // (its payload still carries the older query) can never clobber newer local
+  // input — the "first character deletes itself" race. Only an external URL
+  // change (deep link, Clear all) differs from the ref and syncs the field.
+  const pushedQRef = useRef(filters.q ?? "");
+
   useEffect(() => {
-    setQ(filters.q ?? "");
+    const urlQ = filters.q ?? "";
+    if (urlQ !== pushedQRef.current) {
+      pushedQRef.current = urlQ;
+      setQ(urlQ);
+    }
   }, [filters.q]);
 
   // keep drafts in sync when the URL changes externally
@@ -83,7 +94,10 @@ export function FiltersBar({
   // debounce search
   useEffect(() => {
     const t = setTimeout(() => {
-      if (q !== (filters.q ?? "")) push({ ...filters, q });
+      if (q !== (filters.q ?? "")) {
+        pushedQRef.current = q;
+        push({ ...filters, q });
+      }
     }, 350);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
