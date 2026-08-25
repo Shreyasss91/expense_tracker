@@ -2,7 +2,7 @@ import { addMonths, format, parse } from "date-fns";
 import { db } from "@/db";
 import { getTransactionsPage, getPendingReviewCount } from "@/actions/transactions";
 import { getReviewPage } from "@/actions/review";
-import { getCategories, getMembers } from "@/lib/meta";
+import { getCategories, getMembers, getRecentCategoryIds } from "@/lib/meta";
 import { FiltersBar } from "@/components/transactions/filters";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { ExportButton } from "@/components/transactions/export-button";
@@ -32,7 +32,7 @@ export default async function TransactionsPage({
   const stripBase = parse(`${monthKeyInIST()}-01`, "yyyy-MM-dd", new Date());
   const stripMonths = Array.from({ length: 36 }, (_, i) => format(addMonths(stripBase, i - 35), "yyyy-MM"));
 
-  const [firstPage, summary, memberRows, categoryRows, monthBudget, pendingReviewCount, reviewPage] = await Promise.all([
+  const [firstPage, summary, memberRows, categoryRows, monthBudget, pendingReviewCount, reviewPage, recentCategoryIds] = await Promise.all([
     getTransactionsPage({ cursor: null, filters }),
     getLedgerSummary(filters),
     getMembers(),
@@ -42,6 +42,8 @@ export default async function TransactionsPage({
     // Amendment 20 — the Review queue lives on the Ledger page
     getPendingReviewCount(),
     getReviewPage({ cursor: null }),
+    // Two-level picker — "Recent" chips for the category pickers
+    getRecentCategoryIds(),
   ]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
@@ -90,6 +92,7 @@ export default async function TransactionsPage({
           pendingCount={pendingReviewCount}
           members={memberOptions}
           categories={categoryOptions}
+          recentCategoryIds={recentCategoryIds}
         />
       )}
       <FiltersBar members={memberOptions} categories={categoryOptions} filters={ledgerFilters} />
@@ -101,6 +104,7 @@ export default async function TransactionsPage({
         filters={filters}
         members={memberOptions}
         categories={categoryOptions}
+        recentCategoryIds={recentCategoryIds}
       />
     </div>
   );

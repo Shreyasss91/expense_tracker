@@ -45,6 +45,7 @@ export function TransactionEditDialog({
   onOpenChange,
   onRequestDelete,
   onSaved,
+  recentCategoryIds = [],
 }: {
   row: TransactionListRow | null;
   members: MemberOption[];
@@ -55,6 +56,8 @@ export function TransactionEditDialog({
   /** Optional post-save callback (Amendment 20) — used by the Review queue to
    * re-evaluate an item's membership after its note/category changed. */
   onSaved?: (row: TransactionListRow) => void;
+  /** Household's most-used categories (server-derived) for one-tap picks. */
+  recentCategoryIds?: string[];
 }) {
   const [tag, setTag] = useState<TransactionTag>("lifestyle");
   const [categoryId, setCategoryId] = useState("");
@@ -251,8 +254,9 @@ export function TransactionEditDialog({
       },
     });
   }
-  // §6.2 — recently used categories float to the top, same as the Quick Add grid
-  const { orderedCategories, touchCategory } = useCategoryUsage(cats);
+  // §6.2 — usage tracker kept for its touch() bookkeeping; the accordion grid
+  // surfaces recents as chips instead of reordering the tree.
+  const { touchCategory } = useCategoryUsage(cats);
   // §6.2/§6.5 — inline "add a new category" flow, same as Quick Add
   const { open: openAddCategory, cancel: cancelAddCategory, addForm } = useCreateCategory(
     useCallback((c: CategoryOption) => {
@@ -552,14 +556,15 @@ export function TransactionEditDialog({
           </div>
 
           <CategoryGrid
-            categories={orderedCategories}
+            categories={cats}
             selectedId={categoryId}
             onSelect={setCategoryId}
             budgetRemaining={budgetRemaining}
-            hint="Optional — tap to categorize, None leaves it uncategorized"
+            hint="Optional — tap a group to open it, then a category; None leaves it uncategorized"
             allowClear
             onAddCategory={openAddCategory}
             addForm={addForm}
+            recentCategoryIds={recentCategoryIds}
           />
         </div>
         )}

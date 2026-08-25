@@ -11,10 +11,11 @@ import { CategoryGrid } from "./transaction-fields";
 
 /**
  * Amendment 20 — pick one category for a set of transactions (bulk assign,
- * also usable for a single row). Categories are ordered by how well they match
- * the selected rows' notes (rank-weighted §6.2 suggestions summed across the
- * selection), so the right chip tends to sit first. The "None" tile clears the
- * category — uncategorized is a valid destination, not an error.
+ * also usable for a single row). Two-level taxonomy: note-based suggestions
+ * surface as one-tap chips on top ("Ordered by matches with these
+ * transactions' notes"), the full tree renders as accordion groups below.
+ * The "None" tile clears the category — uncategorized is a valid destination,
+ * not an error.
  */
 export function CategoryPickerSheet({
   open,
@@ -22,6 +23,7 @@ export function CategoryPickerSheet({
   categories,
   rows,
   onPick,
+  recentCategoryIds = [],
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -29,21 +31,24 @@ export function CategoryPickerSheet({
   /** The transactions being categorized — drives the note-based suggestion ordering. */
   rows: TransactionListRow[];
   onPick: (categoryId: string | null) => void;
+  /** Household's most-used categories (server-derived) for one-tap picks. */
+  recentCategoryIds?: string[];
 }) {
-  const orderedCategories = useMemo(() => {
+  const suggestedIds = useMemo(() => {
     const notes = rows.map((r) => r.note ?? "").filter((n) => n.trim().length > 0);
-    if (notes.length === 0) return categories;
+    if (notes.length === 0) return [];
     const scores = new Map<string, number>();
     for (const note of notes) {
       suggestCategories(note, categories).forEach((c, rank) => {
         scores.set(c.id, (scores.get(c.id) ?? 0) + (10 - rank));
       });
     }
-    if (scores.size === 0) return categories;
-    return [...categories].sort((a, b) => (scores.get(b.id) ?? 0) - (scores.get(a.id) ?? 0));
+    return [...scores.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([id]) => id);
   }, [rows, categories]);
 
-  const suggested = orderedCategories !== categories;
+  const suggested = suggestedIds.length > 0;
   const isDesktop = useIsDesktop();
 
   return (
@@ -71,15 +76,17 @@ export function CategoryPickerSheet({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto pb-2">
           <CategoryGrid
-            categories={orderedCategories}
+            categories={categories}
             selectedId=""
             onSelect={(id) => onPick(id === "" ? null : id)}
             hint={
               suggested
-                ? "Ordered by matches with these transactions' notes — None leaves them uncategorized"
-                : "Tap a category to assign it — None leaves them uncategorized"
+                ? "Chips match these transactions' notes — None leaves them uncategorized"
+                : "Tap a group to open it, then a category — None leaves them uncategorized"
             }
             allowClear
+            suggestedCategoryIds={suggestedIds}
+            recentCategoryIds={recentCategoryIds}
           />
         </div>
       </SheetContent>

@@ -8,7 +8,7 @@ import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { categories, transactions } from "@/db/schema";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthEndInIST, monthKeyInIST, todayInIST } from "@/lib/dates";
-import { getCategories, getMembers } from "@/lib/meta";
+import { getCategories, getMembers, getRecentCategoryIds } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { cn } from "@/lib/utils";
@@ -195,13 +195,15 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const monthKey = typeof sp.month === "string" && MONTH_RE.test(sp.month) ? sp.month : monthKeyInIST();
-  const [data, firstPage, memberRows, categoryRows, excludeBills] = await Promise.all([
+  const [data, firstPage, memberRows, categoryRows, excludeBills, recentCategoryIds] = await Promise.all([
     getDashboardData(monthKey),
     getTransactionsPage({ cursor: null, filters: { month: monthKey } }),
     getMembers(),
     getCategories(),
     // §6.7 — global toggle, read outside the cache so flipping it needs no cache key change
     getExcludeBillsEnabled(db),
+    // Two-level picker — "Recent" chips for the ledger's category pickers
+    getRecentCategoryIds(),
   ]);
   const memberOptions = memberRows.map((m) => ({
     id: m.id, slug: m.slug, name: m.name, emoji: m.emoji, color: m.color, sortOrder: m.sortOrder,
@@ -412,6 +414,7 @@ export default async function DashboardPage({
             filters={{ month: monthKey }}
             members={memberOptions}
             categories={categoryOptions}
+            recentCategoryIds={recentCategoryIds}
           />
         </CardContent>
       </Card>

@@ -1,9 +1,9 @@
 import "server-only";
 
 import { unstable_cache } from "next/cache";
-import { asc } from "drizzle-orm";
+import { asc, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, members, templates as templateTable } from "@/db/schema";
+import { categories, members, templates as templateTable, transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
 import type { TemplateOption } from "@/components/quick-add/types";
 
@@ -43,4 +43,28 @@ export const getTemplates = unstable_cache(
   },
   ["family-ledger", "templates"],
   { tags: ["templates"], revalidate: 300 },
+);
+
+/**
+ * Household's most-used categories, newest commit first — the "Recent" chips
+ * in the category picker. Derived from the transactions table (no extra
+ * state to maintain): a category's recency is its latest entry. Cached under
+ * the "transactions" tag so any ledger mutation refreshes it; capped at 8.
+ */
+export const getRecentCategoryIds = unstable_cache(
+  async (): Promise<string[]> => {
+    const rows = await db
+      .select({
+        categoryId: transactions.categoryId,
+        latest: sql<string>`MAX(${transactions.createdAt})`,
+      })
+      .from(transactions)
+      .where(sql`${transactions.categoryId} IS NOT NULL`)
+      .groupBy(transactions.categoryId)
+      .orderBy(sql`MAX(${transactions.createdAt}) DESC`)
+      .limit(8);
+    return rows.map((r) => r.categoryId).filter((id): id is string => id !== null);
+  },
+  ["family-ledger", "recent-categories"],
+  { tags: ["transactions"], revalidate: 60 },
 );

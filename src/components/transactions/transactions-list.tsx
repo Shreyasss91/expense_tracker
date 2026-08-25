@@ -53,6 +53,7 @@ export function TransactionsList({
   members,
   categories,
   enableSelection = true,
+  recentCategoryIds = [],
 }: {
   initialRows: TransactionListRow[];
   initialCursor: Cursor | null;
@@ -61,6 +62,8 @@ export function TransactionsList({
   categories: CategoryOption[];
   /** UX pass — false hides all bulk tooling (dashboard's preview panel). */
   enableSelection?: boolean;
+  /** Household's most-used categories (server-derived) for one-tap picks. */
+  recentCategoryIds?: string[];
 }) {
   const [rows, setRows] = useState<TransactionListRow[]>(initialRows);
   const [cursor, setCursor] = useState<Cursor | null>(initialCursor);
@@ -487,6 +490,7 @@ export function TransactionsList({
         categories={categories}
         rows={selectedRows}
         onPick={(categoryId) => void handleAssign(categoryId)}
+        recentCategoryIds={recentCategoryIds}
       />
 
       <TransactionEditDialog
@@ -494,6 +498,7 @@ export function TransactionsList({
         members={members}
         categories={categories}
         open={editing !== null}
+        recentCategoryIds={recentCategoryIds}
         onOpenChange={(o) => { if (!o) setEditing(null); }}
         onRequestDelete={(row) => {
           setEditing(null);

@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { format, parse, subDays } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
-import { Check, Pencil, Plus, X } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Pencil, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -247,10 +248,14 @@ export function AmountTagRow({
 }
 
 /**
- * Category grid — tap a tile to select it (ring + check badge). Optionally shows
- * per-category remaining-budget hints (§6.7) and, when the rename callbacks are
- * provided, the inline rename/edit mode used by Quick Add. The edit dialog uses
- * the grid without the rename mode.
+ * Category grid, two-level edition — the taxonomy renders as ACCORDION
+ * sections (group headers expand/collapse; headers are never selectable —
+ * only leaves are assignable), preceded by two one-tap chip rows:
+ *   - "Suggested": caller-computed matches for the rows being categorized
+ *   - "Recent": the household's most-used categories (server-derived)
+ * The selected leaf's group starts expanded so an existing choice is always
+ * visible. All per-leaf behaviour (budget hints, rename mode, add-new) is
+ * unchanged — it just lives inside its group's section.
  */
 export function CategoryGrid({
   categories,
@@ -280,6 +285,9 @@ export function CategoryGrid({
   // add-new-category (optional — Quick Add only)
   onAddCategory,
   addForm,
+  // one-tap chip rows (optional)
+  suggestedCategoryIds = [],
+  recentCategoryIds = [],
 }: {
   categories: CategoryOption[];
   selectedId: string;
@@ -303,9 +311,142 @@ export function CategoryGrid({
   allowClear?: boolean;
   onAddCategory?: () => void;
   addForm?: AddCategoryForm;
+  suggestedCategoryIds?: string[];
+  recentCategoryIds?: string[];
 }) {
   const canRename = Boolean(onToggleEditMode && onStartRename && onSaveRename && onCancelRename);
   const canAdd = Boolean(onAddCategory);
+
+  // Tree derivation — groups are top-level rows (parentId null); everything
+  // else is a leaf under exactly one of them.
+  const { groups, byGroup } = useMemo(() => {
+    const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+    const groupRows = sorted.filter((c) => c.parentId === null);
+    const childMap = new Map<string, CategoryOption[]>();
+    for (const c of sorted) {
+      if (c.parentId === null) continue;
+      const list = childMap.get(c.parentId) ?? [];
+      list.push(c);
+      childMap.set(c.parentId, list);
+    }
+    return { groups: groupRows, byGroup: childMap };
+  }, [categories]);
+
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  // Keep the selected leaf visible: auto-expand its group whenever the
+  // selection changes (opening a different row, picking a chip, etc.).
+  useEffect(() => {
+    if (!selectedId) return;
+    const parent = categories.find((c) => c.id === selectedId)?.parentId;
+    if (parent) setExpanded((prev) => (prev.has(parent) ? prev : new Set(prev).add(parent)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
+
+  // Chip rows resolve to leaf options only (groups are not assignable).
+  const suggestedChips = useMemo(
+    () => suggestedCategoryIds.map((id) => categories.find((c) => c.id === id)).filter((c): c is CategoryOption => !!c && c.parentId !== null),
+    [suggestedCategoryIds, categories],
+  );
+  const recentChips = useMemo(
+    () =>
+      recentCategoryIds
+        .filter((id) => !suggestedCategoryIds.includes(id))
+        .map((id) => categories.find((c) => c.id === id))
+        .filter((c): c is CategoryOption => !!c && c.parentId !== null),
+    [recentCategoryIds, suggestedCategoryIds, categories],
+  );
+
+  /** One leaf chip — identical rendering wherever it appears. */
+  function renderLeafChip(c: CategoryOption) {
+    if (renamingId === c.id && canRename) {
+      return (
+        <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
+          <div className="flex gap-1">
+            <Input
+              value={renameEmoji}
+              onChange={(e) => onRenameEmojiChange?.(e.target.value)}
+              className="h-8 w-10 shrink-0 px-1 text-center text-base"
+              aria-label="Category emoji"
+              maxLength={4}
+            />
+            <Input
+              autoFocus
+              value={renameValue}
+              onChange={(e) => onRenameValueChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                // preventDefault stops Enter/Escape from also submitting the form
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  onSaveRename?.(c);
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  onCancelRename?.();
+                }
+              }}
+              className="h-8 min-w-0 flex-1 text-center text-xs"
+              aria-label="Category name"
+              maxLength={50}
+            />
+          </div>
+          <div className="flex justify-center gap-1">
+            <Button type="button" size="icon" className="h-6 w-6" disabled={renaming} onClick={() => onSaveRename?.(c)} aria-label="Save name and emoji">
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={onCancelRename} aria-label="Cancel rename">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <button
+        key={c.id}
+        type="button"
+        disabled={renaming}
+        onClick={() => (editMode && canRename ? onStartRename?.(c) : onSelect(c.id))}
+        className={cn(
+          "relative inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium active:scale-95 disabled:opacity-60",
+          !editMode && selectedId === c.id && "bg-primary text-primary-foreground",
+        )}
+        style={!editMode && selectedId === c.id ? undefined : { borderColor: c.color }}
+      >
+        {!editMode && selectedId === c.id && (
+          <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
+            <Check className="h-3 w-3" />
+          </span>
+        )}
+        {editMode && canRename && (
+          <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground" aria-hidden>
+            <Pencil className="h-2.5 w-2.5" />
+          </span>
+        )}
+        <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
+        {/* §6.7 — remaining budget hint, when this category has one for the month */}
+        {showBudgetHints && budgetRemaining?.get(c.id) !== undefined && (
+          <span
+            className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
+          >
+            {(budgetRemaining.get(c.id) ?? 0) < 0
+              ? `·${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
+              : `·${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
+          </span>
+        )}
+      </button>
+    );
+  }
+
+  function renderChipRow(label: string, chips: CategoryOption[]) {
+    if (chips.length === 0 || editMode) return null;
+    return (
+      <div className="mb-2">
+        <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+        <div className="flex flex-wrap gap-2">{chips.map(renderLeafChip)}</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -335,10 +476,12 @@ export function CategoryGrid({
           ))}
       </div>
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <p>{hint ?? (editMode ? "Tap a category to rename" : "Tap a category to select")}</p>
+        <p>{hint ?? (editMode ? "Tap a category to rename" : "Tap a group to open it, then a category")}</p>
         {showAllLink && <span aria-hidden>·</span>}
         {showAllLink}
       </div>
+
+      {/* None + suggested chips share the first row */}
       <div className="flex flex-wrap gap-2">
         {/* "None" tile — un-assign the category (Amendment 20) */}
         {allowClear && !editMode && (
@@ -360,139 +503,111 @@ export function CategoryGrid({
             None
           </button>
         )}
-        {categories.map((c) =>
-          renamingId === c.id && canRename ? (
-            <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
-              <div className="flex gap-1">
-                <Input
-                  value={renameEmoji}
-                  onChange={(e) => onRenameEmojiChange?.(e.target.value)}
-                  className="h-8 w-10 shrink-0 px-1 text-center text-base"
-                  aria-label="Category emoji"
-                  maxLength={4}
-                />
-                <Input
-                  autoFocus
-                  value={renameValue}
-                  onChange={(e) => onRenameValueChange?.(e.target.value)}
-                  onKeyDown={(e) => {
-                    // preventDefault stops Enter/Escape from also submitting the form
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      onSaveRename?.(c);
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      onCancelRename?.();
-                    }
-                  }}
-                  className="h-8 min-w-0 flex-1 text-center text-xs"
-                  aria-label="Category name"
-                  maxLength={50}
-                />
-              </div>
-              <div className="flex justify-center gap-1">
-                <Button type="button" size="icon" className="h-6 w-6" disabled={renaming} onClick={() => onSaveRename?.(c)} aria-label="Save name and emoji">
-                  <Check className="h-3.5 w-3.5" />
-                </Button>
-                <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={onCancelRename} aria-label="Cancel rename">
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              key={c.id}
-              type="button"
-              disabled={renaming}
-              onClick={() => (editMode && canRename ? onStartRename?.(c) : onSelect(c.id))}
-              className={cn(
-                "relative inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium active:scale-95 disabled:opacity-60",
-                !editMode && selectedId === c.id && "bg-primary text-primary-foreground",
-              )}
-              style={!editMode && selectedId === c.id ? undefined : { borderColor: c.color }}
-            >
-              {!editMode && selectedId === c.id && (
-                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
-                  <Check className="h-3 w-3" />
-                </span>
-              )}
-              {editMode && canRename && (
-                <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground" aria-hidden>
-                  <Pencil className="h-2.5 w-2.5" />
-                </span>
-              )}
-              <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
-              {/* §6.7 — remaining budget hint, when this category has one for the month */}
-              {showBudgetHints && budgetRemaining?.get(c.id) !== undefined && (
-                <span
-                  className={`text-[10px] font-medium tabular-nums ${(budgetRemaining.get(c.id) ?? 0) < 0 ? "text-red-600" : "text-emerald-600"}`}
-                >
-                  {(budgetRemaining.get(c.id) ?? 0) < 0
-                    ? `·${formatINR(-(budgetRemaining.get(c.id) ?? 0))} over`
-                    : `·${formatINR(budgetRemaining.get(c.id) ?? 0)} left`}
-                </span>
-              )}
-            </button>
-          )
-        )}
-
-        {/* add-new-category tile (Quick Add only, hidden while renaming) */}
-        {!editMode && canAdd &&
-          (addForm ? (
-            <div key="__add" className="flex flex-col gap-1 rounded-xl border border-dashed p-2">
-              <div className="flex gap-1">
-                <Input
-                  value={addForm.emoji}
-                  onChange={(e) => addForm.onEmojiChange(e.target.value)}
-                  className="h-8 w-10 shrink-0 px-1 text-center text-base"
-                  aria-label="Category emoji"
-                  maxLength={4}
-                />
-                <Input
-                  autoFocus
-                  value={addForm.name}
-                  onChange={(e) => addForm.onNameChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    // preventDefault stops Enter/Escape from also submitting the form
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addForm.onSave();
-                    }
-                    if (e.key === "Escape") {
-                      e.preventDefault();
-                      addForm.onCancel();
-                    }
-                  }}
-                  className="h-8 min-w-0 flex-1 text-center text-xs"
-                  aria-label="Category name"
-                  placeholder="New category"
-                  maxLength={50}
-                />
-              </div>
-              {addForm.error && (
-                <p className="text-center text-[10px] font-medium text-destructive">{addForm.error}</p>
-              )}
-              <div className="flex justify-center gap-1">
-                <Button type="button" size="icon" className="h-6 w-6" disabled={addForm.saving} onClick={addForm.onSave} aria-label="Save new category">
-                  <Check className="h-3.5 w-3.5" />
-                </Button>
-                <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={addForm.saving} onClick={addForm.onCancel} aria-label="Cancel">
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <button
-              key="__add"
-              type="button"
-              onClick={onAddCategory}
-              className="inline-flex items-center justify-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium text-muted-foreground active:scale-95"
-            >
-              <Plus className="h-3 w-3" /> Add
-            </button>
-          ))}
+        {renderChipRowInline(suggestedChips)}
       </div>
+
+      {renderChipRow("Recent", recentChips)}
+
+      {/* accordion groups — headers toggle visibility, never select */}
+      <div className="space-y-1">
+        {groups.map((g) => {
+          const children = byGroup.get(g.id) ?? [];
+          const isOpen = expanded.has(g.id);
+          return (
+            <div key={g.id}>
+              <button
+                type="button"
+                disabled={renaming}
+                aria-expanded={isOpen}
+                onClick={() =>
+                  setExpanded((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(g.id)) next.delete(g.id);
+                    else next.add(g.id);
+                    return next;
+                  })
+                }
+                className={cn(
+                  "flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-muted",
+                  editMode && "cursor-default hover:bg-transparent",
+                )}
+              >
+                {isOpen ? (
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                )}
+                <span className="text-sm">{g.emoji}</span>
+                <span className="truncate text-xs font-semibold">{g.name}</span>
+                <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">{children.length}</span>
+              </button>
+              {isOpen && <div className="flex flex-wrap gap-2 pb-1 pl-4 pt-0.5">{children.map(renderLeafChip)}</div>}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* add-new-category tile (Quick Add only, hidden while renaming) */}
+      {!editMode && canAdd &&
+        (addForm ? (
+          <div key="__add" className="mt-2 flex flex-col gap-1 rounded-xl border border-dashed p-2">
+            <div className="flex gap-1">
+              <Input
+                value={addForm.emoji}
+                onChange={(e) => addForm.onEmojiChange(e.target.value)}
+                className="h-8 w-10 shrink-0 px-1 text-center text-base"
+                aria-label="Category emoji"
+                maxLength={4}
+              />
+              <Input
+                autoFocus
+                value={addForm.name}
+                onChange={(e) => addForm.onNameChange(e.target.value)}
+                onKeyDown={(e) => {
+                  // preventDefault stops Enter/Escape from also submitting the form
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addForm.onSave();
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    addForm.onCancel();
+                  }
+                }}
+                className="h-8 min-w-0 flex-1 text-center text-xs"
+                aria-label="Category name"
+                placeholder="New category"
+                maxLength={50}
+              />
+            </div>
+            {addForm.error && (
+              <p className="text-center text-[10px] font-medium text-destructive">{addForm.error}</p>
+            )}
+            <div className="flex justify-center gap-1">
+              <Button type="button" size="icon" className="h-6 w-6" disabled={addForm.saving} onClick={addForm.onSave} aria-label="Save new category">
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={addForm.saving} onClick={addForm.onCancel} aria-label="Cancel">
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            key="__add"
+            type="button"
+            onClick={onAddCategory}
+            className="mt-2 inline-flex items-center justify-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium text-muted-foreground active:scale-95"
+          >
+            <Plus className="h-3 w-3" /> Add
+          </button>
+        ))}
     </div>
   );
+
+  /** Suggested chips render inside the first row next to "None" (no label). */
+  function renderChipRowInline(chips: CategoryOption[]) {
+    if (chips.length === 0 || editMode) return null;
+    return <>{chips.map((c) => renderLeafChip({ ...c }))}</>;
+  }
 }

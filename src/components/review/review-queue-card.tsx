@@ -31,12 +31,15 @@ export function ReviewQueueCard({
   pendingCount: initialPendingCount,
   members,
   categories,
+  recentCategoryIds = [],
 }: {
   initialRows: ReviewItem[];
   nextCursor: Cursor | null;
   pendingCount: number;
   members: MemberOption[];
   categories: CategoryOption[];
+  /** Household's most-used categories (server-derived) for one-tap picks. */
+  recentCategoryIds?: string[];
 }) {
   const [rows, setRows] = useState<ReviewItem[]>(initialRows);
   const [nextCursor, setNextCursor] = useState<Cursor | null>(initialNextCursor);
@@ -414,6 +417,7 @@ export function ReviewQueueCard({
           categories={categories}
           rows={selectedRows}
           onPick={(categoryId) => void handleAssign(categoryId)}
+          recentCategoryIds={recentCategoryIds}
         />
 
         <TransactionEditDialog
@@ -421,6 +425,7 @@ export function ReviewQueueCard({
           members={members}
           categories={categories}
           open={editing !== null}
+          recentCategoryIds={recentCategoryIds}
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
