@@ -61,6 +61,21 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   const [excludeBillsOn, setExcludeBillsOn] = useState(excludeBills);
   const [togglingBills, setTogglingBills] = useState(false);
 
+  // Budgets are LEAF-only + total (§6.7) — group rows never carry a limit and
+  // the server rejects them, so every input/row below is built from leaves,
+  // ordered by their group's sortOrder.
+  const { leavesByGroup } = (() => {
+    const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+    const groupRows = sorted.filter((c) => c.parentId === null);
+    return {
+      leavesByGroup: groupRows.map((g) => ({
+        group: g,
+        leaves: sorted.filter((c) => c.parentId === g.id),
+      })),
+    };
+  })();
+  const leaves = leavesByGroup.flatMap(({ leaves }) => leaves);
+
   // Effective value for a category in a given scope (explicitly passed, never
   // the state — so switchScope can resolve the NEW scope before it's applied):
   // exact-month row wins, otherwise the every-month default row. "" is the
@@ -78,36 +93,36 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   // re-save silently wipe the existing budget (empty input = no limit).
   const [totalInput, setTotalInput] = useState(() => paiseToRupeesInput(effectivePaise("", null)));
   const [catInputs, setCatInputs] = useState<Record<string, string>>(() =>
-    Object.fromEntries(categories.map((c) => [c.id, paiseToRupeesInput(effectivePaise("", c.id))])),
+    Object.fromEntries(leaves.map((c) => [c.id, paiseToRupeesInput(effectivePaise("", c.id))])),
   );
   // §6.7 — when the category list gains ids (a category created inline from Quick
   // Add / the edit dialog), give each new category a clean input row. The id-set
   // guard never touches values the user has already typed.
-  const catIdsRef = useRef(categories.map((c) => c.id).sort().join(","));
+  const catIdsRef = useRef(leaves.map((c) => c.id).sort().join(","));
   useEffect(() => {
-    const ids = categories.map((c) => c.id).sort().join(",");
+    const ids = leaves.map((c) => c.id).sort().join(",");
     if (ids !== catIdsRef.current) {
       catIdsRef.current = ids;
       setCatInputs((prev) => {
         const next = { ...prev };
-        for (const c of categories) if (!(c.id in next)) next[c.id] = "";
+        for (const c of leaves) if (!(c.id in next)) next[c.id] = "";
         return next;
       });
     }
-  }, [categories]);
+  }, [categories, leaves]);
 
   function switchScope(next: string) {
     const scopeKey = next === DEFAULT_SCOPE ? "" : next;
     setScope(next);
     setTotalInput(paiseToRupeesInput(effectivePaise(scopeKey, null)));
-    setCatInputs(Object.fromEntries(categories.map((c) => [c.id, paiseToRupeesInput(effectivePaise(scopeKey, c.id))])));
+    setCatInputs(Object.fromEntries(leaves.map((c) => [c.id, paiseToRupeesInput(effectivePaise(scopeKey, c.id))])))
   }
 
   async function save() {
     const res = await saveBudgets({
       month: scope === DEFAULT_SCOPE ? null : scope,
       totalPaise: rupeesToPaiseInput(totalInput),
-      categories: categories.map((c) => ({ categoryId: c.id, paise: rupeesToPaiseInput(catInputs[c.id] ?? "") })),
+      categories: leaves.map((c) => ({ categoryId: c.id, paise: rupeesToPaiseInput(catInputs[c.id] ?? "") })),
     });
     if (res.ok) {
       toast.success(scope === DEFAULT_SCOPE ? "Default budget saved" : "Budget saved");
@@ -195,18 +210,27 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
       <div className="border-t pt-3">
         <p className="mb-2 text-xs font-medium text-muted-foreground">Category limits (optional)</p>
         <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
-          {categories.map((c) => (
-            <li key={c.id} className="flex items-center gap-2">
-              <span className="w-6 text-center text-base">{c.emoji}</span>
-              <span className="flex-1 truncate text-sm">{c.name}</span>
-              <Input
-                aria-label={`${c.name} limit`}
-                inputMode="decimal"
-                placeholder="No limit"
-                value={catInputs[c.id] ?? ""}
-                onChange={(e) => setCatInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                className="h-8 w-32 text-right"
-              />
+          {leavesByGroup.map(({ group, leaves: kids }) => (
+            <li key={group.id}>
+              <p className="mt-2 mb-1 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground" style={{ color: group.color }}>
+                {group.emoji} {group.name}
+              </p>
+              <ul className="space-y-1.5">
+                {kids.map((c) => (
+                  <li key={c.id} className="flex items-center gap-2 pl-3">
+                    <span className="w-6 text-center text-base">{c.emoji}</span>
+                    <span className="flex-1 truncate text-sm">{c.name}</span>
+                    <Input
+                      aria-label={`${c.name} limit`}
+                      inputMode="decimal"
+                      placeholder="No limit"
+                      value={catInputs[c.id] ?? ""}
+                      onChange={(e) => setCatInputs((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                      className="h-8 w-32 text-right"
+                    />
+                  </li>
+                ))}
+              </ul>
             </li>
           ))}
         </ul>

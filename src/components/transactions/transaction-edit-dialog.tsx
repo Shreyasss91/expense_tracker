@@ -488,11 +488,25 @@ export function TransactionEditDialog({
                     className="h-8 w-36 shrink-0 rounded-lg border bg-background px-1.5 text-xs"
                   >
                     <option value="">Uncategorized</option>
-                    {cats.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.emoji} {c.name}
-                      </option>
-                    ))}
+                    {/* leaves only — split parts become transactions, and
+                        transactions can never reference a group */}
+                    {[...new Set(cats.filter((c) => c.parentId !== null).map((c) => c.parentId))].map(
+                      (parentId) => {
+                        const group = cats.find((c) => c.id === parentId);
+                        return (
+                          <optgroup key={parentId} label={`${group?.emoji ?? "🧺"} ${group?.name ?? "Other"}`}>
+                            {cats
+                              .filter((c) => c.parentId === parentId)
+                              .sort((a, b) => a.sortOrder - b.sortOrder)
+                              .map((c) => (
+                                <option key={c.id} value={c.id}>
+                                  {c.emoji} {c.name}
+                                </option>
+                              ))}
+                          </optgroup>
+                        );
+                      },
+                    )}
                   </select>
                 </div>
               </div>

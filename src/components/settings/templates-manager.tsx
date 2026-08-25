@@ -29,15 +29,37 @@ export function TemplatesManager({
   categories: CategoryOption[];
   members: MemberOption[];
 }) {
+  // Templates carry an ASSIGNABLE category — leaves only; groups exist purely
+  // as rollup containers and the server rejects them.
+  const { leavesByGroup, firstLeafId } = (() => {
+    const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+    const groupRows = sorted.filter((c) => c.parentId === null);
+    const sections = groupRows.map((g) => ({ group: g, leaves: sorted.filter((c) => c.parentId === g.id) }));
+    return { leavesByGroup: sections, firstLeafId: sections[0]?.leaves[0]?.id ?? "" };
+  })();
+
   const [items, setItems] = useState(templates);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
+  const [categoryId, setCategoryId] = useState(firstLeafId);
   const [tag, setTag] = useState<TemplateTag>("recurring");
   const [note, setNote] = useState("");
   const [autoDay, setAutoDay] = useState("");
   const [autoMemberId, setAutoMemberId] = useState("");
   const [saving, setSaving] = useState<string | "new" | null>(null);
+
+  /** Grouped <optgroup> options for native selects — leaves only. */
+  function categoryOptions() {
+    return leavesByGroup.map(({ group, leaves }) => (
+      <optgroup key={group.id} label={`${group.emoji} ${group.name}`}>
+        {leaves.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.emoji} {c.name}
+          </option>
+        ))}
+      </optgroup>
+    ));
+  }
 
   function patch<K extends keyof TemplateOption>(id: string, field: K, value: TemplateOption[K]) {
     setItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
@@ -151,7 +173,7 @@ export function TemplatesManager({
           <div className="space-y-1">
             <Label htmlFor="new-template-category" className="text-xs">Category</Label>
             <select id="new-template-category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-8 w-full rounded-lg border bg-background px-2 text-sm">
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+              {categoryOptions()}
             </select>
           </div>
           <div className="space-y-1">
@@ -203,7 +225,7 @@ export function TemplatesManager({
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <select aria-label="Template category" value={item.categoryId} onChange={(e) => patch(item.id, "categoryId", e.target.value)} className="h-8 w-full rounded-lg border bg-background px-2 text-sm">
-                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                  {categoryOptions()}
                 </select>
                 <select aria-label="Template tag" value={item.tag} onChange={(e) => patch(item.id, "tag", e.target.value as TemplateTag)} className="h-8 w-full rounded-lg border bg-background px-2 text-sm">
                   <option value="recurring">Recurring</option>
