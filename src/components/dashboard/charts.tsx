@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   CartesianGrid,
   Cell,
@@ -12,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { ChevronRight, CornerLeftUp } from "lucide-react";
 import { formatINR } from "@/lib/money";
 
 export interface CategorySlice {
@@ -21,6 +23,20 @@ export interface CategorySlice {
   paise: number;
   /** UX pass — last month's total for the same category; MoM delta chip in the legend. */
   prevPaise?: number;
+}
+
+/**
+ * Two-level hierarchy — one leaf row as fetched by the dashboard: its own
+ * spend plus everything needed to roll it up into its group client-side.
+ * `parentId === null` marks uncategorized spend, which is rendered as its
+ * own standalone slice at group level (Amendment 20 keeps it explicit).
+ */
+export interface CategoryTreeSlice extends CategorySlice {
+  id: string | null;
+  parentId: string | null;
+  groupName?: string;
+  groupEmoji?: string;
+  groupColor?: string;
 }
 
 export interface TrendPoint {
@@ -74,8 +90,59 @@ function CategoryDelta({ current, previous }: { current: number; previous?: numb
   );
 }
 
-export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
-  const total = slices.reduce((s, c) => s + c.paise, 0);
+interface PieLevel {
+  /** Stable React key + expansion id ("null" for the uncategorized pseudo-group). */
+  key: string;
+  name: string;
+  emoji: string;
+  color: string;
+  paise: number;
+  prevPaise: number;
+  /** Children under this group — present only on real, non-leaf levels. */
+  children?: PieLevel[];
+}
+
+/**
+ * Two-level pie — defaults to GROUP slices (~7), tap a legend row to drill
+ * into that group's categories in place; a "back" row returns. Uncategorized
+ * spend stays its own explicit top-level slice (Amendment 20). MoM delta
+ * chips recompute for whatever level is shown: prev values arrive per leaf
+ * and are summed alongside the current totals, so both levels agree.
+ */
+export function CategoryPie({ leaves }: { leaves: CategoryTreeSlice[] }) {
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
+
+  const topLevel = useMemo<PieLevel[]>(() => {
+    const groups = new Map<string, PieLevel>();
+    for (const leaf of leaves) {
+      if (leaf.parentId === null || !leaf.parentId) {
+        // Uncategorized — a standalone slice at group level, never expandable
+        const key = "u:null";
+        const g = groups.get(key);
+        if (g) {
+          g.paise += leaf.paise;
+          g.prevPaise += leaf.prevPaise ?? 0;
+        } else {
+          groups.set(key, { key, name: "Uncategorized", emoji: "❔", color: "#9ca3af", paise: leaf.paise, prevPaise: leaf.prevPaise ?? 0 });
+        }
+        continue;
+      }
+      const key = `g:${leaf.parentId}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { key, name: leaf.groupName ?? "—", emoji: leaf.groupEmoji ?? "🧺", color: leaf.groupColor ?? "#9ca3af", paise: 0, prevPaise: 0, children: [] };
+        groups.set(key, g);
+      }
+      g.paise += leaf.paise;
+      g.prevPaise += leaf.prevPaise ?? 0;
+      g.children!.push({ key: `c:${leaf.id}`, name: leaf.name, emoji: leaf.emoji, color: leaf.color, paise: leaf.paise, prevPaise: leaf.prevPaise ?? 0 });
+    }
+    return [...groups.values()];
+  }, [leaves]);
+
+  const level = expandedKey ? topLevel.find((g) => g.key === expandedKey)?.children ?? [] : topLevel;
+
+  const total = level.reduce((s, c) => s + c.paise, 0);
 
   // §6.3.1 empty state: a card, not a zero-slice chart
   if (total === 0) {
@@ -94,9 +161,9 @@ export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
           <PieChart>
             {/* slice strokes follow the theme background so slices read as
                 one chart in both modes (white gaps look harsh in dark) */}
-            <Pie data={slices} dataKey="paise" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2} strokeWidth={1} stroke="hsl(var(--background))">
-              {slices.map((s) => (
-                <Cell key={s.name} fill={s.color} />
+            <Pie data={level} dataKey="paise" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2} strokeWidth={1} stroke="hsl(var(--background))">
+              {level.map((s) => (
+                <Cell key={s.key} fill={s.color} />
               ))}
             </Pie>
             <Tooltip formatter={(v) => inr(Number(v))} contentStyle={tooltipStyle} />
@@ -104,27 +171,63 @@ export function CategoryPie({ slices }: { slices: CategorySlice[] }) {
         </ResponsiveContainer>
       </div>
       <ul className="mt-2 space-y-1">
-        {slices
+        {expandedKey && (
+          <li>
+            <button
+              type="button"
+              onClick={() => setExpandedKey(null)}
+              className="flex w-full items-center gap-1.5 rounded-lg px-1 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <CornerLeftUp className="h-3.5 w-3.5" /> All groups
+            </button>
+          </li>
+        )}
+        {level
           .slice()
           .sort((a, b) => b.paise - a.paise)
           .map((s) => {
-            const p = pct(s.paise, total);
+            const expandable = !expandedKey && !!s.children;
             return (
-              <li key={s.name} className="flex items-center gap-2 text-sm">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: s.color }} />
-                <span className="truncate">
-                  {s.emoji} {s.name}
-                </span>
-                <CategoryDelta current={s.paise} previous={s.prevPaise} />
-                <span className="ml-auto tabular-nums font-medium">{formatINR(s.paise)}</span>
-                <span className="w-12 text-right tabular-nums text-muted-foreground">
-                  {p === null ? "—" : `${p.toFixed(0)}%`}
-                </span>
+              <li key={s.key}>
+                {expandable ? (
+                  <button
+                    type="button"
+                    onClick={() => setExpandedKey(s.key)}
+                    aria-label={`Show categories in ${s.name}`}
+                    className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-sm transition-colors hover:bg-muted"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <LegendRowContent slice={{ ...s }} total={total} />
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 px-1 py-0.5 text-sm">
+                    {!expandedKey && <span className="w-3.5 shrink-0" />}
+                    <LegendRowContent slice={s} total={total} />
+                  </div>
+                )}
               </li>
             );
           })}
       </ul>
     </div>
+  );
+}
+
+/** The shared legend line: swatch · name · MoM chip · amount · share. */
+function LegendRowContent({ slice, total }: { slice: PieLevel; total: number }) {
+  const p = pct(slice.paise, total);
+  return (
+    <>
+      <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: slice.color }} />
+      <span className="truncate">
+        {slice.emoji} {slice.name}
+      </span>
+      <CategoryDelta current={slice.paise} previous={slice.prevPaise} />
+      <span className="ml-auto tabular-nums font-medium">{formatINR(slice.paise)}</span>
+      <span className="w-12 text-right tabular-nums text-muted-foreground">
+        {p === null ? "—" : `${p.toFixed(0)}%`}
+      </span>
+    </>
   );
 }
 

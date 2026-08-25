@@ -2,6 +2,7 @@ import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { addMonths, format, parse } from "date-fns";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { categories, transactions } from "@/db/schema";
@@ -32,6 +33,10 @@ const getDashboardData = unstable_cache(
     const baseDate = parse(`${monthKey}-01`, "yyyy-MM-dd", new Date());
     const end = monthEndInIST(baseDate);
     const range = and(gte(transactions.date, start), lte(transactions.date, end));
+    // Two-level hierarchy — every leaf carries its group's display fields so
+    // the pie can roll spend up client-side (and drill back down) with no
+    // extra round trip.
+    const parentCategories = alias(categories, "parent_categories");
 
     const [totalsTags, catRows, prevCatRows, trendRows, largestRows, budgetRows] = await Promise.all([
       // expense + all three expense tags in a single pass over the month
@@ -51,17 +56,23 @@ const getDashboardData = unstable_cache(
           name: categories.name,
           emoji: categories.emoji,
           color: categories.color,
+          parentId: categories.parentId,
+          groupName: parentCategories.name,
+          groupEmoji: parentCategories.emoji,
+          groupColor: parentCategories.color,
           total: sql<string>`SUM(${transactions.amount})`,
         })
         .from(transactions)
         // Amendment 20 — left join so uncategorized spend appears as its own slice
         .leftJoin(categories, eq(transactions.categoryId, categories.id))
+        .leftJoin(parentCategories, eq(categories.parentId, parentCategories.id))
         .where(and(gte(transactions.date, start), lte(transactions.date, end)))
-        .groupBy(categories.id, categories.name, categories.emoji, categories.color),
+        .groupBy(categories.id, categories.name, categories.emoji, categories.color, categories.parentId, parentCategories.name, parentCategories.emoji, parentCategories.color),
       // UX pass — same shape for the previous month, for per-category MoM deltas
       db
         .select({
           id: categories.id,
+          parentId: categories.parentId,
           total: sql<string>`SUM(${transactions.amount})`,
         })
         .from(transactions)
@@ -72,7 +83,7 @@ const getDashboardData = unstable_cache(
             lte(transactions.date, monthEndInIST(addMonths(baseDate, -1))),
           ),
         )
-        .groupBy(categories.id),
+        .groupBy(categories.id, categories.parentId),
       db
         .select({
           month: sql<string>`substring(${transactions.date}::text from 1 for 7)`,
@@ -339,12 +350,17 @@ export default async function DashboardPage({
         </CardHeader>
         <CardContent className="space-y-3">
           <CategoryPie
-            slices={data.catRows.map((r) => ({
+            leaves={data.catRows.map((r) => ({
+              id: r.id,
               name: r.name ?? "Uncategorized",
               emoji: r.emoji ?? "❔",
               color: r.color ?? "#9ca3af",
               paise: rupeesToPaise(r.total),
               prevPaise: data.catPrev[String(r.id)] ?? 0,
+              parentId: r.parentId,
+              groupName: r.groupName ?? undefined,
+              groupEmoji: r.groupEmoji ?? undefined,
+              groupColor: r.groupColor ?? undefined,
             }))}
           />
           {/* §6.7 — per-category budget bars live with the category spend */}
