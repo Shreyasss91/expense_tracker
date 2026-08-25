@@ -37,6 +37,8 @@ export const getTemplates = unstable_cache(
       amountPaise: rupeesToPaise(row.amount),
       note: row.note,
       sortOrder: row.sortOrder,
+      autoDay: row.autoDay,
+      memberId: row.memberId,
     }));
   },
   ["family-ledger", "templates"],

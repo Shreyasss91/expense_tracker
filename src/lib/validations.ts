@@ -64,6 +64,13 @@ export const templateSchema = z.object({
     .nullable()
     .transform((v) => (v === "" ? null : v)),
   sortOrder: z.number().int().min(0).optional(),
+  // Recurring auto-entry (UX pass): day of month the daily cron stamps the
+  // template; null/undefined = manual-only. Days 29–31 are excluded so short
+  // months never skip or double-fire.
+  autoDay: z.number().int().min(1).max(28).nullable().optional(),
+  // Whose ledger the auto entry lands under; null/undefined = household
+  // default (first member). Existence is checked server-side.
+  memberId: z.string().uuid().nullable().optional(),
 });
 
 export type TemplateInput = z.infer<typeof templateSchema>;

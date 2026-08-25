@@ -9,6 +9,7 @@ import { CategoriesManager } from "@/components/settings/categories-manager";
 import { MembersManager } from "@/components/settings/members-manager";
 import { BudgetManager } from "@/components/settings/budget-manager";
 import { TemplatesManager } from "@/components/settings/templates-manager";
+import { OfflineEntriesManager } from "@/components/settings/offline-entries-manager";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
 export const metadata = { title: "Settings — Family Ledger" };
@@ -66,11 +67,12 @@ export default async function SettingsPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Templates</CardTitle>
           <CardDescription className="text-xs">
-            Save recurring expenses for one-tap prefills in Quick Add. Templates never store a member; the active member is used when you add the transaction.
+            Save recurring expenses for one-tap prefills in Quick Add. Set an auto-add day (1–28) and the
+            daily cron stamps the entry automatically — the member picker decides whose ledger it lands in.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TemplatesManager templates={templateRows} categories={categoryOptions} />
+          <TemplatesManager templates={templateRows} categories={categoryOptions} members={memberOptions} />
         </CardContent>
       </Card>
 
@@ -97,6 +99,19 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} excludeBills={excludeBills} />
+        </CardContent>
+      </Card>
+
+      <Card id="offline-entries">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Offline entries</CardTitle>
+          <CardDescription className="text-xs">
+            Expenses added while offline wait on this device until they sync. Discard any you decided
+            against; everything else syncs automatically when you&apos;re back online.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OfflineEntriesManager members={memberOptions} />
         </CardContent>
       </Card>
 

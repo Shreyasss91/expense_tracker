@@ -72,6 +72,10 @@ export const transactions = pgTable(
       t.createdAt.desc(),
       t.id.desc(),
     ),
+    // UX/perf pass — substring note search (`?q=` → ILIKE '%term%') via pg_trgm.
+    // The extension is created by migration drizzle/0006_note_search_trgm.sql;
+    // this definition keeps the index present through future push/diff cycles.
+    noteTrgmIdx: index("transactions_note_trgm_idx").using("gin", sql`${t.note} gin_trgm_ops`),
   }),
 );
 
@@ -133,11 +137,22 @@ export const templates = pgTable("templates", {
   tag: transactionTagEnum("tag").notNull(), // §5.2 triad applies to templates
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull(), // §5.8
   note: text("note"), // optional prefill note
+  // Recurring auto-entry (UX pass): day of month (1–28) the daily cron stamps
+  // this template into the ledger automatically; NULL = manual-only template.
+  autoDay: integer("auto_day"),
+  // "YYYY-MM" of the last auto-stamped month — the idempotency marker that
+  // keeps the daily cron from creating the same bill twice in one month.
+  lastAutoKey: text("last_auto_key"),
+  // Whose ledger the auto-created entry lands under; NULL = the first member
+  // (lowest sort order) as the household default. Manual Quick Add prefills
+  // still run under the active member — this only affects cron creation.
+  memberId: uuid("member_id").references(() => members.id),
   sortOrder: integer("sort_order").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (t) => ({
   sortOrderIdx: index("templates_sort_order_idx").on(t.sortOrder),
+  autoDayIdx: index("templates_auto_day_idx").on(t.autoDay),
 }));
 
 export type Template = typeof templates.$inferSelect;

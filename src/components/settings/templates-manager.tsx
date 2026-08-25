@@ -7,7 +7,7 @@ import { createTemplate, deleteTemplate, updateTemplate } from "@/actions/templa
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { CategoryOption, TemplateOption } from "@/components/quick-add/types";
+import type { CategoryOption, MemberOption, TemplateOption } from "@/components/quick-add/types";
 
 type TemplateTag = TemplateOption["tag"];
 
@@ -20,17 +20,36 @@ function amountInput(paise: number): string {
   return paise > 0 ? String(paise / 100) : "";
 }
 
-export function TemplatesManager({ templates, categories }: { templates: TemplateOption[]; categories: CategoryOption[] }) {
+export function TemplatesManager({
+  templates,
+  categories,
+  members,
+}: {
+  templates: TemplateOption[];
+  categories: CategoryOption[];
+  members: MemberOption[];
+}) {
   const [items, setItems] = useState(templates);
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? "");
   const [tag, setTag] = useState<TemplateTag>("recurring");
   const [note, setNote] = useState("");
+  const [autoDay, setAutoDay] = useState("");
+  const [autoMemberId, setAutoMemberId] = useState("");
   const [saving, setSaving] = useState<string | "new" | null>(null);
 
-  function patch(id: string, field: keyof TemplateOption, value: string | number | null) {
+  function patch<K extends keyof TemplateOption>(id: string, field: K, value: TemplateOption[K]) {
     setItems((current) => current.map((item) => (item.id === id ? { ...item, [field]: value } : item)));
+  }
+
+  /** "" or 1–28 — anything else stays out of the field. */
+  function parseAutoDay(value: string): string {
+    const trimmed = value.trim();
+    if (trimmed === "") return "";
+    const n = Number(trimmed);
+    if (!Number.isInteger(n) || n < 1 || n > 28) return trimmed.replace(/[^0-9]/g, "").slice(0, 2);
+    return String(n);
   }
 
   async function add() {
@@ -40,8 +59,21 @@ export function TemplatesManager({ templates, categories }: { templates: Templat
       toast.error("Enter a name, amount and category");
       return;
     }
+    const day = autoDay.trim() === "" ? null : Number(autoDay);
+    if (day !== null && (!Number.isInteger(day) || day < 1 || day > 28)) {
+      toast.error("Auto-add day must be 1–28, or empty");
+      return;
+    }
     setSaving("new");
-    const result = await createTemplate({ name: trimmedName, categoryId, tag, amount: amountPaise, note: note || null });
+    const result = await createTemplate({
+      name: trimmedName,
+      categoryId,
+      tag,
+      amount: amountPaise,
+      note: note || null,
+      autoDay: day,
+      memberId: autoMemberId || null,
+    });
     setSaving(null);
     if (!result.ok) {
       toast.error(result.error ?? "Could not save template");
@@ -49,11 +81,23 @@ export function TemplatesManager({ templates, categories }: { templates: Templat
     }
     setItems((current) => [
       ...current,
-      { id: result.id, name: trimmedName, categoryId, tag, amountPaise, note: note || null, sortOrder: current.length + 1 },
+      {
+        id: result.id,
+        name: trimmedName,
+        categoryId,
+        tag,
+        amountPaise,
+        note: note || null,
+        sortOrder: current.length + 1,
+        autoDay: day,
+        memberId: autoMemberId || null,
+      },
     ]);
     setName("");
     setAmount("");
     setNote("");
+    setAutoDay("");
+    setAutoMemberId("");
     toast.success("Template saved");
   }
 
@@ -71,6 +115,8 @@ export function TemplatesManager({ templates, categories }: { templates: Templat
       amount: amountPaise,
       note: item.note || null,
       sortOrder: item.sortOrder,
+      autoDay: item.autoDay ?? null,
+      memberId: item.memberId ?? null,
     });
     setSaving(null);
     if (result.ok) toast.success("Template saved");
@@ -121,6 +167,25 @@ export function TemplatesManager({ templates, categories }: { templates: Templat
           <Label htmlFor="new-template-note" className="text-xs">Note (optional)</Label>
           <Input id="new-template-note" maxLength={140} placeholder="Prefill note" value={note} onChange={(e) => setNote(e.target.value)} />
         </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+          <div className="space-y-1">
+            <Label htmlFor="new-template-auto-day" className="text-xs">Auto-add day (optional)</Label>
+            <Input
+              id="new-template-auto-day"
+              inputMode="numeric"
+              placeholder="e.g. 5 — stamped automatically"
+              value={autoDay}
+              onChange={(e) => setAutoDay(parseAutoDay(e.target.value))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="new-template-auto-member" className="text-xs">Auto-add member</Label>
+            <select id="new-template-auto-member" value={autoMemberId} onChange={(e) => setAutoMemberId(e.target.value)} className="h-8 w-full rounded-lg border bg-background px-2 text-sm">
+              <option value="">Default (first member)</option>
+              {members.map((member) => <option key={member.id} value={member.id}>{member.emoji} {member.name}</option>)}
+            </select>
+          </div>
+        </div>
         <Button type="button" className="mt-3 gap-1.5" onClick={() => void add()} disabled={saving === "new"}>
           <Plus className="size-4" /> Add template
         </Button>
@@ -147,6 +212,34 @@ export function TemplatesManager({ templates, categories }: { templates: Templat
                 </select>
               </div>
               <Input aria-label="Template note" maxLength={140} placeholder="Prefill note (optional)" value={item.note ?? ""} onChange={(e) => patch(item.id, "note", e.target.value || null)} />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="relative">
+                  <Input
+                    aria-label="Auto-add day of month (1–28, empty = off)"
+                    inputMode="numeric"
+                    placeholder="Auto-add day (optional)"
+                    value={item.autoDay ?? ""}
+                    onChange={(e) => {
+                      const raw = parseAutoDay(e.target.value);
+                      patch(item.id, "autoDay", raw === "" ? null : Number(raw));
+                    }}
+                  />
+                  {item.autoDay != null && (
+                    <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                      auto monthly
+                    </span>
+                  )}
+                </div>
+                <select
+                  aria-label="Auto-add member"
+                  value={item.memberId ?? ""}
+                  onChange={(e) => patch(item.id, "memberId", e.target.value || null)}
+                  className="h-8 w-full rounded-lg border bg-background px-2 text-sm"
+                >
+                  <option value="">Auto member: default</option>
+                  {members.map((member) => <option key={member.id} value={member.id}>{member.emoji} {member.name}</option>)}
+                </select>
+              </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void save(item)} disabled={saving === item.id}>
                   <Save className="size-3.5" /> Save

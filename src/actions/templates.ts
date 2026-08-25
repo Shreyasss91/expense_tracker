@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, templates } from "@/db/schema";
+import { categories, members, templates } from "@/db/schema";
 import { paiseToDbString } from "@/lib/money";
 import { idSchema, templateSchema, type TemplateInput } from "@/lib/validations";
 
@@ -18,6 +18,12 @@ export async function createTemplate(raw: TemplateInput) {
   const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
   if (!categoryExists) return { ok: false as const, error: "Unknown category" };
 
+  // Recurring auto-entry — the chosen member must be real when set.
+  if (data.memberId) {
+    const memberExists = await db.query.members.findFirst({ where: eq(members.id, data.memberId) });
+    if (!memberExists) return { ok: false as const, error: "Unknown member" };
+  }
+
   const [maxRow] = await db.select({ max: sql<number>`COALESCE(MAX(${templates.sortOrder}), 0)` }).from(templates);
   const [row] = await db
     .insert(templates)
@@ -29,6 +35,8 @@ export async function createTemplate(raw: TemplateInput) {
       amount: paiseToDbString(data.amount),
       note: data.note ?? null,
       sortOrder: data.sortOrder ?? Number(maxRow?.max ?? 0) + 1,
+      autoDay: data.autoDay ?? null,
+      memberId: data.memberId ?? null,
     })
     .returning();
 
@@ -51,6 +59,11 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
   const categoryExists = await db.query.categories.findFirst({ where: eq(categories.id, data.categoryId) });
   if (!categoryExists) return { ok: false as const, error: "Unknown category" };
 
+  if (data.memberId) {
+    const memberExists = await db.query.members.findFirst({ where: eq(members.id, data.memberId) });
+    if (!memberExists) return { ok: false as const, error: "Unknown member" };
+  }
+
   const [row] = await db
     .update(templates)
     .set({
@@ -60,6 +73,10 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
       amount: paiseToDbString(data.amount),
       note: data.note ?? null,
       ...(data.sortOrder === undefined ? {} : { sortOrder: data.sortOrder }),
+      autoDay: data.autoDay ?? null,
+      // A member change must not re-fire the current month's auto entry —
+      // keep the idempotency marker untouched here; the cron owns it.
+      memberId: data.memberId ?? null,
       updatedAt: new Date(),
     })
     .where(eq(templates.id, idCheck.data))

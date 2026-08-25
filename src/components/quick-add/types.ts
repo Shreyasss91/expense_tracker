@@ -24,4 +24,8 @@ export interface TemplateOption {
   amountPaise: number;
   note: string | null;
   sortOrder: number;
+  /** Recurring auto-entry (UX pass): day of month the cron stamps it; null = manual-only. */
+  autoDay: number | null;
+  /** Whose ledger the auto entry lands under; null = household default (first member). */
+  memberId: string | null;
 }
