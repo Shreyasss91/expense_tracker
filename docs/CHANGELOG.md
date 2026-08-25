@@ -7,6 +7,94 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## UX/PWA pass — 25 August 2026 (owner request: install fix, offline capture, pacing, deltas, splits, auto-recurring; no frozen-section rewrites)
+
+Recorded as a pass rather than a numbered amendment: every change below is additive UX
+or a bug fix; normative §-sections are unchanged except where noted.
+
+### PWA installability — root cause fixed
+
+- **Bug:** Chrome never offered "Add to Home Screen". Auth middleware intercepted
+  `/manifest.webmanifest` and `/icon` — browsers fetch those WITHOUT cookies, received a
+  307 → `/login` HTML body, and silently dropped install eligibility. The matcher now
+  excludes the manifest, icon routes, `sw.js` and `/offline` (none carry user data).
+- **Icon:** the text `₹` glyph required a build-time dynamic font download that fails on
+  restricted networks and rendered a tofu box. Both icon routes are redrawn as pure-shape
+  divs (ledger book on the brand gradient) — no font dependency. Manifest icon sizes
+  corrected to the true 512×512 (a declared-vs-actual mismatch also rejects installability);
+  art double-declared `any` + `maskable`; added `id`, `scope`, `orientation`, `categories`.
+- **Service worker** (`public/sw.js`): navigations network-first with cached-copy →
+  `/offline` fallback; `_next/static` + public assets cache-first; POSTs (Server Actions)
+  untouched. Registered production-only. `/offline` is a logged-out fallback page.
+- **InstallButton** renders in the header only while `beforeinstallprompt` is live
+  (iOS Safari never fires it; Share → Add to Home Screen remains the iOS path).
+- **Manifest shortcuts:** Android long-press offers "Add expense" (`/?new=1`, consumed by
+  QuickAddProvider on mount to open the sheet) and "Ledger".
+
+### Offline Quick Add
+
+- Submitting with no network now queues the entry in IndexedDB
+  (`src/lib/offline-queue.ts`) instead of failing; the ledger shows the row optimistically
+  and the multi-entry flow continues unchanged. A sync manager
+  (`offline-sync.tsx`) replays queued payloads through the same `createTransaction` action
+  on mount / `online` / focus, with a header pill showing the waiting count.
+- **Schema-adjacent behavior change (§6.2):** `createTransaction` now prefers the payload's
+  `memberId` (when it names a real member) over the `active_member_id` cookie — an offline
+  replay may run days later under a different active member, and the entry must land under
+  who captured it. Online flow is unchanged (the sheet already sends the active member).
+- Settings gains an **Offline entries** card: inspect queued entries, Sync now, Discard;
+  the "needs attention" toast links to it.
+
+### Dashboard insights
+
+- **Budget pacing** (running month only): "₹X/day left · N days" plus an over/under-pace
+  verdict vs the straight-line ideal; quiet within ₹50. Computed server-side in IST and
+  passed as numbers (no hydration drift). The total-budget bar's overflow segment pulses
+  once over budget.
+- **Per-category month-over-month deltas** in the pie legend: ▲/▼% vs last month, "new"
+  for first-time categories, hidden when nothing to compare. One extra cached SQL
+  aggregate (previous month grouped by category, left join keeps uncategorized comparable).
+
+### Ledger
+
+- **Search race fix:** fast typing was clobbered by the in-flight debounced navigation
+  landing with an older `?q=` (the URL-sync effect reset the field mid-typing — the
+  "type it twice" bug). The sync now ignores URL values matching the last query this
+  component pushed; only external URL changes (deep links, Clear all) rewrite the field.
+- **Note-search index:** `?q=` runs `ILIKE '%term%'`; migration `0006_note_search_trgm`
+  adds `pg_trgm` + a GIN index on `note` (idempotent; `db:push` users apply once via
+  `npm run db:migrate` or the SQL console). Mirrored in `schema.ts`.
+
+### Transactions
+
+- **Split into parts** (edit dialog): one payment spanning several categories/notes becomes
+  2–6 transactions sharing the original's date/time/tag/member; the original is deleted.
+  Server-first with optimistic swap on the ledger bus, 5-second Undo (re-creates the
+  original, deletes the parts). Exact-sum enforcement with a live "left to assign" meter.
+
+### Recurring auto-entries
+
+- Templates gain `auto_day` (1–28, NULL = manual), `last_auto_key` ("YYYY-MM" idempotency
+  marker) and nullable `member_id` (NULL = first member) — migration
+  `0007_recurring_auto_templates`. The daily cron (`/api/cron/recurring`, 06:00 IST via
+  `vercel.json`, `CRON_SECRET` bearer auth) stamps due templates with today's IST date;
+  the marker write makes re-runs no-ops. Settings → Templates exposes both controls.
+  Same accepted non-atomic insert/marker window as the budgets path (§6.7).
+
+### Guard rails & polish
+
+- `smoke:prod` now asserts installability: `/manifest.webmanifest` returns 200
+  `application/manifest*` JSON with name + icons, `/icon` serves a PNG unauthenticated,
+  `/sw.js` is reachable — a middleware regression fails CI loudly instead of silently
+  killing the install prompt.
+- One-time FAB coach mark ("Tap + to log an expense", per-device, auto-dismissing);
+  ledger empty state distinguishes filtered-vs-empty and offers an "Add an expense" CTA;
+  Overview and Ledger got layout-matched loading skeletons.
+- Verified: `tsc --noEmit`, eslint, production build green; PWA routes exercised on a
+  local production server (manifest 200 JSON, icon 200 PNG, `/` still 307).
+
+---
+
 ## v1.3 Amendment — 24 August 2026 (owner decision: capture-first workflow, bulk categorization, Review merged into Ledger)
 
 ### Amendment 20 — Optional categories: capture fast, categorize later; multi-select bulk actions; Review joins the Ledger (§4.2, §5.3, §6.2, §6.3, §6.4, §6.5, §6.6)
