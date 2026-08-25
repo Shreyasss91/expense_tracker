@@ -6,6 +6,7 @@ import { ListChecks, Tag, Trash2, X } from "lucide-react";
 import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory } from "@/actions/transactions";
 import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
 import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
+import { useQuickAdd } from "@/components/quick-add/quick-add-context";
 import { dateGroupLabel } from "@/lib/dates";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
@@ -69,6 +70,8 @@ export function TransactionsList({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
+  // UX pass — the empty state's CTA opens the same Quick Add sheet as the FAB
+  const { open: openQuickAdd } = useQuickAdd();
 
   // §6.4.1 pending deletes: optimistic rows + timers flushed on unmount
   const pendingRef = useRef(new Map<string, { row: TransactionListRow; index: number; fired: boolean }>());
@@ -389,8 +392,19 @@ export function TransactionsList({
       {groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
           <span className="text-3xl">🗒️</span>
-          <p className="mt-2 text-sm font-medium">No transactions found</p>
-          <p className="text-xs text-muted-foreground">Try clearing filters, or tap + to add one.</p>
+          <p className="mt-2 text-sm font-medium">
+            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.month || filters.from || filters.to || filters.search
+              ? "No transactions found"
+              : "Nothing here yet"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.month || filters.from || filters.to || filters.search
+              ? "Try clearing the filters."
+              : "Log your first expense in seconds."}
+          </p>
+          <Button type="button" size="sm" className="mt-4 rounded-full" onClick={openQuickAdd}>
+            Add an expense
+          </Button>
         </div>
       ) : (
         groups.map(([label, { items, totalPaise }]) => (

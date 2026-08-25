@@ -10,6 +10,11 @@ import { LEDGER_SELECTION_EVENT } from "@/lib/events";
 import { usePendingReviewCount } from "@/components/use-pending-review-count";
 import { useUncategorizedCount } from "@/components/use-uncategorized-count";
 
+// UX pass — one-time discoverability nudge for the center FAB. Per-device
+// (localStorage), shown once, ~1s after first load, gone for good after any
+// tap on it or the FAB.
+const FAB_COACH_KEY = "coach:fab-seen";
+
 export function BottomNav() {
   const pathname = usePathname();
   const { open } = useQuickAdd();
@@ -23,6 +28,35 @@ export function BottomNav() {
     window.addEventListener(LEDGER_SELECTION_EVENT, onSelection);
     return () => window.removeEventListener(LEDGER_SELECTION_EVENT, onSelection);
   }, []);
+
+  // UX pass — one-time FAB discoverability nudge (per-device localStorage).
+  let seen = true;
+  try {
+    seen = typeof window !== "undefined" && window.localStorage.getItem(FAB_COACH_KEY) === "1";
+  } catch {
+    seen = true; // storage unavailable — skip rather than nag every load
+  }
+  const [showCoach, setShowCoach] = useState(false);
+  useEffect(() => {
+    if (seen) return;
+    const show = setTimeout(() => setShowCoach(true), 1000);
+    return () => clearTimeout(show);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function dismissCoach() {
+    setShowCoach(false);
+    try {
+      window.localStorage.setItem(FAB_COACH_KEY, "1");
+    } catch {
+      // best-effort only
+    }
+  }
+  // Auto-dismiss so it never outstays its welcome.
+  useEffect(() => {
+    if (!showCoach) return;
+    const t = setTimeout(dismissCoach, 6000);
+    return () => clearTimeout(t);
+  }, [showCoach]);
 
   const item = (
     href: string,
@@ -62,9 +96,21 @@ export function BottomNav() {
         {item("/", "Dashboard", <LayoutDashboard className="h-5 w-5" />, pathname === "/")}
         {/* Center FAB (§6.2.1) — hidden while a bulk-selection bar is open */}
         <div className="relative flex flex-1 justify-center">
+          {showCoach && !selectionActive && (
+            <div
+              role="status"
+              className="pointer-events-auto absolute -top-[4.75rem] left-1/2 z-10 w-max max-w-44 -translate-x-1/2 rounded-lg border bg-popover px-3 py-1.5 text-center text-xs font-medium text-popover-foreground shadow-md"
+            >
+              Tap + to log an expense
+              <span aria-hidden className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r bg-popover" />
+            </div>
+          )}
           <button
             type="button"
-            onClick={open}
+            onClick={() => {
+              if (showCoach) dismissCoach();
+              open();
+            }}
             aria-label="Quick add"
             aria-hidden={selectionActive || undefined}
             tabIndex={selectionActive ? -1 : undefined}
