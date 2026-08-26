@@ -233,6 +233,12 @@ export function FiltersBar({
                 <SelectLabel className="text-[11px] font-semibold text-muted-foreground">
                   {g.emoji} {g.name}
                 </SelectLabel>
+                {/* The group itself is selectable (?group=<uuid>) — matches
+                    every leaf under it; picking any leaf narrows to just that
+                    leaf, and the three values stay mutually exclusive. */}
+                <SelectItem value={`g:${g.id}`} className="text-xs font-medium">
+                  {g.emoji} {g.name} — all
+                </SelectItem>
                 {childrenOf(g.id).map((c) => (
                   <SelectItem key={c.id} value={`c:${c.id}`} className="pl-6 text-xs">
                     {c.emoji} {c.name}

@@ -135,6 +135,7 @@ export async function createCategoryGroup(raw: z.infer<typeof createCategoryGrou
     .returning();
 
   revalidatePath("/");
+  revalidatePath("/transactions"); // the ledger filter dropdown lists groups too
   revalidatePath("/settings");
   revalidateTag("categories");
   return { ok: true as const, category: row };
