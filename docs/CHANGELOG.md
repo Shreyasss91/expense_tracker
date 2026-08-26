@@ -41,6 +41,27 @@ wiring gaps.
   mutual-exclusion precedence, invalid-UUID dropping) alongside `tsc --noEmit` and eslint.
 - `smoke:prod` loss-detection baseline held after push (≥ seed counts and totals).
 
+### Addendum (same day) — production had been un-deployable since the hierarchy pass
+
+End-to-end verification of the drill-through on the live site found that **every production
+deployment since `43a4289` (the nested-categories schema commit) had failed at build**, leaving
+production serving the pre-hierarchy flat-category build while the database had already
+migrated — which is why the whole pass appeared "not correctly implemented" from outside.
+
+- **Root cause:** `src/actions/settings.ts` exported `OTHER_GROUP_SLUG`, a plain const, from a
+  `"use server"` module. Next.js requires every runtime export of a server-action file to be an
+  async function → `next build` exited 1 (`Only async functions are allowed to be exported in a
+  "use server" file`). `tsc --noEmit` cannot catch this class of error; only a full build can.
+- **Fix:** dropped the `export` keyword — the constant has no external importers and is used
+  only by `createCategory`'s fallback path within the same file. All other `src/actions/*`
+  files audited for value exports: none remain.
+- **Deployed & verified:** commit `90dbd56` builds and reached READY on Vercel; the live
+  dashboard serves the pie drill-through links, following one lands on the ledger with the
+  active-group chip and month filter applied, and `smoke:prod` holds its baseline.
+- **Process note:** nothing in the local check suite ran `next build`; consider wiring a
+  production build into CI or a pre-push gate so server-action export regressions fail before
+  deploy rather than after.
+
 ---
 ## Nested categories pass — 25 August 2026 (owner request: "too many categories"; two-level taxonomy, leaf-only assignment)
 
