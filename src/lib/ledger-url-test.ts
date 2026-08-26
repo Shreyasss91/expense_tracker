@@ -121,6 +121,15 @@ function main() {
   const gp = paramsOf(groupOnly);
   check(gp.get("group") === UUID_G && !gp.has("category"), "groupId → ?group (no category param)");
 
+  // Group + month coexist — the pie drill-through link depends on both landing
+  // in one URL (a dropped month would land the user on the all-time ledger).
+  check(gp.get("month") === "2026-08", "groupId and month serialize together");
+  const groupMonthRound = parseLedgerSearchParams(Object.fromEntries(gp.entries()));
+  check(
+    groupMonthRound.filters.groupId === UUID_G && groupMonthRound.filters.month === "2026-08",
+    "parse ∘ buildLedgerUrl round-trips group+month",
+  );
+
   const parsedGroup = parseLedgerSearchParams({ group: UUID_G, month: "2026-08" });
   check(parsedGroup.filters.groupId === UUID_G && parsedGroup.filters.categoryId === undefined && !parsedGroup.filters.uncategorized, "parse: ?group decodes to groupId alone");
 
