@@ -33,6 +33,9 @@ venv/
 *.swp
 *.swo
 
+# Agent tooling (session-local, not project source)
+.commandcode/
+
 # OS
 .DS_Store
 Thumbs.db

@@ -7,6 +7,41 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Group-filter completion & pie drill-through — 26 August 2026 (owner follow-up to the nested-categories pass)
+
+Recorded as defect fixes plus one additive surface on top of the 25-August hierarchy pass;
+no §-semantics change. Audit of that pass found the server side fully correct (schema/migration
+parity, leaf-only assignment guards, single group expansion, rollup math) but two new-surface
+wiring gaps.
+
+### Fixes
+
+- **`?group=` was unreachable from the UI.** The ledger category filter rendered groups only
+  as non-selectable section labels while its change handler (`g:` values), bound control value
+  and active-group chip already spoke the group dialect — no code path could produce a real
+  `groupId`, so the filter only worked via hand-typed URLs (and even then showed the "All
+  categories" placeholder, since no option carried the bound value). Fix: each group section
+  now offers a selectable `{emoji} {name} — all` item (`?group=<uuid>`) above its leaves;
+  precedence (leaf > uncategorized > group) was already correct server-side.
+- **`createCategoryGroup` skipped `revalidatePath("/transactions")`**, so new groups stayed
+  invisible in the ledger filter and edit-dialog optgroups until an unrelated mutation fired.
+  Now revalidates all three routes like every sibling action.
+
+### Surfaces
+
+- **Dashboard pie drill-through:** each top-level group row in the spending-by-category legend
+  gains an ↗ link to `/transactions?group=<uuid>&month=<viewed month>` — one tap from a slice
+  to row-level detail for the exact month shown. The legend row still expands in place; the
+  link is a separate affordance. Uncategorized keeps no link (it has no backing group).
+
+### Verification
+
+- `npm run test:hierarchy` — 7/7 against the real DB after re-running migrations (idempotent).
+- `test:ledger-url` extended coverage confirmed green (25 checks: group serialization,
+  mutual-exclusion precedence, invalid-UUID dropping) alongside `tsc --noEmit` and eslint.
+- `smoke:prod` loss-detection baseline held after push (≥ seed counts and totals).
+
+---
 ## Nested categories pass — 25 August 2026 (owner request: "too many categories"; two-level taxonomy, leaf-only assignment)
 
 Recorded as a pass: additive schema + UX; existing §-semantics preserved (every rupee still
