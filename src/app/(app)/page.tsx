@@ -352,6 +352,7 @@ export default async function DashboardPage({
         </CardHeader>
         <CardContent className="space-y-3">
           <CategoryPie
+            month={monthKey}
             leaves={data.catRows.map((r) => ({
               id: r.id,
               name: r.name ?? "Uncategorized",

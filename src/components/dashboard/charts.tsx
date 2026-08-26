@@ -13,7 +13,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ChevronRight, CornerLeftUp } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, ChevronRight, CornerLeftUp } from "lucide-react";
+import { buildLedgerUrl } from "@/lib/ledger-url";
 import { formatINR } from "@/lib/money";
 
 export interface CategorySlice {
@@ -100,6 +102,8 @@ interface PieLevel {
   prevPaise: number;
   /** Children under this group — present only on real, non-leaf levels. */
   children?: PieLevel[];
+  /** The group's category id — set on top-level rows so the legend can deep-link into the ledger (?group=). */
+  groupId?: string;
 }
 
 /**
@@ -109,7 +113,11 @@ interface PieLevel {
  * chips recompute for whatever level is shown: prev values arrive per leaf
  * and are summed alongside the current totals, so both levels agree.
  */
-export function CategoryPie({ leaves }: { leaves: CategoryTreeSlice[] }) {
+/**
+ * `month` (optional) is carried into the drill-through ledger link so tapping
+ * a group lands on the same month the pie is describing.
+ */
+export function CategoryPie({ leaves, month }: { leaves: CategoryTreeSlice[]; month?: string }) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const topLevel = useMemo<PieLevel[]>(() => {
@@ -130,7 +138,7 @@ export function CategoryPie({ leaves }: { leaves: CategoryTreeSlice[] }) {
       const key = `g:${leaf.parentId}`;
       let g = groups.get(key);
       if (!g) {
-        g = { key, name: leaf.groupName ?? "—", emoji: leaf.groupEmoji ?? "🧺", color: leaf.groupColor ?? "#9ca3af", paise: 0, prevPaise: 0, children: [] };
+        g = { key, name: leaf.groupName ?? "—", emoji: leaf.groupEmoji ?? "🧺", color: leaf.groupColor ?? "#9ca3af", paise: 0, prevPaise: 0, children: [], groupId: leaf.parentId };
         groups.set(key, g);
       }
       g.paise += leaf.paise;
@@ -187,20 +195,35 @@ export function CategoryPie({ leaves }: { leaves: CategoryTreeSlice[] }) {
           .sort((a, b) => b.paise - a.paise)
           .map((s) => {
             const expandable = !expandedKey && !!s.children;
+            // Drill-through — top-level groups deep-link into the ledger
+            // pre-filtered to ?group=<uuid> (plus the month being viewed), so a
+            // slice answers "what exactly did we spend here on?" in one tap.
+            const ledgerHref = s.groupId && !expandedKey ? buildLedgerUrl({ groupId: s.groupId, month }) : null;
             return (
-              <li key={s.key}>
+              <li key={s.key} className="flex items-center gap-1">
                 {expandable ? (
-                  <button
-                    type="button"
-                    onClick={() => setExpandedKey(s.key)}
-                    aria-label={`Show categories in ${s.name}`}
-                    className="flex w-full items-center gap-2 rounded-lg px-1 py-0.5 text-left text-sm transition-colors hover:bg-muted"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    <LegendRowContent slice={{ ...s }} total={total} />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedKey(s.key)}
+                      aria-label={`Show categories in ${s.name}`}
+                      className="flex flex-1 items-center gap-2 rounded-lg px-1 py-0.5 text-left text-sm transition-colors hover:bg-muted"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <LegendRowContent slice={{ ...s }} total={total} />
+                    </button>
+                    {ledgerHref && (
+                      <Link
+                        href={ledgerHref}
+                        aria-label={`Open ${s.name} in the ledger`}
+                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                      >
+                        <ArrowUpRight className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2 px-1 py-0.5 text-sm">
+                  <div className="flex flex-1 items-center gap-2 px-1 py-0.5 text-sm">
                     {!expandedKey && <span className="w-3.5 shrink-0" />}
                     <LegendRowContent slice={s} total={total} />
                   </div>
