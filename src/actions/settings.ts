@@ -99,8 +99,10 @@ export async function createCategory(raw: z.infer<typeof createCategorySchema>) 
 
 /** Slug prefix reserved for group rows so they can never collide with leaf slugs. */
 const GROUP_SLUG_PREFIX = "grp-";
-/** The catch-all group — inline-created categories without an explicit group land here. */
-export const OTHER_GROUP_SLUG = "grp-other";
+/** The catch-all group — inline-created categories without an explicit group land here.
+ *  NOT exported: "use server" files may only export async functions (a const export
+ *  here broke every production build after the hierarchy pass). */
+const OTHER_GROUP_SLUG = "grp-other";
 
 /**
  * Create a new top-level group (Settings). Groups are containers only — they
