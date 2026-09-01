@@ -77,6 +77,8 @@ export function TransactionEditDialog({
     amount: string;
     note: string;
     categoryId: string; // "" = uncategorized
+    /** §2.3 — optional percentage (0–100); when set (percent mode) it drives `amount`. */
+    percent?: string;
   }
   const [splitting, setSplitting] = useState(false);
   const [splits, setSplits] = useState<SplitPart[]>([]);
@@ -84,6 +86,8 @@ export function TransactionEditDialog({
   // §2.2 — per-expense shared ownership
   const [shared, setShared] = useState(false);
   const [splitWith, setSplitWith] = useState<string[]>([]);
+  // §2.3 — split can be assigned by raw amount or by percentage of the total
+  const [splitMode, setSplitMode] = useState<"amount" | "percent">("amount");
   // always starts collapsed on open, not persisted (matches Quick Add)
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Layout pass — on ≥lg the sheet docks as a right-side panel so the ledger
@@ -118,6 +122,7 @@ export function TransactionEditDialog({
     setShowDatePicker(false);
     setSplitting(false);
     setSplits([]);
+    setSplitMode("amount");
     setShared(row.shared ?? false);
     setSplitWith(row.splitWith ?? []);
   }
@@ -131,11 +136,20 @@ export function TransactionEditDialog({
   const splitPaiseList = splits.map((s) => rupeesToPaise(s.amount));
   const splitTotal = splitPaiseList.reduce((sum, p) => sum + (Number.isFinite(p) ? p : 0), 0);
   const splitRemaining = paise - splitTotal;
+  // §2.3 — in percent mode the parts are expressed as % of the total; the
+  // amount string is kept in sync so saving is identical in either mode.
+  const percentTotal = splits.reduce((sum, s) => sum + (Number(s.percent) || 0), 0);
   const canSplitSave =
     !splitSaving &&
     splits.length >= 2 &&
-    splitRemaining === 0 &&
-    splitPaiseList.every((p) => p > 0);
+    splitPaiseList.every((p) => p > 0) &&
+    (splitMode === "amount" ? splitRemaining === 0 : Math.abs(percentTotal - 100) < 0.01);
+
+  /** §2.3 — derive this part's rupee amount from its percentage of the total. */
+  function percentToAmount(pct: string): string {
+    const p = Math.max(0, Number(pct) || 0);
+    return (Math.round((paise * p) / 100) / 100).toString();
+  }
 
   function enterSplitMode() {
     if (!(paise > 0)) {
@@ -148,11 +162,28 @@ export function TransactionEditDialog({
     // whole-paise parts instead of drifting into a fractional paisa.
     const halfPaise = Math.floor(paise / 2);
     setSplits([
-      { amount: (halfPaise / 100).toString(), note: note, categoryId },
-      { amount: ((paise - halfPaise) / 100).toString(), note: "", categoryId: "" },
+      { amount: (halfPaise / 100).toString(), percent: "50", note: note, categoryId },
+      { amount: ((paise - halfPaise) / 100).toString(), percent: "50", note: "", categoryId: "" },
     ]);
+    setSplitMode("amount");
     setError(null);
     setSplitting(true);
+  }
+
+  /** §2.3 — flip between assigning by raw amount and by % of the total,
+   * converting each part so the user's allocation is preserved. */
+  function toggleSplitMode(target: "amount" | "percent") {
+    if (target === splitMode) return;
+    if (target === "percent") {
+      setSplits((current) => current.map((s, i) => ({
+        ...s,
+        percent: paise > 0 ? (((splitPaiseList[i] || 0) / paise) * 100).toFixed(2) : "0",
+      })));
+    } else {
+      setSplits((current) => current.map((s) => ({ ...s, amount: percentToAmount(s.percent ?? "") })));
+    }
+    setSplitMode(target);
+    setError(null);
   }
 
   function patchSplit(index: number, patch: Partial<SplitPart>) {
@@ -245,6 +276,7 @@ export function TransactionEditDialog({
     tempIds.forEach((tid, i) => emitLedgerMutation({ kind: "create-confirm", tempId: tid, id: createdIds[i] }));
     setSplitSaving(false);
     setSplitting(false);
+    setSplitMode("amount");
     onOpenChange(false);
     toast.success(`Split into ${splits.length} transactions`, {
       duration: 5000,
@@ -412,7 +444,7 @@ export function TransactionEditDialog({
         {!isDesktop && <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />}
         <div className="mb-1 flex items-center gap-2">
           {splitting ? (
-            <Button type="button" size="sm" variant="ghost" onClick={() => setSplitting(false)} disabled={splitSaving} className="rounded-full px-3">
+            <Button type="button" size="sm" variant="ghost" onClick={() => { setSplitting(false); setSplitMode("amount"); }} disabled={splitSaving} className="rounded-full px-3">
               <X className="size-3.5" /> Cancel split
             </Button>
           ) : (
@@ -470,18 +502,61 @@ export function TransactionEditDialog({
               Split {formatINRWhole(paise)} into {splits.length} parts — each becomes its own transaction
               sharing this row&apos;s date, time, tag and member. Assign every rupee to save.
             </p>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">Split by</span>
+              <div className="inline-flex overflow-hidden rounded-full border text-xs">
+                <button
+                  type="button"
+                  onClick={() => toggleSplitMode("amount")}
+                  className={`px-3 py-1 transition-colors ${
+                    splitMode === "amount"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  Amount
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleSplitMode("percent")}
+                  className={`px-3 py-1 transition-colors ${
+                    splitMode === "percent"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted"
+                  }`}
+                >
+                  Percent
+                </button>
+              </div>
+            </div>
             {splits.map((s, i) => (
               <div key={i} className="space-y-1.5 rounded-lg border p-2.5">
                 <div className="flex items-center gap-2">
                   <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">#{i + 1}</span>
-                  <Input
-                    aria-label={`Part ${i + 1} amount`}
-                    inputMode="decimal"
-                    placeholder="Amount"
-                    className="h-8 flex-1"
-                    value={s.amount}
-                    onChange={(e) => patchSplit(i, { amount: e.target.value })}
-                  />
+                  {splitMode === "amount" ? (
+                    <Input
+                      aria-label={`Part ${i + 1} amount`}
+                      inputMode="decimal"
+                      placeholder="Amount"
+                      className="h-8 flex-1"
+                      value={s.amount}
+                      onChange={(e) => patchSplit(i, { amount: e.target.value })}
+                    />
+                  ) : (
+                    <div className="flex flex-1 items-center gap-1.5">
+                      <Input
+                        aria-label={`Part ${i + 1} percent`}
+                        inputMode="decimal"
+                        placeholder="%"
+                        className="h-8 w-20"
+                        value={s.percent ?? ""}
+                        onChange={(e) => patchSplit(i, { percent: e.target.value, amount: percentToAmount(e.target.value) })}
+                      />
+                      <span className="truncate text-xs tabular-nums text-muted-foreground">
+                        ≈ ₹{formatINRWhole(rupeesToPaise(percentToAmount(s.percent ?? "0")))}
+                      </span>
+                    </div>
+                  )}
                   <Button
                     type="button"
                     variant="ghost"
@@ -540,20 +615,32 @@ export function TransactionEditDialog({
                 size="sm"
                 className="h-8 gap-1 rounded-full text-xs"
                 disabled={splits.length >= SPLIT_MAX}
-                onClick={() => setSplits((current) => [...current, { amount: "", note: "", categoryId: "" }])}
+                onClick={() => setSplits((current) => [...current, { amount: "", note: "", categoryId: "", percent: "" }])}
               >
                 <Plus className="size-3.5" /> Add part
               </Button>
               <p
                 className={`text-xs font-medium tabular-nums ${
-                  splitRemaining === 0 ? "text-emerald-600" : splitRemaining > 0 ? "text-amber-600" : "text-destructive"
+                  splitMode === "amount"
+                    ? splitRemaining === 0
+                      ? "text-emerald-600"
+                      : splitRemaining > 0
+                        ? "text-amber-600"
+                        : "text-destructive"
+                    : Math.abs(percentTotal - 100) < 0.01
+                      ? "text-emerald-600"
+                      : "text-amber-600"
                 }`}
               >
-                {splitRemaining === 0
-                  ? "Fully assigned ✓"
-                  : splitRemaining > 0
-                    ? `${formatINRWhole(splitRemaining)} left to assign`
-                    : `${formatINRWhole(-splitRemaining)} over`}
+                {splitMode === "amount"
+                  ? splitRemaining === 0
+                    ? "Fully assigned ✓"
+                    : splitRemaining > 0
+                      ? `${formatINRWhole(splitRemaining)} left to assign`
+                      : `${formatINRWhole(-splitRemaining)} over`
+                  : Math.abs(percentTotal - 100) < 0.01
+                    ? "Fully assigned ✓"
+                    : `${percentTotal.toFixed(1)}% assigned · ${(100 - percentTotal).toFixed(1)}% left`}
               </p>
             </div>
           </div>
