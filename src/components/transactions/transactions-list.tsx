@@ -405,12 +405,12 @@ export function TransactionsList({
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
           <span className="text-3xl">🗒️</span>
           <p className="mt-2 text-sm font-medium">
-            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.month || filters.from || filters.to || filters.search
+            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to
               ? "No transactions found"
               : "Nothing here yet"}
           </p>
           <p className="text-xs text-muted-foreground">
-            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.month || filters.from || filters.to || filters.search
+            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to
               ? "Try clearing the filters."
               : "Log your first expense in seconds."}
           </p>

@@ -332,7 +332,15 @@ export function FiltersBar({
           {filters.categoryId && selectedCat && !renaming && (
             <>
               <span className={cn(pill(true), "max-w-44")}>
-                {selectedCat.emoji} {selectedCat.name} <X className="ml-0.5 inline h-3 w-3" />
+                {selectedCat.emoji} {selectedCat.name}
+                <button
+                  type="button"
+                  aria-label={`Clear ${selectedCat.name} filter`}
+                  onClick={() => push({ ...filters, categoryId: undefined })}
+                  className="ml-1 inline-flex"
+                >
+                  <X className="inline h-3 w-3" />
+                </button>
               </span>
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-muted-foreground" onClick={startRename} aria-label={`Rename ${selectedCat.name}`}>
                 <Pencil className="h-4 w-4" />

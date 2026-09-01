@@ -416,6 +416,7 @@ export default async function DashboardPage({
             members={memberOptions}
             categories={categoryOptions}
             recentCategoryIds={recentCategoryIds}
+            enableSelection={false}
           />
         </CardContent>
       </Card>
