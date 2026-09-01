@@ -58,6 +58,25 @@ function inr(v: number) {
   return formatINR(v);
 }
 
+/** Trim to at most one decimal so a tick reads "1.2L", not "1.1999999999999998L". */
+function round1(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+/**
+ * Compact Y-axis tick for a PAISE value.
+ *
+ * The tick is fed `expensePaise`, so it must become RUPEES before the k/L
+ * thresholds are applied. Dividing paise by the rupee thresholds (1_000 /
+ * 100_000) — the previous behaviour — mislabels every bar by 100x.
+ */
+function compactPaiseAxis(paise: number): string {
+  const rupees = paise / 100;
+  if (rupees >= 100000) return `${round1(rupees / 100000)}L`;
+  if (rupees >= 1000) return `${round1(rupees / 1000)}k`;
+  return String(Math.round(rupees));
+}
+
 /** §6.3.1 — a zero denominator renders — and holds the bar at 0% (no NaN/Infinity). */
 export function pct(value: number, total: number): number | null {
   if (total <= 0) return null;
@@ -274,7 +293,7 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
           {/* tick fill defaults to #666, which is unreadable on a dark card —
               pin it to the theme's muted foreground instead */}
           <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => (Number(v) >= 100000 ? `${Number(v) / 100000}L` : `${Number(v) / 1000}k`)} />
+          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => compactPaiseAxis(Number(v))} />
           <Tooltip formatter={(v) => [inr(Number(v)), "Expense"]} contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))" }} />
           <Bar dataKey="expensePaise" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={42} />
         </BarChart>
