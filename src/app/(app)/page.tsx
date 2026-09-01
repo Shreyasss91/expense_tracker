@@ -12,12 +12,14 @@ import { getCategories, getMembers, getRecentCategoryIds } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
 import { budgetsForMonth, resolveEffectiveBudget, resolveGroupBudget } from "@/lib/budgets";
 import { getMemberAttribution } from "@/lib/attribution";
+import { getRecurringSuggestions, type RecurringSuggestion } from "@/lib/recurring-detection";
 import { cn } from "@/lib/utils";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { BudgetBar } from "@/components/dashboard/budget-bar";
 import { CategoryPie, TagBar, TrendChart } from "@/components/dashboard/charts";
 import { TransactionsList } from "@/components/transactions/transactions-list";
+import { RecurringSuggestions } from "@/components/dashboard/recurring-suggestions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -231,6 +233,15 @@ export default async function DashboardPage({
     // §2.2 — per-person attributable spend (who-benefits view)
     getMemberAttribution(monthKey),
   ]);
+
+  // §2.4 — mine the ledger for recurring-bill clusters. Guarded: a detection
+  // hiccup must never take the whole dashboard down with it.
+  let recurring: RecurringSuggestion[] = [];
+  try {
+    recurring = await getRecurringSuggestions();
+  } catch {
+    recurring = [];
+  }
   const memberOptions = memberRows.map((m) => ({
     id: m.id, slug: m.slug, name: m.name, emoji: m.emoji, color: m.color, sortOrder: m.sortOrder,
   }));
@@ -382,6 +393,9 @@ export default async function DashboardPage({
           />
         </CardContent>
       </Card>
+
+      {/* §2.4 — mined recurring-bill suggestions as one-tap template prompts */}
+      <RecurringSuggestions suggestions={recurring} />
 
       {/* §2.2 — who-benefits view: each member's attributable spend (solo +
           equal share of shared expenses) plus the household total. */}
