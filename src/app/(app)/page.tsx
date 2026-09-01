@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { unstable_cache } from "next/cache";
 import { addMonths, format, parse } from "date-fns";
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
@@ -13,6 +13,7 @@ import { getTransactionsPage } from "@/actions/transactions";
 import { budgetsForMonth, resolveEffectiveBudget, resolveGroupBudget } from "@/lib/budgets";
 import { getMemberAttribution } from "@/lib/attribution";
 import { getRecurringSuggestions, type RecurringSuggestion } from "@/lib/recurring-detection";
+import { computeInsights } from "@/lib/insights";
 import { cn } from "@/lib/utils";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
@@ -20,6 +21,7 @@ import { BudgetBar } from "@/components/dashboard/budget-bar";
 import { CategoryPie, TagBar, TrendChart } from "@/components/dashboard/charts";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { RecurringSuggestions } from "@/components/dashboard/recurring-suggestions";
+import { InsightsCard } from "@/components/dashboard/insights-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const MONTH_RE = /^\d{4}-\d{2}$/;
@@ -36,12 +38,14 @@ const getDashboardData = unstable_cache(
     const baseDate = parse(`${monthKey}-01`, "yyyy-MM-dd", new Date());
     const end = monthEndInIST(baseDate);
     const range = and(gte(transactions.date, start), lte(transactions.date, end));
+    // §2.8 — trailing 6-month window for per-category averages
+    const since = format(addMonths(baseDate, -5), "yyyy-MM-01");
     // Two-level hierarchy — every leaf carries its group's display fields so
     // the pie can roll spend up client-side (and drill back down) with no
     // extra round trip.
     const parentCategories = alias(categories, "parent_categories");
 
-    const [totalsTags, catRows, prevCatRows, trendRows, largestRows, budgetRows] = await Promise.all([
+    const [totalsTags, catRows, prevCatRows, trendRows, largestRows, budgetRows, uncatAgg, catMonthly, catRecord, catMonthMax] = await Promise.all([
       // expense + all three expense tags in a single pass over the month
       db
         .select({
@@ -119,6 +123,44 @@ const getDashboardData = unstable_cache(
         .limit(1),
       // §6.7 budgets — exact-month rows plus the every-month defaults, resolved below
       budgetsForMonth(db, monthKey),
+      // §2.8 — uncategorized count + sum this month (promoted insight)
+      db
+        .select({
+          count: sql<number>`COUNT(*)`,
+          total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+        })
+        .from(transactions)
+        .where(and(gte(transactions.date, start), lte(transactions.date, end), isNull(transactions.categoryId))),
+      // §2.8 — per (category, month) sums over the trailing 6 months, for the
+      // "above your 6-month average" check
+      db
+        .select({
+          categoryId: sql<string>`${transactions.categoryId}`,
+          month: sql<string>`substring(${transactions.date}::text from 1 for 7)`,
+          total: sql<string>`SUM(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(and(gte(transactions.date, since), lte(transactions.date, end), sql`${transactions.categoryId} IS NOT NULL`))
+        .groupBy(transactions.categoryId, sql`substring(${transactions.date}::text from 1 for 7)`),
+      // §2.8 — all-time largest single transaction per category (record)
+      db
+        .select({
+          categoryId: sql<string>`${transactions.categoryId}`,
+          max: sql<string>`MAX(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(sql`${transactions.categoryId} IS NOT NULL`)
+        .groupBy(transactions.categoryId),
+      // §2.8 — largest single transaction per category this month (for the
+      // "close to your record" check)
+      db
+        .select({
+          categoryId: sql<string>`${transactions.categoryId}`,
+          max: sql<string>`MAX(${transactions.amount})`,
+        })
+        .from(transactions)
+        .where(and(gte(transactions.date, start), lte(transactions.date, end), sql`${transactions.categoryId} IS NOT NULL`))
+        .groupBy(transactions.categoryId),
     ]);
 
     const totals = totalsTags[0];
@@ -208,6 +250,16 @@ const getDashboardData = unstable_cache(
       // for the pie legend's MoM delta chips.
       catPrev: Object.fromEntries(prevCatRows.map((r) => [String(r.id), rupeesToPaise(r.total)])) as Record<string, number>,
       trend,
+      // §2.8 — diagnostic insights derived from the aggregates above
+      insights: computeInsights({
+        monthKey,
+        catRows,
+        catPrev: Object.fromEntries(prevCatRows.map((r) => [String(r.id), rupeesToPaise(r.total)])) as Record<string, number>,
+        uncat: uncatAgg[0] ?? null,
+        catMonthly,
+        catRecord,
+        catMonthMax,
+      }),
     };
   },
   ["family-ledger", "dashboard"],
@@ -396,6 +448,11 @@ export default async function DashboardPage({
 
       {/* §2.4 — mined recurring-bill suggestions as one-tap template prompts */}
       <RecurringSuggestions suggestions={recurring} />
+
+      {/* §2.8 — diagnostic insights: hot categories, uncategorized, record
+          closeness, biggest MoM mover. Promoted high so the household sees
+          what to look at, not just descriptive totals. */}
+      <InsightsCard insights={data.insights} />
 
       {/* §2.2 — who-benefits view: each member's attributable spend (solo +
           equal share of shared expenses) plus the household total. */}
