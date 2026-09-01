@@ -21,6 +21,7 @@ import type { CategoryOption } from "@/components/quick-add/types";
 interface BudgetRow {
   month: string | null;
   categoryId: string | null;
+  groupId: string | null;
   amount: string;
 }
 
@@ -61,14 +62,15 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   const [excludeBillsOn, setExcludeBillsOn] = useState(excludeBills);
   const [togglingBills, setTogglingBills] = useState(false);
 
-  // Budgets are LEAF-only + total (§6.7) — group rows never carry a limit and
-  // the server rejects them, so every input/row below is built from leaves,
-  // ordered by their group's sortOrder.
-  const { leavesByGroup } = (() => {
+  // Budgets are LEAF-only + total (§6.7) — group rows never carry a per-leaf
+  // limit. With §2.1 a group CAN carry a GROUP-level limit, so group rows are
+  // exposed as `groupRows` for the group-limit inputs below.
+  const { leavesByGroup, groupRows } = (() => {
     const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
-    const groupRows = sorted.filter((c) => c.parentId === null);
+    const groups = sorted.filter((c) => c.parentId === null);
     return {
-      leavesByGroup: groupRows.map((g) => ({
+      groupRows: groups,
+      leavesByGroup: groups.map((g) => ({
         group: g,
         leaves: sorted.filter((c) => c.parentId === g.id),
       })),
@@ -82,8 +84,17 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   // default scope's key; declared before the state hooks so the lazy
   // initializers below can use it.
   const effectivePaise = (scopeKey: string, categoryId: string | null): number => {
-    const exact = initialBudgets.find((b) => b.month === scopeKey && b.categoryId === categoryId);
-    const fallback = initialBudgets.find((b) => b.month === null && b.categoryId === categoryId);
+    const exact = initialBudgets.find((b) => b.month === scopeKey && b.categoryId === categoryId && b.groupId === null);
+    const fallback = initialBudgets.find((b) => b.month === null && b.categoryId === categoryId && b.groupId === null);
+    const row = exact ?? fallback;
+    return row ? Math.round(parseFloat(row.amount) * 100) : 0;
+  };
+
+  // §2.1 — same resolution for GROUP budgets (top-level rows). A group budget
+  // caps the roll-up of all its leaves.
+  const effectiveGroupPaise = (scopeKey: string, groupId: string): number => {
+    const exact = initialBudgets.find((b) => b.month === scopeKey && b.groupId === groupId);
+    const fallback = initialBudgets.find((b) => b.month === null && b.groupId === groupId);
     const row = exact ?? fallback;
     return row ? Math.round(parseFloat(row.amount) * 100) : 0;
   };
@@ -94,6 +105,10 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   const [totalInput, setTotalInput] = useState(() => paiseToRupeesInput(effectivePaise("", null)));
   const [catInputs, setCatInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(leaves.map((c) => [c.id, paiseToRupeesInput(effectivePaise("", c.id))])),
+  );
+  // §2.1 — group-limit inputs, one per top-level group, resolved per scope.
+  const [groupInputs, setGroupInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(groupRows.map((g) => [g.id, paiseToRupeesInput(effectiveGroupPaise("", g.id))])),
   );
   // §6.7 — when the category list gains ids (a category created inline from Quick
   // Add / the edit dialog), give each new category a clean input row. The id-set
@@ -116,6 +131,7 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
     setScope(next);
     setTotalInput(paiseToRupeesInput(effectivePaise(scopeKey, null)));
     setCatInputs(Object.fromEntries(leaves.map((c) => [c.id, paiseToRupeesInput(effectivePaise(scopeKey, c.id))])))
+    setGroupInputs(Object.fromEntries(groupRows.map((g) => [g.id, paiseToRupeesInput(effectiveGroupPaise(scopeKey, g.id))])))
   }
 
   async function save() {
@@ -123,6 +139,7 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
       month: scope === DEFAULT_SCOPE ? null : scope,
       totalPaise: rupeesToPaiseInput(totalInput),
       categories: leaves.map((c) => ({ categoryId: c.id, paise: rupeesToPaiseInput(catInputs[c.id] ?? "") })),
+      groups: groupRows.map((g) => ({ groupId: g.id, paise: rupeesToPaiseInput(groupInputs[g.id] ?? "") })),
     });
     if (res.ok) {
       toast.success(scope === DEFAULT_SCOPE ? "Default budget saved" : "Budget saved");
@@ -231,6 +248,29 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
                   </li>
                 ))}
               </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="border-t pt-3">
+        <p className="mb-2 text-xs font-medium text-muted-foreground">Group limits (optional) · §2.1</p>
+        <p className="mb-2 -mt-1 text-[11px] text-muted-foreground">
+          Cap a whole group at once — its leaves roll up underneath. Leave empty for no group limit.
+        </p>
+        <ul className="max-h-60 space-y-1.5 overflow-y-auto pr-1">
+          {groupRows.map((g) => (
+            <li key={g.id} className="flex items-center gap-2">
+              <span className="w-6 text-center text-base">{g.emoji}</span>
+              <span className="flex-1 truncate text-sm">{g.name}</span>
+              <Input
+                aria-label={`${g.name} group limit`}
+                inputMode="decimal"
+                placeholder="No limit"
+                value={groupInputs[g.id] ?? ""}
+                onChange={(e) => setGroupInputs((prev) => ({ ...prev, [g.id]: e.target.value }))}
+                className="h-8 w-32 text-right"
+              />
             </li>
           ))}
         </ul>

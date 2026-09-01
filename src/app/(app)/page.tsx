@@ -10,7 +10,7 @@ import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthEndInIST, monthKeyInIST, todayInIST } from "@/lib/dates";
 import { getCategories, getMembers, getRecentCategoryIds } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
-import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
+import { budgetsForMonth, resolveEffectiveBudget, resolveGroupBudget } from "@/lib/budgets";
 import { cn } from "@/lib/utils";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
@@ -143,6 +143,21 @@ const getDashboardData = unstable_cache(
       ).values(),
     ).filter((b) => b.paise > 0);
 
+    // §2.1 — group budgets: resolve each group's effective limit (exact-month
+    // row wins, else the every-month default) and keep only groups that have a
+    // non-zero limit set. Spend for the group is the roll-up of its leaves,
+    // computed client-side in the page from catRows (below).
+    const groupLimitMap = new Map<string, number>();
+    for (const b of budgetRows) {
+      if (b.groupId) {
+        const eff = resolveGroupBudget(budgetRows, monthKey, b.groupId);
+        if (eff) groupLimitMap.set(b.groupId, rupeesToPaise(eff.amount));
+      }
+    }
+    const groupBudgets = Array.from(groupLimitMap, ([groupId, limitPaise]) => ({ groupId, limitPaise })).filter(
+      (g) => g.limitPaise > 0,
+    );
+
     // Amendment 20 — the "Top category" insight ignores uncategorized spend;
     // the pie chart below still shows it as an explicit gray slice.
     const topCategory = catRows.reduce<typeof catRows[number] | null>(
@@ -182,6 +197,7 @@ const getDashboardData = unstable_cache(
       budget: {
         totalPaise: totalBudget ? rupeesToPaise(totalBudget.amount) : null,
         categories: categoryBudgetRows,
+        groups: groupBudgets,
       },
       tags,
       catRows,
@@ -220,6 +236,29 @@ export default async function DashboardPage({
   }));
   // Per-category spend for the budget card's category rows (§6.7)
   const catSpentPaise = new Map(data.catRows.map((r) => [r.id, rupeesToPaise(r.total)]));
+  // §2.1 — group budgets: roll each group's leaves up to a spent total, then
+  // build the cards from the resolved limits + per-leaf split underneath.
+  const groupLimitById = new Map(data.budget.groups.map((g) => [g.groupId, g.limitPaise]));
+  const groupSpentPaise = new Map<string, number>();
+  for (const groupId of groupLimitById.keys()) groupSpentPaise.set(groupId, 0);
+  for (const r of data.catRows) {
+    if (r.parentId && groupSpentPaise.has(r.parentId)) {
+      groupSpentPaise.set(r.parentId, (groupSpentPaise.get(r.parentId) ?? 0) + rupeesToPaise(r.total));
+    }
+  }
+  const groupBudgetCards = Array.from(groupLimitById.entries()).map(([groupId, limitPaise]) => {
+    const group = categoryOptions.find((c) => c.id === groupId);
+    const leaves = data.catRows.filter((r) => r.parentId === groupId);
+    return {
+      groupId,
+      name: group?.name ?? "Group",
+      emoji: group?.emoji ?? "🧺",
+      color: group?.color ?? "#9ca3af",
+      limitPaise,
+      spentPaise: groupSpentPaise.get(groupId) ?? 0,
+      leaves: leaves.map((l) => ({ id: l.id, name: l.name ?? "", emoji: l.emoji ?? "", paise: rupeesToPaise(l.total) })),
+    };
+  });
 
   // UX pass — month-over-month direction for the hero, from the trend series
   // already fetched (index 4 = last month, 5 = this month).
@@ -396,6 +435,41 @@ export default async function DashboardPage({
           )}
         </CardContent>
       </Card>
+
+      {groupBudgetCards.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Group budgets</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {groupBudgetCards.map((g) => (
+              <div key={g.groupId} className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="truncate font-semibold" style={{ color: g.color }}>
+                    {g.emoji} {g.name}
+                  </span>
+                  <span className="shrink-0 tabular-nums text-muted-foreground">
+                    {formatINR(g.spentPaise)} / {formatINR(g.limitPaise)}
+                  </span>
+                </div>
+                <BudgetBar spent={g.spentPaise} budget={g.limitPaise} className="h-1" />
+                {g.leaves.length > 0 && (
+                  <ul className="space-y-0.5 pl-3 text-[11px] text-muted-foreground">
+                    {g.leaves.map((l) => (
+                      <li key={l.id} className="flex justify-between tabular-nums">
+                        <span className="truncate">
+                          {l.emoji} {l.name}
+                        </span>
+                        <span>{formatINR(l.paise)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="pb-2">

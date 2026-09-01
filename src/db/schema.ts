@@ -96,9 +96,11 @@ export const transactions = pgTable(
 );
 
 /**
- * Monthly budgets (§6.7). One row per (month, category) scope:
- *  - month: 'yyyy-MM' for a single month, NULL for the default applying to every month.
- *  - categoryId: NULL = total monthly limit; a category id = limit for that category.
+ * Monthly budgets (§6.7, extended §2.1). One row per (month, scope) scope where
+ * the scope is exactly one of:
+ *  - total:      month set (or NULL = every-month default), categoryId NULL, groupId NULL
+ *  - category:   a single LEAF category id
+ *  - group:      a top-level GROUP id — rolls up all its leaves' spend (§2.1)
  * The effective budget for a month prefers the exact-month row over the default.
  * Budget scopes are intentionally replaced with sequential DELETE + INSERT statements
  * rather than a database transaction because the application's neon-http driver does
@@ -111,15 +113,20 @@ export const budgets = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     month: text("month"),
     categoryId: uuid("category_id").references(() => categories.id),
+    // §2.1 — a top-level GROUP id; when set the budget caps the roll-up of all
+    // its leaves. Mutually exclusive with categoryId within a single row.
+    groupId: uuid("group_id").references(() => categories.id),
     // Read as string; see §5.8
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (t) => ({
-    // one budget per (month, category) scope — NULLs collapsed via COALESCE
+    // one budget per (month, scope) — all three scope axes collapsed via COALESCE
+    // so at most one total / per-category / per-group row exists per (month, scope).
     scopeUnique: uniqueIndex("budgets_scope_unique").on(
       sql`COALESCE(${t.month}, '')`,
       sql`COALESCE(${t.categoryId}::text, '')`,
+      sql`COALESCE(${t.groupId}::text, '')`,
     ),
   }),
 );

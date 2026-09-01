@@ -71,6 +71,13 @@
       "when": 1787800000000,
       "tag": "0009_reviewed_at_partial_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787900000000,
+      "tag": "0010_group_budgets",
+      "breakpoints": true
     }
   ]
 }

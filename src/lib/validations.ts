@@ -124,16 +124,24 @@ export const categoryBudgetSchema = z.object({
   paise: z.number().int().min(0),
 });
 
+/** §2.1 — one group budget row: a top-level group id + its limit in paise (0 = no limit). */
+export const groupBudgetSchema = z.object({
+  groupId: z.string().uuid(),
+  paise: z.number().int().min(0),
+});
+
 /**
- * §6.7 saveBudgets payload. `month` is 'yyyy-MM' for a single month or null
- * for the default that applies to every month. `totalPaise` is the total
+ * §6.7 / §2.1 saveBudgets payload. `month` is 'yyyy-MM' for a single month or
+ * null for the default that applies to every month. `totalPaise` is the total
  * monthly limit (null/0 = no total limit); `categories` carries per-category
- * limits — any with paise 0 are simply not stored.
+ * limits and `groups` carries per-group limits (§2.1) — any with paise 0 are
+ * simply not stored.
  */
 export const saveBudgetsSchema = z.object({
   month: z.union([z.null(), monthKeySchema]),
   totalPaise: z.number().int().min(0).nullable(),
   categories: z.array(categoryBudgetSchema).max(60),
+  groups: z.array(groupBudgetSchema).max(60).optional().default([]),
 });
 
 /** §6.7 — inline total-budget edit/clear from the dashboard Budget card. */

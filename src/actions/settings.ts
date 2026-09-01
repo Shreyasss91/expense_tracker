@@ -295,7 +295,7 @@ export async function saveBudgets(raw: z.infer<typeof saveBudgetsSchema>) {
   if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = saveBudgetsSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid budget data" };
-  const { month, totalPaise, categories: categoryLimits } = parsed.data;
+  const { month, totalPaise, categories: categoryLimits, groups: groupLimits } = parsed.data;
 
   const categoryIds = categoryLimits.map((item) => item.categoryId);
   const uniqueCategoryIds = new Set(categoryIds);
@@ -309,8 +309,32 @@ export async function saveBudgets(raw: z.infer<typeof saveBudgetsSchema>) {
     }
   }
 
+  // §2.1 — group budgets target top-level rows (parentId IS NULL). A leaf or a
+  // missing id is rejected so a group budget can never reference a leaf (which
+  // would double-count against the same spend the group already rolls up).
+  const groupIds = groupLimits.map((item) => item.groupId);
+  if (new Set(groupIds).size !== groupIds.length) {
+    return { ok: false as const, error: "Duplicate group budget" };
+  }
+  if (groupIds.length > 0) {
+    const groupRows = await db
+      .select({ id: categories.id, parentId: categories.parentId })
+      .from(categories)
+      .where(sql`${categories.id} IN ${groupIds}`);
+    const topLevel = new Set(groupRows.filter((r) => r.parentId === null).map((r) => r.id));
+    if (topLevel.size !== groupIds.length) {
+      return { ok: false as const, error: "Group budget must target a top-level group" };
+    }
+  }
+
   // null total means "no total limit" — replaceBudgetScope treats 0 the same.
-  await replaceBudgetScope(db, month, totalPaise ?? 0, categoryLimits);
+  await replaceBudgetScope(
+    db,
+    month,
+    totalPaise ?? 0,
+    categoryLimits.map((c) => ({ categoryId: c.categoryId, paise: c.paise })),
+    groupLimits.map((g) => ({ groupId: g.groupId, paise: g.paise })),
+  );
 
   revalidatePath("/");
   revalidatePath("/settings");

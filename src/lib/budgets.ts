@@ -16,6 +16,7 @@ type BudgetDb = NeonHttpDatabase<Record<string, unknown>>;
 export interface BudgetRow {
   month: string | null;
   categoryId: string | null;
+  groupId: string | null;
   amount: string;
   categoryName: string | null;
   categoryEmoji: string | null;
@@ -29,8 +30,25 @@ export function resolveEffectiveBudget(
 ): BudgetRow | undefined {
   const month = monthKeySchema.parse(monthKey);
   return (
-    rows.find((b) => b.month === month && b.categoryId === categoryId) ??
-    rows.find((b) => b.month === null && b.categoryId === categoryId)
+    rows.find((b) => b.month === month && b.categoryId === categoryId && b.groupId === null) ??
+    rows.find((b) => b.month === null && b.categoryId === categoryId && b.groupId === null)
+  );
+}
+
+/**
+ * §2.1 — resolve a GROUP budget for a month. Exact-month group row wins, else
+ * the every-month default group row. Group budgets roll up their leaves, so
+ * this is the cap applied to the whole group's spend.
+ */
+export function resolveGroupBudget(
+  rows: BudgetRow[],
+  monthKey: string,
+  groupId: string,
+): BudgetRow | undefined {
+  const month = monthKeySchema.parse(monthKey);
+  return (
+    rows.find((b) => b.month === month && b.groupId === groupId) ??
+    rows.find((b) => b.month === null && b.groupId === groupId)
   );
 }
 
@@ -40,6 +58,7 @@ export function budgetsForMonth(db: BudgetDb, monthKey: string) {
     .select({
       month: budgets.month,
       categoryId: budgets.categoryId,
+      groupId: budgets.groupId,
       amount: budgets.amount,
       categoryName: categories.name,
       categoryEmoji: categories.emoji,
