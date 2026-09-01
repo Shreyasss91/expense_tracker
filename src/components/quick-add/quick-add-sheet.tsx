@@ -27,6 +27,7 @@ import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { MemberOption, TemplateOption } from "./types";
 import { AmountTagRow, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
+import { SharedExpenseToggle } from "@/components/transactions/shared-toggle";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
 // tag + note already filled in; the amount, date and time never repeat.
@@ -134,6 +135,9 @@ export function QuickAddSheet({
   const [justAdded, setJustAdded] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
   const [lastAddedPaise, setLastAddedPaise] = useState(0);
+  // §2.2 — per-expense shared ownership
+  const [shared, setShared] = useState(false);
+  const [splitWith, setSplitWith] = useState<string[]>([]);
   const router = useRouter();
 
   // Hydrate the remembered tag/note after mount (never during SSR, so the
@@ -171,6 +175,8 @@ export function QuickAddSheet({
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
     setShowDatePicker(false);
     setSubmitAttempted(false);
+    setShared(false);
+    setSplitWith([]);
   }
 
   async function submit() {
@@ -200,6 +206,8 @@ export function QuickAddSheet({
       time: `${time}:00`,
       createdAt: new Date().toISOString(),
       reviewedAt: null,
+      shared,
+      splitWith,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: null,
     };
@@ -220,6 +228,8 @@ export function QuickAddSheet({
           time,
           note: note || null,
           tag,
+          shared,
+          splitWith,
         },
         createdAt: Date.now(),
       });
@@ -247,6 +257,8 @@ export function QuickAddSheet({
         time,
         note: note || null,
         tag,
+        shared,
+        splitWith,
       });
     } catch {
       emitLedgerMutation({ kind: "create-revert", tempId });
@@ -443,6 +455,16 @@ export function QuickAddSheet({
               </div>
             )}
           </div>
+
+          <SharedExpenseToggle
+            shared={shared}
+            splitWith={splitWith}
+            members={members}
+            onChange={(n) => {
+              setShared(n.shared);
+              setSplitWith(n.splitWith);
+            }}
+          />
 
           {/* Amendment 20 — no category picker here. Categorize later in the
               Ledger: tap a row to edit, or select many and assign at once. */}

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
+  boolean,
   date,
   index,
   integer,
@@ -70,6 +71,12 @@ export const transactions = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     // Review queue: NULL = pending review if note is generic; set explicitly via acknowledge (§6.4)
     reviewedAt: timestamp("reviewed_at"),
+    // §2.2 — shared ownership: an expense can be borne by the household rather
+    // than the single member who logged it. `shared` flags it; `split_with`
+    // names the members to split among (empty = everyone). Attribution credits
+    // each member their solo spend plus an equal share of each shared expense.
+    shared: boolean("shared").notNull().default(false),
+    splitWith: text("split_with").array().notNull().default([]),
   },
   (t) => ({
     dateIdx: index("transactions_date_idx").on(t.date),

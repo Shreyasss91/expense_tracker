@@ -11,6 +11,7 @@ import { monthEndInIST, monthKeyInIST, todayInIST } from "@/lib/dates";
 import { getCategories, getMembers, getRecentCategoryIds } from "@/lib/meta";
 import { getTransactionsPage } from "@/actions/transactions";
 import { budgetsForMonth, resolveEffectiveBudget, resolveGroupBudget } from "@/lib/budgets";
+import { getMemberAttribution } from "@/lib/attribution";
 import { cn } from "@/lib/utils";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
@@ -218,7 +219,7 @@ export default async function DashboardPage({
 }) {
   const sp = await searchParams;
   const monthKey = typeof sp.month === "string" && MONTH_RE.test(sp.month) ? sp.month : monthKeyInIST();
-  const [data, firstPage, memberRows, categoryRows, excludeBills, recentCategoryIds] = await Promise.all([
+  const [data, firstPage, memberRows, categoryRows, excludeBills, recentCategoryIds, attribution] = await Promise.all([
     getDashboardData(monthKey),
     getTransactionsPage({ cursor: null, filters: { month: monthKey } }),
     getMembers(),
@@ -227,6 +228,8 @@ export default async function DashboardPage({
     getExcludeBillsEnabled(db),
     // Two-level picker — "Recent" chips for the ledger's category pickers
     getRecentCategoryIds(),
+    // §2.2 — per-person attributable spend (who-benefits view)
+    getMemberAttribution(monthKey),
   ]);
   const memberOptions = memberRows.map((m) => ({
     id: m.id, slug: m.slug, name: m.name, emoji: m.emoji, color: m.color, sortOrder: m.sortOrder,
@@ -377,6 +380,31 @@ export default async function DashboardPage({
             hasCategoryBudgets={data.budget.categories.length > 0}
             pacing={pacing}
           />
+        </CardContent>
+      </Card>
+
+      {/* §2.2 — who-benefits view: each member's attributable spend (solo +
+          equal share of shared expenses) plus the household total. */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Who spent</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {attribution.perMember
+            .map((a) => ({ ...a, member: memberOptions.find((m) => m.id === a.memberId) }))
+            .sort((a, b) => b.paise - a.paise)
+            .map(({ member, paise }) => (
+              <div key={member?.id} className="flex items-center justify-between text-sm">
+                <span className="truncate">{member?.emoji} {member?.name}</span>
+                <span className="tabular-nums text-muted-foreground">{formatINR(paise)}</span>
+              </div>
+            ))}
+          {attribution.householdPaise > 0 && (
+            <div className="flex items-center justify-between border-t pt-2 text-sm">
+              <span className="truncate text-muted-foreground">🏠 Household (shared)</span>
+              <span className="tabular-nums font-medium">{formatINR(attribution.householdPaise)}</span>
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -18,6 +18,10 @@ export interface ReviewItem {
   time: string;
   createdAt: string;
   reviewedAt: string | null;
+  /** §2.2 — shared across the household, not borne by one member. */
+  shared: boolean;
+  /** §2.2 — member ids to split a shared expense among; [] = everyone. */
+  splitWith: string[];
   member: { name: string; emoji: string; color: string; slug: string };
   /** NULL = uncategorized (Amendment 20). */
   category: { name: string; emoji: string; color: string; slug: string } | null;
@@ -47,6 +51,8 @@ export async function getReviewPage(args: {
       time: transactions.time,
       createdAt: transactions.createdAt,
       reviewedAt: transactions.reviewedAt,
+      shared: transactions.shared,
+      splitWith: transactions.splitWith,
       memberName: members.name,
       memberEmoji: members.emoji,
       memberColor: members.color,
@@ -79,6 +85,8 @@ export async function getReviewPage(args: {
       time: row.time,
       createdAt: row.createdAt.toISOString(),
       reviewedAt: row.reviewedAt?.toISOString() ?? null,
+      shared: row.shared,
+      splitWith: row.splitWith ?? [],
       member: {
         name: row.memberName,
         emoji: row.memberEmoji,

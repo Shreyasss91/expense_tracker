@@ -73,7 +73,10 @@ export async function createTransaction(raw: TransactionInput) {
       // is auto-acknowledged (timestamped) on creation. The previous
       // `? null : undefined` was a no-op: both branches produced NULL because
       // the column has no default, so real notes were never marked reviewed.
-      reviewedAt: isGenericNote(data.note ?? null) ? null : new Date(),
+        reviewedAt: isGenericNote(data.note ?? null) ? null : new Date(),
+        // §2.2 — shared ownership attribution
+        shared: data.shared ?? false,
+        splitWith: data.splitWith ?? [],
       })
       .returning();
 
@@ -124,6 +127,9 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
       note: data.note ?? null,
       date: data.date,
       time: `${data.time}:00`,
+      // §2.2 — shared ownership attribution (persisted on every edit)
+      shared: data.shared ?? false,
+      splitWith: data.splitWith ?? [],
       // Acknowledgement survives ordinary edits, but any note edit explicitly
       // sends the row back through the Review queue (§6.4).
       ...(noteChanged ? { reviewedAt: null } : {}),
@@ -314,6 +320,8 @@ export async function getTransactionsPage(args: {
       time: transactions.time,
       createdAt: transactions.createdAt,
       reviewedAt: transactions.reviewedAt,
+      shared: transactions.shared,
+      splitWith: transactions.splitWith,
       memberName: members.name,
       memberEmoji: members.emoji,
       memberColor: members.color,

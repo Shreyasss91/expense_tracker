@@ -116,6 +116,8 @@ export function mapRow(row: {  id: string;
   time: string;
   createdAt: Date;
   reviewedAt: Date | null;
+  shared: boolean;
+  splitWith: string[] | null;
   memberName: string;
   memberEmoji: string;
   memberColor: string;
@@ -136,6 +138,8 @@ export function mapRow(row: {  id: string;
     time: row.time,
     createdAt: row.createdAt.toISOString(),
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    shared: row.shared,
+    splitWith: row.splitWith ?? [],
     member: {
       name: row.memberName,
       emoji: row.memberEmoji,
@@ -176,6 +180,10 @@ export interface TransactionListRow {
   time: string;
   createdAt: string;
   reviewedAt: string | null;
+  /** §2.2 — shared across the household, not borne by one member. */
+  shared: boolean;
+  /** §2.2 — member ids to split a shared expense among; [] = everyone. */
+  splitWith: string[];
   member: { name: string; emoji: string; color: string; slug: string };
   /** NULL = uncategorized — rendered as an explicit "Uncategorized" state. */
   category: { name: string; emoji: string; color: string; slug: string } | null;

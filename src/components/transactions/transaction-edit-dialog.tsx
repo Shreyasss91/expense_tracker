@@ -28,6 +28,7 @@ import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "./transaction-fields";
+import { SharedExpenseToggle } from "./shared-toggle";
 
 /**
  * Edit transaction — a bottom sheet with the same shell, header pattern
@@ -80,6 +81,9 @@ export function TransactionEditDialog({
   const [splitting, setSplitting] = useState(false);
   const [splits, setSplits] = useState<SplitPart[]>([]);
   const [splitSaving, setSplitSaving] = useState(false);
+  // §2.2 — per-expense shared ownership
+  const [shared, setShared] = useState(false);
+  const [splitWith, setSplitWith] = useState<string[]>([]);
   // always starts collapsed on open, not persisted (matches Quick Add)
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Layout pass — on ≥lg the sheet docks as a right-side panel so the ledger
@@ -114,6 +118,8 @@ export function TransactionEditDialog({
     setShowDatePicker(false);
     setSplitting(false);
     setSplits([]);
+    setShared(row.shared ?? false);
+    setSplitWith(row.splitWith ?? []);
   }
 
   const paise = rupeesToPaise(amount);
@@ -187,6 +193,8 @@ export function TransactionEditDialog({
           time: `${time}:00`,
           createdAt: new Date().toISOString(),
           reviewedAt: null,
+          shared: false,
+          splitWith: [],
           member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
           category: category
             ? { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug }
@@ -208,6 +216,8 @@ export function TransactionEditDialog({
           time,
           note: s.note || null,
           tag: tag as "one_time" | "recurring" | "lifestyle",
+          shared: false,
+          splitWith: [],
         });
         if (res.ok) createdIds.push(res.id);
         else {
@@ -251,6 +261,8 @@ export function TransactionEditDialog({
               time,
               note: row.note,
               tag: tag as "one_time" | "recurring" | "lifestyle",
+              shared: row.shared,
+              splitWith: row.splitWith,
             });
             if (restore.ok) await deleteTransactions(createdIds);
             emitLedgerMutation({ kind: "refetch" });
@@ -322,6 +334,8 @@ export function TransactionEditDialog({
       note: note || null,
       date,
       time: `${time}:00`,
+      shared,
+      splitWith,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: category
         ? { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug }
@@ -329,7 +343,7 @@ export function TransactionEditDialog({
     };
     emitLedgerMutation({ kind: "update", id: row.id, row: updatedRow });
     onOpenChange(false);
-    const base = { memberId, categoryId: category?.id ?? null, amount: paise, date, time, note: note || null };
+    const base = { memberId, categoryId: category?.id ?? null, amount: paise, date, time, note: note || null, shared, splitWith };
     const payload = { ...base, tag: tag as "one_time" | "recurring" | "lifestyle" };
     let res: Awaited<ReturnType<typeof updateTransaction>>;
     try {
@@ -587,6 +601,17 @@ export function TransactionEditDialog({
             onAddCategory={openAddCategory}
             addForm={addForm}
             recentCategoryIds={recentCategoryIds}
+          />
+
+          <SharedExpenseToggle
+            shared={shared}
+            splitWith={splitWith}
+            members={members}
+            disabled={splitting}
+            onChange={(n) => {
+              setShared(n.shared);
+              setSplitWith(n.splitWith);
+            }}
           />
         </div>
         )}
