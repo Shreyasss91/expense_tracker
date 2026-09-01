@@ -35,6 +35,7 @@ venv/
 
 # Agent tooling (session-local, not project source)
 .commandcode/
+.workbuddy-ai/
 
 # OS
 .DS_Store

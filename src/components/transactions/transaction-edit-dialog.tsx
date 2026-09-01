@@ -136,9 +136,14 @@ export function TransactionEditDialog({
       toast.error("Enter an amount first");
       return;
     }
+    // splits[].amount is a RUPEE string — splitPaiseList runs it through
+    // rupeesToPaise(). Seed in rupees, so `paise` must be divided by 100.
+    // Halve in integer paise first so an odd amount (₹100.01) splits into two
+    // whole-paise parts instead of drifting into a fractional paisa.
+    const halfPaise = Math.floor(paise / 2);
     setSplits([
-      { amount: Number(paise / 2).toString(), note: note, categoryId },
-      { amount: (paise - Math.floor(paise / 2)).toString(), note: "", categoryId: "" },
+      { amount: (halfPaise / 100).toString(), note: note, categoryId },
+      { amount: ((paise - halfPaise) / 100).toString(), note: "", categoryId: "" },
     ]);
     setError(null);
     setSplitting(true);
