@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { members, templates, transactions } from "@/db/schema";
 import { isGenericNote } from "@/lib/generic-notes";
 import { nowTimeInIST, todayInIST } from "@/lib/dates";
+import { timingSafeStringEqual } from "@/lib/secure-compare";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   const authorization = request.headers.get("authorization");
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  // §1.8: constant-time compare of the bearer token (no timing leak of secret).
+  if (!secret || !authorization || !timingSafeStringEqual(authorization, `Bearer ${secret}`)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 

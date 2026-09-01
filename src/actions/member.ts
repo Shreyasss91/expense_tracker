@@ -22,9 +22,15 @@ export async function updateActiveMember(memberId: string) {
   if (!exists) return { ok: false as const, error: "Unknown member" };
 
   const cookieStore = await cookies();
+  // §1.8: SPEC §3.2 keeps this cookie deliberately non-httpOnly (SSR
+  // determinism + no hydration flash), so we harden the remaining flags:
+  // sameSite "lax" blocks cross-site CSRF, and secure only on prod where
+  // TLS is guaranteed.
   cookieStore.set("active_member_id", parsed.data, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
   });
 
   return { ok: true as const };

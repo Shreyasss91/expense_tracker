@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { sendMonthlyTelegramDigest } from "@/lib/telegram-digest";
+import { timingSafeStringEqual } from "@/lib/secure-compare";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   const authorization = request.headers.get("authorization");
-  if (!secret || authorization !== `Bearer ${secret}`) {
+  // §1.8: constant-time compare of the bearer token (no timing leak of secret).
+  if (!secret || !authorization || !timingSafeStringEqual(authorization, `Bearer ${secret}`)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
