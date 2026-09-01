@@ -89,7 +89,11 @@ export async function GET(request: Request) {
           note: t.note,
           date,
           time: `${nowTimeInIST()}:00`,
-          reviewedAt: isGenericNote(t.note) ? null : undefined, // §6.4 generic-note rule
+          // §1.11 / §6.4 — generic notes stay NULL (pending review); a real
+          // note is auto-acknowledged (timestamped). The old `? null : undefined`
+          // was a no-op (both branches NULL), so auto-entries with real notes
+          // were never marked reviewed.
+          reviewedAt: isGenericNote(t.note) ? null : new Date(),
         })
         .returning({ id: transactions.id });
 

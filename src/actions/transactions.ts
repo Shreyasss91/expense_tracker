@@ -69,7 +69,11 @@ export async function createTransaction(raw: TransactionInput) {
         note: data.note ?? null,
         date: data.date,
         time: `${data.time}:00`,
-        reviewedAt: isGenericNote(data.note ?? null) ? null : undefined, // NULL for generic notes (§6.4)
+        // §1.11 / §6.4 — generic notes stay NULL (pending review); a real note
+      // is auto-acknowledged (timestamped) on creation. The previous
+      // `? null : undefined` was a no-op: both branches produced NULL because
+      // the column has no default, so real notes were never marked reviewed.
+      reviewedAt: isGenericNote(data.note ?? null) ? null : new Date(),
       })
       .returning();
 
