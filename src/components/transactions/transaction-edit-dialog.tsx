@@ -29,6 +29,8 @@ import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "./transaction-fields";
 import { SharedExpenseToggle } from "./shared-toggle";
+import { ReceiptAttachments } from "./receipt-attachments";
+import type { UploadedReceipt } from "@/lib/receipt-client";
 
 /**
  * Edit transaction — a bottom sheet with the same shell, header pattern
@@ -88,6 +90,8 @@ export function TransactionEditDialog({
   const [splitWith, setSplitWith] = useState<string[]>([]);
   // §2.3 — split can be assigned by raw amount or by percentage of the total
   const [splitMode, setSplitMode] = useState<"amount" | "percent">("amount");
+  // §2.9 — receipts attached to this row; loaded per-row, never carried over
+  const [receipts, setReceipts] = useState<UploadedReceipt[]>([]);
   // always starts collapsed on open, not persisted (matches Quick Add)
   const [showDatePicker, setShowDatePicker] = useState(false);
   // Layout pass — on ≥lg the sheet docks as a right-side panel so the ledger
@@ -125,7 +129,25 @@ export function TransactionEditDialog({
     setSplitMode("amount");
     setShared(row.shared ?? false);
     setSplitWith(row.splitWith ?? []);
+    setReceipts([]);
   }
+
+  // §2.9 — load this row's receipts when the sheet opens on it. Fetched from
+  // the client (not passed down from the server) so the ledger's initial page
+  // payload stays the same size whether or not receipts exist.
+  useEffect(() => {
+    if (!open || !row?.id) return;
+    let cancelled = false;
+    void fetch(`/api/attachments?transactionId=${encodeURIComponent(row.id)}`)
+      .then((r) => r.json() as Promise<{ ok?: boolean; attachments?: UploadedReceipt[] }>)
+      .then((json) => {
+        if (!cancelled && json?.ok) setReceipts(json.attachments ?? []);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [open, row?.id]);
 
   const paise = rupeesToPaise(amount);
   const canSubmit = paise > 0 && memberId !== "";
@@ -226,6 +248,7 @@ export function TransactionEditDialog({
           reviewedAt: null,
           shared: false,
           splitWith: [],
+          receiptCount: 0,
           member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
           category: category
             ? { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug }
@@ -677,6 +700,14 @@ export function TransactionEditDialog({
               onChange={(e) => setNote(e.target.value)}
             />
           </div>
+
+          {/* §2.9 — the receipt lives with the row it proves. */}
+          <ReceiptAttachments
+            transactionId={row?.id ?? null}
+            initial={receipts}
+            onUploadedChange={setReceipts}
+            disabled={saving}
+          />
 
           <CategoryGrid
             categories={cats}

@@ -28,6 +28,8 @@ import type { TransactionListRow } from "@/lib/query";
 import type { MemberOption, TemplateOption } from "./types";
 import { AmountTagRow, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
 import { SharedExpenseToggle } from "@/components/transactions/shared-toggle";
+import { ReceiptAttachments } from "@/components/transactions/receipt-attachments";
+import { uploadReceipt } from "@/lib/receipt-client";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
 // tag + note already filled in; the amount, date and time never repeat.
@@ -138,6 +140,9 @@ export function QuickAddSheet({
   // §2.2 — per-expense shared ownership
   const [shared, setShared] = useState(false);
   const [splitWith, setSplitWith] = useState<string[]>([]);
+  // §2.9 — receipts staged before the transaction exists; uploaded against the
+  // real id as soon as the create action returns it.
+  const [pendingReceipts, setPendingReceipts] = useState<File[]>([]);
   const router = useRouter();
 
   // Hydrate the remembered tag/note after mount (never during SSR, so the
@@ -177,6 +182,33 @@ export function QuickAddSheet({
     setSubmitAttempted(false);
     setShared(false);
     setSplitWith([]);
+    setPendingReceipts([]);
+  }
+
+  /**
+   * §2.9 — attach the staged photos to a freshly created transaction. Best
+   * effort: the expense is already committed, so a failed upload must not
+   * reverse it — the user is told and can re-attach from the edit dialog.
+   */
+  async function attachPendingReceipts(transactionId: string, files: File[]) {
+    if (files.length === 0) return;
+    let attached = 0;
+    for (const file of files) {
+      try {
+        await uploadReceipt(transactionId, file);
+        attached += 1;
+      } catch {
+        // keep going — one bad photo must not lose the others
+      }
+    }
+    if (attached > 0) {
+      // The list's optimistic row has no receipt count; a refetch is the only
+      // way to surface the paperclip without another mutation event kind.
+      emitLedgerMutation({ kind: "refetch" });
+      toast.success(`${attached} receipt${attached === 1 ? "" : "s"} attached`);
+    } else {
+      toast.error("Receipts could not be attached — re-add them from the ledger");
+    }
   }
 
   async function submit() {
@@ -208,6 +240,7 @@ export function QuickAddSheet({
       reviewedAt: null,
       shared,
       splitWith,
+      receiptCount: pendingReceipts.length,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: null,
     };
@@ -238,11 +271,21 @@ export function QuickAddSheet({
       saveLastEntry(lastEntryRef.current);
       setRecentNotes((prev) => rememberNote(note, prev));
       const savedPaise = paise;
+      // §2.9 — the offline queue stores a plain TransactionInput, so photos are
+      // not carried through the sync. Say so now rather than silently losing
+      // them; the receipt can be re-attached from the ledger after the sync.
+      const droppedReceipts = pendingReceipts.length;
       reset();
       setLastAddedPaise(savedPaise);
       setAddedCount((c) => c + 1);
       setJustAdded(true);
       toast.info("Saved offline — it'll sync when you're back online", { duration: 6000 });
+      if (droppedReceipts > 0) {
+        toast.warning(
+          `Receipt${droppedReceipts === 1 ? "" : "s"} not queued offline — re-attach from the ledger after sync`,
+          { duration: 8000 },
+        );
+      }
       return;
     }
 
@@ -291,10 +334,14 @@ export function QuickAddSheet({
       // Multi-entry — reset the form but KEEP the sheet open; a confirmation
       // banner takes over the footer with Add-another / Done.
       const savedPaise = paise;
+      // §2.9 — the expense exists now, so the staged photos have an id to hang
+      // off. Awaited before the reset so a failure message names the row.
+      const stagedReceipts = pendingReceipts;
       reset();
       setLastAddedPaise(savedPaise);
       setAddedCount((c) => c + 1);
       setJustAdded(true);
+      if (stagedReceipts.length > 0) void attachPendingReceipts(res.id, stagedReceipts);
     } else {
       emitLedgerMutation({ kind: "create-revert", tempId });
       toast.error(res.error ?? "Could not save");
@@ -455,6 +502,14 @@ export function QuickAddSheet({
               </div>
             )}
           </div>
+
+          {/* §2.9 — capture the receipt at the moment of spend, which is the
+              only moment the bill is still in your hand. */}
+          <ReceiptAttachments
+            transactionId={null}
+            onPendingChange={setPendingReceipts}
+            label="Receipt"
+          />
 
           <SharedExpenseToggle
             shared={shared}

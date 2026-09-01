@@ -206,3 +206,35 @@ export const savedSearches = pgTable("saved_searches", {
 });
 
 export type SavedSearch = typeof savedSearches.$inferSelect;
+
+/**
+ * Receipt / attachment rows (§2.9). One transaction can carry several photos
+ * (a bill plus its GST slip), so this is a child table rather than a column.
+ *
+ * The bytes live in object storage (Vercel Blob); this row keeps only the
+ * locator. `url` is the store's public URL but is never handed to the client
+ * directly — every read goes through /api/attachments/[id], which re-checks the
+ * session and streams the bytes, so receipts stay behind the app's auth (§1.5).
+ * `pathname` is what the store's DELETE endpoint needs, so it must be kept.
+ */
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    transactionId: uuid("transaction_id")
+      .references(() => transactions.id, { onDelete: "cascade" })
+      .notNull(),
+    /** Object-storage locator, e.g. "receipts/2026/09/<uuid>.jpg". */
+    pathname: text("pathname").notNull(),
+    /** The store's URL — read back through an authed proxy, never served raw. */
+    url: text("url").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    txIdx: index("attachments_transaction_id_idx").on(t.transactionId),
+  }),
+);
+
+export type Attachment = typeof attachments.$inferSelect;

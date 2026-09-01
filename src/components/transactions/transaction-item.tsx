@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Check, Pencil, Trash2 } from "lucide-react";
+import { Check, Pencil, Paperclip, Trash2 } from "lucide-react";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { displayTime } from "@/lib/dates";
 import type { TransactionListRow } from "@/lib/query";
@@ -186,6 +186,18 @@ export function TransactionItem({
             )}
             <span aria-hidden>·</span>
             <span className="tabular-nums">{displayTime(row.time)}</span>
+            {/* §2.9 — "there is a photo behind this number", at a glance */}
+            {row.receiptCount > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-0.5" title={`${row.receiptCount} receipt${row.receiptCount === 1 ? "" : "s"}`}>
+                  <Paperclip className="h-3 w-3" aria-hidden />
+                  <span className="sr-only">
+                    {row.receiptCount} receipt{row.receiptCount === 1 ? "" : "s"} attached
+                  </span>
+                </span>
+              </>
+            )}
             {row.tag && (
               <>
                 <span aria-hidden>·</span>

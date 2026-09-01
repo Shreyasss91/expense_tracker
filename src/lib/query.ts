@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, transactions } from "@/db/schema";
+import { attachments, categories, transactions } from "@/db/schema";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { monthKeySchema } from "@/lib/validations";
 
@@ -135,6 +135,8 @@ export function mapRow(row: {  id: string;
   reviewedAt: Date | null;
   shared: boolean;
   splitWith: string[] | null;
+  /** §2.9 — number of receipts attached; 0 for the overwhelming majority. */
+  receiptCount?: number | null;
   memberName: string;
   memberEmoji: string;
   memberColor: string;
@@ -157,6 +159,7 @@ export function mapRow(row: {  id: string;
     reviewedAt: row.reviewedAt?.toISOString() ?? null,
     shared: row.shared,
     splitWith: row.splitWith ?? [],
+    receiptCount: Number(row.receiptCount ?? 0),
     member: {
       name: row.memberName,
       emoji: row.memberEmoji,
@@ -176,6 +179,17 @@ export function mapRow(row: {  id: string;
         : null,
   };
 }
+
+/**
+ * §2.9 — correlated scalar giving a transaction's receipt count. Deliberately
+ * a subquery rather than a LEFT JOIN + GROUP BY: the join would force a
+ * re-group of the whole page and would drop nothing but complicate the keyset
+ * cursor, while the subquery is planned as a cheap index-only lookup and
+ * returns 0 (not NULL) for the rows that have no receipts.
+ */
+export const receiptCountExpr = sql<number>`(
+  SELECT COUNT(*)::int FROM ${attachments} WHERE ${attachments.transactionId} = ${transactions.id}
+)`;
 
 /** §7.3 canonical ordering — identical in the list query and the cursor comparison. */
 export const listOrderBy = [
@@ -201,6 +215,8 @@ export interface TransactionListRow {
   shared: boolean;
   /** §2.2 — member ids to split a shared expense among; [] = everyone. */
   splitWith: string[];
+  /** §2.9 — receipts attached to this row (count only; the bytes are lazy). */
+  receiptCount: number;
   member: { name: string; emoji: string; color: string; slug: string };
   /** NULL = uncategorized — rendered as an explicit "Uncategorized" state. */
   category: { name: string; emoji: string; color: string; slug: string } | null;

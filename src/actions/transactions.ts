@@ -11,7 +11,7 @@ import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
 import { todayInIST } from "@/lib/dates";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
-import { buildWhere, expandGroupFilter, listOrderBy, mapRow, PAGE_SIZE, type Cursor, type TransactionListFilters } from "@/lib/query";
+import { buildWhere, expandGroupFilter, listOrderBy, mapRow, PAGE_SIZE, receiptCountExpr, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
@@ -322,6 +322,9 @@ export async function getTransactionsPage(args: {
       reviewedAt: transactions.reviewedAt,
       shared: transactions.shared,
       splitWith: transactions.splitWith,
+      // §2.9 — receipt count rides along with the page instead of costing a
+      // second round trip per row.
+      receiptCount: receiptCountExpr,
       memberName: members.name,
       memberEmoji: members.emoji,
       memberColor: members.color,

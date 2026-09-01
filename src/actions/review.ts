@@ -4,28 +4,17 @@ import { auth } from "@/auth";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { transactions, members, categories } from "@/db/schema";
-import { listOrderBy, PAGE_SIZE, type Cursor } from "@/lib/query";
+import { listOrderBy, PAGE_SIZE, receiptCountExpr, type Cursor, type TransactionListRow } from "@/lib/query";
 import { pendingReviewWhere } from "@/lib/review-where";
 
-export interface ReviewItem {
-  id: string;
-  memberId: string;
-  categoryId: string | null;
-  tag: "one_time" | "recurring" | "lifestyle" | null;
-  amount: string;
-  note: string | null;
-  date: string;
-  time: string;
-  createdAt: string;
-  reviewedAt: string | null;
-  /** §2.2 — shared across the household, not borne by one member. */
-  shared: boolean;
-  /** §2.2 — member ids to split a shared expense among; [] = everyone. */
-  splitWith: string[];
-  member: { name: string; emoji: string; color: string; slug: string };
-  /** NULL = uncategorized (Amendment 20). */
-  category: { name: string; emoji: string; color: string; slug: string } | null;
-}
+/**
+ * A review item is the same row the ledger renders — the queue is a filtered
+ * view of `transactions`, not a different entity. Aliasing the ledger's row
+ * type (rather than re-declaring the shape) is what lets the Review queue hand
+ * a row straight to the shared edit dialog without a conversion layer, and it
+ * means a new row field is picked up here automatically.
+ */
+export type ReviewItem = TransactionListRow;
 
 /**
  * Get pending review items grouped by month (§6.4).
@@ -53,6 +42,8 @@ export async function getReviewPage(args: {
       reviewedAt: transactions.reviewedAt,
       shared: transactions.shared,
       splitWith: transactions.splitWith,
+      // §2.9 — so a review row can carry its paperclip into the edit dialog.
+      receiptCount: receiptCountExpr,
       memberName: members.name,
       memberEmoji: members.emoji,
       memberColor: members.color,
@@ -87,6 +78,7 @@ export async function getReviewPage(args: {
       reviewedAt: row.reviewedAt?.toISOString() ?? null,
       shared: row.shared,
       splitWith: row.splitWith ?? [],
+      receiptCount: Number(row.receiptCount ?? 0),
       member: {
         name: row.memberName,
         emoji: row.memberEmoji,
