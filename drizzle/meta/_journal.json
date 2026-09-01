@@ -64,6 +64,13 @@
       "when": 1787725378000,
       "tag": "0008_category_hierarchy",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787800000000,
+      "tag": "0009_reviewed_at_partial_idx",
+      "breakpoints": true
     }
   ]
 }

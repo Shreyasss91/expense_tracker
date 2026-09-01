@@ -90,7 +90,14 @@ const getDashboardData = unstable_cache(
           total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
         })
         .from(transactions)
-        .where(gte(transactions.date, `${format(addMonths(baseDate, -5), "yyyy-MM")}-01`))
+        .where(
+          and(
+            gte(transactions.date, `${format(addMonths(baseDate, -5), "yyyy-MM")}-01`),
+            // §1.9 — upper bound: a single future-dated row must not widen the
+            // scan indefinitely. Cap at the end of the selected month.
+            lte(transactions.date, monthEndInIST(baseDate)),
+          ),
+        )
         .groupBy(sql`substring(${transactions.date}::text from 1 for 7)`),
       // Largest single expense this month — for the summary card
       db

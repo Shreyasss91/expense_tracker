@@ -263,6 +263,23 @@ export async function getUncategorizedCount(): Promise<number> {
   return Number(result[0]?.count ?? 0);
 }
 
+/** §1.9 — single round-trip for both bottom-nav badges (pending review +
+ * uncategorized), replacing the two separate 30s pollers. Reuses the exact
+ * predicates of getPendingReviewCount / getUncategorizedCount so the numbers
+ * stay identical. */
+export async function getNavCounts(): Promise<{ pending: number; uncategorized: number }> {
+  const session = await auth();
+  if (!session?.user) return { pending: 0, uncategorized: 0 };
+  const [pendingRes, uncatRes] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(transactions).where(pendingReviewWhere()),
+    db.select({ count: sql<number>`count(*)` }).from(transactions).where(sql`${transactions.categoryId} IS NULL`),
+  ]);
+  return {
+    pending: Number(pendingRes[0]?.count ?? 0),
+    uncategorized: Number(uncatRes[0]?.count ?? 0),
+  };
+}
+
 export async function getTransactionsPage(args: {
   cursor: Cursor | null;
   filters: TransactionListFilters;

@@ -7,8 +7,7 @@ import { useEffect, useState } from "react";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
 import { cn } from "@/lib/utils";
 import { LEDGER_SELECTION_EVENT } from "@/lib/events";
-import { usePendingReviewCount } from "@/components/use-pending-review-count";
-import { useUncategorizedCount } from "@/components/use-uncategorized-count";
+import { useNavCounts } from "@/components/use-nav-counts";
 
 // UX pass — one-time discoverability nudge for the center FAB. Per-device
 // (localStorage), shown once, ~1s after first load, gone for good after any
@@ -18,8 +17,7 @@ const FAB_COACH_KEY = "coach:fab-seen";
 export function BottomNav() {
   const pathname = usePathname();
   const { open } = useQuickAdd();
-  const pendingCount = usePendingReviewCount();
-  const uncategorizedCount = useUncategorizedCount();
+  const { pending: pendingCount, uncategorized: uncategorizedCount } = useNavCounts();
   // A sticky bulk bar (ledger/review selection) occupies the FAB's thumb
   // zone — hide the button while one is open, keeping the slot reserved.
   const [selectionActive, setSelectionActive] = useState(false);

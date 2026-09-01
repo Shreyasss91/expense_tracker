@@ -86,6 +86,12 @@ export const transactions = pgTable(
     // The extension is created by migration drizzle/0006_note_search_trgm.sql;
     // this definition keeps the index present through future push/diff cycles.
     noteTrgmIdx: index("transactions_note_trgm_idx").using("gin", sql`${t.note} gin_trgm_ops`),
+    // §1.9 — partial index that serves the pending-review query
+    // (WHERE reviewed_at IS NULL) without a full-table scan. reviewed_at has
+    // no default, so untouched rows are NULL and land in this index.
+    reviewedPendingIdx: index("transactions_reviewed_at_pending_idx")
+      .on(t.reviewedAt)
+      .where(sql`${t.reviewedAt} IS NULL`),
   }),
 );
 
