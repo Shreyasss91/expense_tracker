@@ -60,7 +60,13 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
   }
   if (filters.from) conds.push(gte(transactions.date, filters.from));
   if (filters.to) conds.push(lte(transactions.date, filters.to));
-  if (filters.search?.trim()) conds.push(ilike(transactions.note, `%${filters.search.trim()}%`));
+  if (filters.search?.trim()) {
+    // §1.10 — escape LIKE/ILIKE metacharacters so a search for `%` (or `_`)
+    // matches the literal character instead of acting as a wildcard that
+    // matches every row. The default ESCAPE is backslash.
+    const term = filters.search.trim().replace(/[\\%_]/g, (ch) => `\\${ch}`);
+    conds.push(ilike(transactions.note, `%${term}%`));
+  }
 
   // §7.3 keyset cursor — strict total order (date DESC, time DESC, created_at DESC, id DESC)
   if (cursor) {
@@ -192,11 +198,17 @@ export interface LedgerSummary {
  * Mirrors the dashboard's expense-focused cards: total, lifestyle and the
  * largest single spend in the filtered set.
  */
-export async function getLedgerSummary(filters: TransactionListFilters): Promise<LedgerSummary> {
+export async function getLedgerSummary(
+  filters: TransactionListFilters,
+  excludeBills = false,
+): Promise<LedgerSummary> {
   const where = buildWhere(await expandGroupFilter(filters), null);
   const rows = await db
     .select({
       expense: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      // §1.10 — compute recurring separately so the headline total can mirror
+      // the budget bar, which subtracts recurring when exclude-bills is on.
+      recurring: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'recurring'), 0)`,
       lifestyle: sql<string>`COALESCE(SUM(${transactions.amount}) FILTER (WHERE ${transactions.tag} = 'lifestyle'), 0)`,
       largest: sql<string | null>`MAX(${transactions.amount})`,
       count: sql<number>`COUNT(*)::int`,
@@ -206,8 +218,12 @@ export async function getLedgerSummary(filters: TransactionListFilters): Promise
     .from(transactions)
     .where(where);
   const r = rows[0];
+  const expensePaise = rupeesToPaise(r.expense);
+  const billsPaise = rupeesToPaise(r.recurring);
   return {
-    expensePaise: rupeesToPaise(r.expense),
+    // §1.10 — when the global exclude-bills toggle is on, the ledger headline
+    // now matches the budget bar instead of disagreeing with it.
+    expensePaise: excludeBills ? expensePaise - billsPaise : expensePaise,
     lifestylePaise: rupeesToPaise(r.lifestyle),
     largestPaise: r.largest === null ? null : rupeesToPaise(r.largest),
     count: Number(r.count),

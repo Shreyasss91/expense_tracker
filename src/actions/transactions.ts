@@ -54,28 +54,38 @@ export async function createTransaction(raw: TransactionInput) {
 
   const paise = data.amount;
 
-  const [row] = await db
-    .insert(transactions)
-    .values({
-      id: randomUUID(),
-      memberId,
-      categoryId: data.categoryId ?? null,
-      tag: data.tag,
-      amount: paiseToDbString(paise),
-      note: data.note ?? null,
-      date: data.date,
-      time: `${data.time}:00`,
-      reviewedAt: isGenericNote(data.note ?? null) ? null : undefined, // NULL for generic notes (§6.4)
-    })
-    .returning();
+  // §1.10 — guard the whole mutation so a DB error becomes a typed error
+  // response instead of an unhandled throw, and so row.id can never be read
+  // off an undefined insert result.
+  try {
+    const [row] = await db
+      .insert(transactions)
+      .values({
+        id: randomUUID(),
+        memberId,
+        categoryId: data.categoryId ?? null,
+        tag: data.tag,
+        amount: paiseToDbString(paise),
+        note: data.note ?? null,
+        date: data.date,
+        time: `${data.time}:00`,
+        reviewedAt: isGenericNote(data.note ?? null) ? null : undefined, // NULL for generic notes (§6.4)
+      })
+      .returning();
 
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidateTag("transactions");
+    if (!row) return { ok: false as const, error: "Failed to create transaction" };
 
-  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
+    revalidatePath("/");
+    revalidatePath("/transactions");
+    revalidateTag("transactions");
 
-  return { ok: true as const, id: row.id, alert };
+    const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
+
+    return { ok: true as const, id: row.id, alert };
+  } catch (error) {
+    console.error("createTransaction failed", error);
+    return { ok: false as const, error: "Could not save the transaction" };
+  }
 }
 
 export async function updateTransaction(id: string, raw: TransactionInput) {
@@ -353,7 +363,13 @@ export async function exportCsv(filters?: TransactionListFilters): Promise<{ ok:
     .innerJoin(members, eq(transactions.memberId, members.id))
     .leftJoin(categories, eq(transactions.categoryId, categories.id))
     .where(where)
-    .orderBy(sql`date ASC, created_at ASC`);
+    // §1.10 — qualify every column (the LEFT JOIN to categories also has a
+    // created_at, so the bare `created_at` was ambiguous) and extend the
+    // tiebreak through time/created_at/id so the export order is fully
+    // deterministic and matches the ledger's keyset ordering.
+    .orderBy(
+      sql`${transactions.date} ASC, ${transactions.time} ASC, ${transactions.createdAt} ASC, ${transactions.id} ASC`,
+    );
 
   const lines = rows.map((r) =>
     formatCsvLine({

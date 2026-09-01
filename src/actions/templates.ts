@@ -28,27 +28,36 @@ export async function createTemplate(raw: TemplateInput) {
   }
 
   const [maxRow] = await db.select({ max: sql<number>`COALESCE(MAX(${templates.sortOrder}), 0)` }).from(templates);
-  const [row] = await db
-    .insert(templates)
-    .values({
-      id: randomUUID(),
-      name: data.name,
-      categoryId: data.categoryId,
-      tag: data.tag,
-      amount: paiseToDbString(data.amount),
-      note: data.note ?? null,
-      sortOrder: data.sortOrder ?? Number(maxRow?.max ?? 0) + 1,
-      autoDay: data.autoDay ?? null,
-      memberId: data.memberId ?? null,
-    })
-    .returning();
+  // §1.10 — guard the mutation (typed error instead of an unhandled throw) and
+  // ensure row.id is never read off an undefined insert result.
+  try {
+    const [row] = await db
+      .insert(templates)
+      .values({
+        id: randomUUID(),
+        name: data.name,
+        categoryId: data.categoryId,
+        tag: data.tag,
+        amount: paiseToDbString(data.amount),
+        note: data.note ?? null,
+        sortOrder: data.sortOrder ?? Number(maxRow?.max ?? 0) + 1,
+        autoDay: data.autoDay ?? null,
+        memberId: data.memberId ?? null,
+      })
+      .returning();
 
-  revalidateTag("templates");
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidatePath("/settings");
+    if (!row) return { ok: false as const, error: "Failed to create template" };
 
-  return { ok: true as const, id: row.id };
+    revalidateTag("templates");
+    revalidatePath("/");
+    revalidatePath("/transactions");
+    revalidatePath("/settings");
+
+    return { ok: true as const, id: row.id };
+  } catch (error) {
+    console.error("createTemplate failed", error);
+    return { ok: false as const, error: "Could not save the template" };
+  }
 }
 
 export async function updateTemplate(id: string, raw: TemplateInput) {
@@ -68,6 +77,15 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
     if (!memberExists) return { ok: false as const, error: "Unknown member" };
   }
 
+  // §1.10 — fetch the stored row so we can detect an autoDay change. The
+  // idempotency marker (lastAutoKey) must survive a member/category edit, but
+  // if the user moves the auto-day (e.g. 5 → 20) after it already fired this
+  // month, the marker still equals this month's key and the bill would never
+  // fire again — so reset it to NULL only when the day actually changes.
+  const existing = await db.query.templates.findFirst({ where: eq(templates.id, idCheck.data) });
+  if (!existing) return { ok: false as const, error: "Template not found" };
+  const autoDayChanged = data.autoDay != null && data.autoDay !== existing.autoDay;
+
   const [row] = await db
     .update(templates)
     .set({
@@ -78,8 +96,10 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
       note: data.note ?? null,
       ...(data.sortOrder === undefined ? {} : { sortOrder: data.sortOrder }),
       autoDay: data.autoDay ?? null,
-      // A member change must not re-fire the current month's auto entry —
-      // keep the idempotency marker untouched here; the cron owns it.
+      // A member/category change must not re-fire the current month's auto
+      // entry — keep the idempotency marker untouched here; the cron owns it.
+      // Only an autoDay change clears it (see autoDayChanged above).
+      ...(autoDayChanged ? { lastAutoKey: null } : {}),
       memberId: data.memberId ?? null,
       updatedAt: new Date(),
     })

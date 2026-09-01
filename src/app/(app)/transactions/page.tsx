@@ -14,6 +14,7 @@ import type { CategoryOption, MemberOption } from "@/components/quick-add/types"
 import { getLedgerSummary } from "@/lib/query";
 import { parseLedgerSearchParams } from "@/lib/ledger-url";
 import { getMonthBudgetStatus } from "@/lib/budgets";
+import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 
 export const metadata = { title: "Ledger — Family Ledger" };
 
@@ -32,9 +33,8 @@ export default async function TransactionsPage({
   const stripBase = parse(`${monthKeyInIST()}-01`, "yyyy-MM-dd", new Date());
   const stripMonths = Array.from({ length: 36 }, (_, i) => format(addMonths(stripBase, i - 35), "yyyy-MM"));
 
-  const [firstPage, summary, memberRows, categoryRows, monthBudget, pendingReviewCount, reviewPage, recentCategoryIds] = await Promise.all([
+  const [firstPage, memberRows, categoryRows, monthBudget, pendingReviewCount, reviewPage, recentCategoryIds, excludeBills] = await Promise.all([
     getTransactionsPage({ cursor: null, filters }),
-    getLedgerSummary(filters),
     getMembers(),
     getCategories(),
     // §6.7 — spent-vs-budget for the strip's selected month; null when no total budget
@@ -44,7 +44,11 @@ export default async function TransactionsPage({
     getReviewPage({ cursor: null }),
     // Two-level picker — "Recent" chips for the category pickers
     getRecentCategoryIds(),
+    // §1.10 — the global exclude-bills toggle, so the ledger headline can
+    // agree with the budget bar.
+    getExcludeBillsEnabled(db),
   ]);
+  const summary = await getLedgerSummary(filters, excludeBills);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,

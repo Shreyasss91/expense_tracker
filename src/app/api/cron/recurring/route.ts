@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { and, asc, eq, isNull, ne, or, sql } from "drizzle-orm";
+import { format, parse } from "date-fns";
 import { randomUUID } from "node:crypto";
 import { db } from "@/db";
 import { members, templates, transactions } from "@/db/schema";
@@ -32,7 +33,22 @@ export async function GET(request: Request) {
 
   // Manual override for testing/backfilling: ?date=YYYY-MM-DD
   const dateParam = new URL(request.url).searchParams.get("date");
-  const date = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : todayInIST();
+  let date: string;
+  if (dateParam) {
+    // §1.10 — the regex below accepts impossible calendar dates (e.g.
+    // 2026-02-30); a round-trip parse+format rejects them so we return 400
+    // instead of letting the later INSERT throw a 500.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+      return NextResponse.json({ ok: false, error: "Invalid date format (expected YYYY-MM-DD)" }, { status: 400 });
+    }
+    const parsed = parse(dateParam, "yyyy-MM-dd", new Date());
+    if (format(parsed, "yyyy-MM-dd") !== dateParam) {
+      return NextResponse.json({ ok: false, error: "Invalid calendar date" }, { status: 400 });
+    }
+    date = dateParam;
+  } else {
+    date = todayInIST();
+  }
   const day = Number(date.slice(8, 10));
   const monthKey = date.slice(0, 7);
 
