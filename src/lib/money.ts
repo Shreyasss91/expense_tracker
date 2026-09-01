@@ -28,8 +28,3 @@ const inrWholeFormatter = new Intl.NumberFormat("en-IN", {
 export function formatINRWhole(paise: number): string {
   return inrWholeFormatter.format(paise / 100);
 }
-
-/** Format paise as a plain 2-dp decimal string — CSV export (§6.6). */
-export function paiseToPlainString(paise: number): string {
-  return (paise / 100).toFixed(2);
-}

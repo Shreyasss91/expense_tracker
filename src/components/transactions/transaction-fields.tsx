@@ -254,8 +254,8 @@ export function AmountTagRow({
  *   - "Suggested": caller-computed matches for the rows being categorized
  *   - "Recent": the household's most-used categories (server-derived)
  * The selected leaf's group starts expanded so an existing choice is always
- * visible. All per-leaf behaviour (budget hints, rename mode, add-new) is
- * unchanged — it just lives inside its group's section.
+ * visible. All per-leaf behaviour (budget hints, add-new) is unchanged — it
+ * just lives inside its group's section.
  */
 export function CategoryGrid({
   categories,
@@ -267,21 +267,6 @@ export function CategoryGrid({
   // "None" tile (Amendment 20) — clears/un-assigns the category; used by the
   // edit dialog and bulk assign where a category is optional
   allowClear = false,
-  // rename mode (optional — Quick Add only)
-  editMode = false,
-  onToggleEditMode,
-  onExitEditMode,
-  renamingId = null,
-  renameValue = "",
-  renameEmoji = "",
-  renaming = false,
-  onRenameValueChange,
-  onRenameEmojiChange,
-  onStartRename,
-  onSaveRename,
-  onCancelRename,
-  // show-all link (optional — shown between hint and grid when suggestions are active)
-  showAllLink,
   // add-new-category (optional — Quick Add only)
   onAddCategory,
   addForm,
@@ -295,26 +280,12 @@ export function CategoryGrid({
   budgetRemaining?: Map<string, number> | null;
   showBudgetHints?: boolean;
   hint?: string;
-  editMode?: boolean;
-  onToggleEditMode?: () => void;
-  onExitEditMode?: () => void;
-  renamingId?: string | null;
-  renameValue?: string;
-  renameEmoji?: string;
-  renaming?: boolean;
-  onRenameValueChange?: (v: string) => void;
-  onRenameEmojiChange?: (v: string) => void;
-  onStartRename?: (c: CategoryOption) => void;
-  onSaveRename?: (c: CategoryOption) => void;
-  onCancelRename?: () => void;
-  showAllLink?: React.ReactNode;
   allowClear?: boolean;
   onAddCategory?: () => void;
   addForm?: AddCategoryForm;
   suggestedCategoryIds?: string[];
   recentCategoryIds?: string[];
 }) {
-  const canRename = Boolean(onToggleEditMode && onStartRename && onSaveRename && onCancelRename);
   const canAdd = Boolean(onAddCategory);
 
   // Tree derivation — groups are top-level rows (parentId null); everything
@@ -359,68 +330,20 @@ export function CategoryGrid({
 
   /** One leaf chip — identical rendering wherever it appears. */
   function renderLeafChip(c: CategoryOption) {
-    if (renamingId === c.id && canRename) {
-      return (
-        <div key={c.id} className="flex flex-col gap-1 rounded-xl border p-2" style={{ borderColor: c.color }}>
-          <div className="flex gap-1">
-            <Input
-              value={renameEmoji}
-              onChange={(e) => onRenameEmojiChange?.(e.target.value)}
-              className="h-8 w-10 shrink-0 px-1 text-center text-base"
-              aria-label="Category emoji"
-              maxLength={4}
-            />
-            <Input
-              autoFocus
-              value={renameValue}
-              onChange={(e) => onRenameValueChange?.(e.target.value)}
-              onKeyDown={(e) => {
-                // preventDefault stops Enter/Escape from also submitting the form
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  onSaveRename?.(c);
-                }
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  onCancelRename?.();
-                }
-              }}
-              className="h-8 min-w-0 flex-1 text-center text-xs"
-              aria-label="Category name"
-              maxLength={50}
-            />
-          </div>
-          <div className="flex justify-center gap-1">
-            <Button type="button" size="icon" className="h-6 w-6" disabled={renaming} onClick={() => onSaveRename?.(c)} aria-label="Save name and emoji">
-              <Check className="h-3.5 w-3.5" />
-            </Button>
-            <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={renaming} onClick={onCancelRename} aria-label="Cancel rename">
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      );
-    }
     return (
       <button
         key={c.id}
         type="button"
-        disabled={renaming}
-        onClick={() => (editMode && canRename ? onStartRename?.(c) : onSelect(c.id))}
+        onClick={() => onSelect(c.id)}
         className={cn(
-          "relative inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium active:scale-95 disabled:opacity-60",
-          !editMode && selectedId === c.id && "bg-primary text-primary-foreground",
+          "relative inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium active:scale-95",
+          selectedId === c.id && "bg-primary text-primary-foreground",
         )}
-        style={!editMode && selectedId === c.id ? undefined : { borderColor: c.color }}
+        style={selectedId === c.id ? undefined : { borderColor: c.color }}
       >
-        {!editMode && selectedId === c.id && (
+        {selectedId === c.id && (
           <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-hidden>
             <Check className="h-3 w-3" />
-          </span>
-        )}
-        {editMode && canRename && (
-          <span className="absolute right-1 top-1 rounded-full bg-primary p-0.5 text-primary-foreground" aria-hidden>
-            <Pencil className="h-2.5 w-2.5" />
           </span>
         )}
         <span className="text-center text-xs font-medium leading-tight">{c.name}</span>
@@ -439,7 +362,7 @@ export function CategoryGrid({
   }
 
   function renderChipRow(label: string, chips: CategoryOption[]) {
-    if (chips.length === 0 || editMode) return null;
+    if (chips.length === 0) return null;
     return (
       <div className="mb-2">
         <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
@@ -452,43 +375,18 @@ export function CategoryGrid({
     <div>
       <div className="mb-2 flex items-center justify-between">
         <Label className="text-xs text-muted-foreground">Category</Label>
-        {canRename &&
-          (editMode ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-              onClick={onExitEditMode}
-            >
-              <Check className="h-3 w-3" /> Done
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground"
-              onClick={onToggleEditMode}
-            >
-              <Pencil className="h-3 w-3" /> Rename categories
-            </Button>
-          ))}
       </div>
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <p>{hint ?? (editMode ? "Tap a category to rename" : "Tap a group to open it, then a category")}</p>
-        {showAllLink && <span aria-hidden>·</span>}
-        {showAllLink}
+        <p>{hint ?? "Tap a group to open it, then a category"}</p>
       </div>
 
       {/* None + suggested chips share the first row */}
       <div className="flex flex-wrap gap-2">
         {/* "None" tile — un-assign the category (Amendment 20) */}
-        {allowClear && !editMode && (
+        {allowClear && (
           <button
             key="__none"
             type="button"
-            disabled={renaming}
             onClick={() => onSelect("")}
             className={cn(
               "relative inline-flex items-center gap-1 rounded-full border border-dashed px-3 py-1.5 text-xs font-medium active:scale-95 disabled:opacity-60",
@@ -517,7 +415,6 @@ export function CategoryGrid({
             <div key={g.id}>
               <button
                 type="button"
-                disabled={renaming}
                 aria-expanded={isOpen}
                 onClick={() =>
                   setExpanded((prev) => {
@@ -529,7 +426,6 @@ export function CategoryGrid({
                 }
                 className={cn(
                   "flex w-full items-center gap-2 rounded-lg px-1.5 py-1.5 text-left transition-colors hover:bg-muted",
-                  editMode && "cursor-default hover:bg-transparent",
                 )}
               >
                 {isOpen ? (
@@ -547,8 +443,8 @@ export function CategoryGrid({
         })}
       </div>
 
-      {/* add-new-category tile (Quick Add only, hidden while renaming) */}
-      {!editMode && canAdd &&
+      {/* add-new-category tile (Quick Add only) */}
+      {canAdd &&
         (addForm ? (
           <div key="__add" className="mt-2 flex flex-col gap-1 rounded-xl border border-dashed p-2">
             <div className="flex gap-1">
@@ -607,7 +503,7 @@ export function CategoryGrid({
 
   /** Suggested chips render inside the first row next to "None" (no label). */
   function renderChipRowInline(chips: CategoryOption[]) {
-    if (chips.length === 0 || editMode) return null;
+    if (chips.length === 0) return null;
     return <>{chips.map((c) => renderLeafChip({ ...c }))}</>;
   }
 }

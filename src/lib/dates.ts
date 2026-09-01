@@ -15,22 +15,12 @@ export function nowTimeInIST(): string {
   return formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm");
 }
 
-/** First day of the month containing `date` (defaults to now), YYYY-MM-DD in IST. */
-export function monthStartInIST(date: Date = new Date()): string {
-  return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM-01");
-}
-
 /** Last day of the month containing `date` (defaults to now), YYYY-MM-DD in IST. */
 export function monthEndInIST(date: Date = new Date()): string {
   const year = formatInTimeZone(date, APP_TIMEZONE, "yyyy");
   const month = formatInTimeZone(date, APP_TIMEZONE, "MM");
   const lastDay = new Date(Date.UTC(Number(year), Number(month), 0)).getUTCDate();
   return `${year}-${month}-${String(lastDay).padStart(2, "0")}`;
-}
-
-/** "August 2026" label for the month containing `date`. */
-export function monthLabelInIST(date: Date = new Date()): string {
-  return formatInTimeZone(date, APP_TIMEZONE, "MMMM yyyy");
 }
 
 /** "yyyy-MM" for the month containing `date`. */

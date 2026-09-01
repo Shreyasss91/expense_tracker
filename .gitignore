@@ -1,4 +1,3 @@
-```
 # Dependencies
 node_modules/
 
@@ -98,6 +97,6 @@ drizzle/migrations/
 # Next.js
 .next/
 out/
-```
+next-env.d.ts
 # TypeScript incremental build info
 tsconfig.tsbuildinfo
