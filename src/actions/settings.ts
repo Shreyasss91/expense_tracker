@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/auth";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -48,6 +49,8 @@ function categoryColor(slug: string): string {
  * immediately assignable and roll up into the dashboard.
  */
 export async function createCategory(raw: z.infer<typeof createCategorySchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = createCategorySchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid category data" };
   const { name, emoji, parentId } = parsed.data;
@@ -109,6 +112,8 @@ const OTHER_GROUP_SLUG = "grp-other";
  * hold leaves and roll up their spend; they are never directly assignable.
  */
 export async function createCategoryGroup(raw: z.infer<typeof createCategoryGroupSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = createCategoryGroupSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid group data" };
   const { name, emoji } = parsed.data;
@@ -149,6 +154,8 @@ export async function createCategoryGroup(raw: z.infer<typeof createCategoryGrou
  * moved — nesting a group inside anything would break the depth cap of 2.
  */
 export async function moveCategoryToGroup(raw: z.infer<typeof moveCategoryToGroupSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = moveCategoryToGroupSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid move data" };
   const { categoryId, groupId } = parsed.data;
@@ -176,6 +183,8 @@ export async function moveCategoryToGroup(raw: z.infer<typeof moveCategoryToGrou
  * The slug (§5.3) is immutable and never touched here; deletion is not offered in v1.
  */
 export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = updateCategorySchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid category data" };
   const [row] = await db
@@ -199,6 +208,8 @@ export async function updateCategory(raw: z.infer<typeof updateCategorySchema>) 
  *   - reorderCategoriesUnder: the complete set of one group's leaves, in order.
  */
 export async function reorderCategoryGroups(ids: string[]) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const topLevel = await db.select({ id: categories.id }).from(categories).where(isNull(categories.parentId));
   const parsed = validateCompleteUniqueIds(ids, topLevel.map((row) => row.id));
   if (!parsed) return { ok: false as const, error: "Invalid group order" };
@@ -213,6 +224,8 @@ export async function reorderCategoryGroups(ids: string[]) {
 }
 
 export async function reorderCategoriesUnder(rawGroupId: string, ids: string[]) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const groupIdCheck = z.string().uuid().safeParse(rawGroupId);
   if (!groupIdCheck.success) return { ok: false as const, error: "Invalid group" };
   const group = await db.query.categories.findFirst({ where: eq(categories.id, groupIdCheck.data) });
@@ -235,6 +248,8 @@ export async function reorderCategoriesUnder(rawGroupId: string, ids: string[]) 
  * The slug (§3.2.2) is immutable and never touched here; deletion is not offered in v1.
  */
 export async function updateMember(raw: z.infer<typeof updateMemberSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = updateMemberSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid member data" };
   const [row] = await db
@@ -252,6 +267,8 @@ export async function updateMember(raw: z.infer<typeof updateMemberSchema>) {
 }
 
 export async function reorderMembers(ids: string[]) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const existing = await db.select({ id: members.id }).from(members);
   const parsed = validateCompleteUniqueIds(ids, existing.map((row) => row.id));
   if (!parsed) return { ok: false as const, error: "Invalid member order" };
@@ -274,6 +291,8 @@ export async function reorderMembers(ids: string[]) {
  * stored rows simply means no budget is set for that month.
  */
 export async function saveBudgets(raw: z.infer<typeof saveBudgetsSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = saveBudgetsSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid budget data" };
   const { month, totalPaise, categories: categoryLimits } = parsed.data;
@@ -305,6 +324,8 @@ export async function saveBudgets(raw: z.infer<typeof saveBudgetsSchema>) {
  * budgets are left untouched. paise 0 or null clears the total budget.
  */
 export async function setTotalBudget(raw: z.infer<typeof setTotalBudgetSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = setTotalBudgetSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid budget data" };
   const { month, totalPaise } = parsed.data;
@@ -324,6 +345,8 @@ export async function setTotalBudget(raw: z.infer<typeof setTotalBudgetSchema>) 
  * per-category budgets are unaffected (owner decision).
  */
 export async function setExcludeBills(raw: z.infer<typeof setExcludeBillsSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = setExcludeBillsSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid setting" };
 
@@ -343,6 +366,8 @@ export async function setExcludeBills(raw: z.infer<typeof setExcludeBillsSchema>
  * remaining can be negative (over budget).
  */
 export async function getCategoryBudgetStatus(monthKey: string) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsedMonth = monthKeySchema.safeParse(monthKey);
   if (!parsedMonth.success) return { ok: false as const, error: "Invalid month" };
   const key = parsedMonth.data;

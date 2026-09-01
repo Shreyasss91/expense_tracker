@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/auth";
 import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { cookies } from "next/headers";
@@ -18,6 +19,8 @@ import { isGenericNote } from "@/lib/generic-notes";
 import { pendingReviewWhere } from "@/lib/review-where";
 
 export async function createTransaction(raw: TransactionInput) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = transactionSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid transaction data" };
 
@@ -76,6 +79,8 @@ export async function createTransaction(raw: TransactionInput) {
 }
 
 export async function updateTransaction(id: string, raw: TransactionInput) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
 
@@ -131,6 +136,8 @@ const BULK_MAX = 500;
  * UPDATE. `categoryId: null` clears the category ("Uncategorized").
  */
 export async function assignCategory(ids: string[], categoryId: string | null): Promise<{ ok: true; updated: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
   if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
   const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
@@ -155,6 +162,8 @@ export async function assignCategory(ids: string[], categoryId: string | null): 
 
 /** Amendment 20 — hard-delete many transactions in one statement (no undo server-side; the UI owns the undo window). */
 export async function deleteTransactions(ids: string[]): Promise<{ ok: true; deleted: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
   if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
   const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
@@ -173,6 +182,8 @@ export async function deleteTransactions(ids: string[]): Promise<{ ok: true; del
 }
 
 export async function deleteTransaction(id: string) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
 
@@ -190,6 +201,8 @@ export async function deleteTransaction(id: string) {
 
 /** Acknowledge a review item by setting reviewed_at (§6.4). */
 export async function acknowledgeTransactionReview(id: string) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
 
@@ -208,6 +221,8 @@ export async function acknowledgeTransactionReview(id: string) {
 
 /** Amendment 20 — acknowledge many review items at once ("Acknowledge all"). */
 export async function acknowledgeTransactionsReview(ids: string[]): Promise<{ ok: true; acknowledged: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
   if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
   const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
@@ -228,6 +243,8 @@ export async function acknowledgeTransactionsReview(ids: string[]): Promise<{ ok
 
 /** Get pending review count for the badge (§6.4). */
 export async function getPendingReviewCount(): Promise<number> {
+  const session = await auth();
+  if (!session?.user) return 0;
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(transactions)
@@ -237,6 +254,8 @@ export async function getPendingReviewCount(): Promise<number> {
 
 /** Amendment 20 — count of uncategorized transactions, for the nav badge nudge. */
 export async function getUncategorizedCount(): Promise<number> {
+  const session = await auth();
+  if (!session?.user) return 0;
   const result = await db
     .select({ count: sql<number>`count(*)` })
     .from(transactions)
@@ -248,6 +267,8 @@ export async function getTransactionsPage(args: {
   cursor: Cursor | null;
   filters: TransactionListFilters;
 }): Promise<{ rows: ReturnType<typeof mapRow>[]; nextCursor: Cursor | null }> {
+  const session = await auth();
+  if (!session?.user) return { rows: [], nextCursor: null };
   const where = buildWhere(await expandGroupFilter(args.filters), args.cursor);
 
   const rows = await db
@@ -297,6 +318,8 @@ export async function getTransactionsPage(args: {
  * exactly what the user was looking at.
  */
 export async function exportCsv(filters?: TransactionListFilters): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const where = filters && Object.keys(filters).length > 0 ? buildWhere(await expandGroupFilter(filters), null) : undefined;
 
   const rows = await db

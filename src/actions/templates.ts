@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/auth";
 import { randomUUID } from "node:crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { eq, sql } from "drizzle-orm";
@@ -10,6 +11,8 @@ import { paiseToDbString } from "@/lib/money";
 import { idSchema, templateSchema, type TemplateInput } from "@/lib/validations";
 
 export async function createTemplate(raw: TemplateInput) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = templateSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid template data" };
 
@@ -49,6 +52,8 @@ export async function createTemplate(raw: TemplateInput) {
 }
 
 export async function updateTemplate(id: string, raw: TemplateInput) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid template id" };
 
@@ -92,6 +97,8 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
 }
 
 export async function deleteTemplate(id: string) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const idCheck = idSchema.safeParse(id);
   if (!idCheck.success) return { ok: false as const, error: "Invalid template id" };
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/auth";
 import { sql } from "drizzle-orm";
 import { db } from "@/db";
 import { transactions, members, categories } from "@/db/schema";
@@ -30,6 +31,8 @@ export interface ReviewItem {
 export async function getReviewPage(args: {
   cursor: Cursor | null;
 }): Promise<{ rows: ReviewItem[]; nextCursor: Cursor | null }> {
+  const session = await auth();
+  if (!session?.user) return { rows: [], nextCursor: null };
   const whereClause = pendingReviewWhere(args.cursor);
 
   const rows = await db

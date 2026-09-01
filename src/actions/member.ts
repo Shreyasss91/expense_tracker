@@ -1,5 +1,6 @@
 "use server";
 
+import { auth } from "@/auth";
 import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -12,6 +13,8 @@ import { z } from "zod";
  * check, never an authentication check.
  */
 export async function updateActiveMember(memberId: string) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
   const parsed = z.string().uuid().safeParse(memberId);
   if (!parsed.success) return { ok: false as const, error: "Invalid member" };
 
