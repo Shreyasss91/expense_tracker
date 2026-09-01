@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Search, X, Pencil, Check, Calendar } from "lucide-react";
+import { Search, X, Pencil, Check, Calendar, Bookmark, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,9 +18,17 @@ import {
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
 import { buildLedgerUrl, UNCATEGORIZED, type LedgerFilters } from "@/lib/ledger-url";
 import { updateCategory } from "@/actions/settings";
+import { saveSearch, deleteSavedSearch } from "@/actions/saved-searches";
 import { emitLedgerMutation } from "@/lib/events";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
+
+/** A saved search preset (§2.7) — name + the serialized filter params. */
+export interface SavedSearchLite {
+  id: string;
+  name: string;
+  params: LedgerFilters;
+}
 
 function pill(active: boolean) {
   return cn(
@@ -33,10 +41,13 @@ export function FiltersBar({
   members,
   categories,
   filters,
+  savedSearches = [],
 }: {
   members: MemberOption[];
   categories: CategoryOption[];
   filters: LedgerFilters;
+  /** §2.7 — saved presets to render as one-tap chips. */
+  savedSearches?: SavedSearchLite[];
 }) {
   const router = useRouter();
   const [q, setQ] = useState(filters.q ?? "");
@@ -47,6 +58,14 @@ export function FiltersBar({
   const [rangeOpen, setRangeOpen] = useState(false);
   const [fromDraft, setFromDraft] = useState(filters.from ?? "");
   const [toDraft, setToDraft] = useState(filters.to ?? "");
+  // §2.7 — amount-range bounds (user-facing rupees strings)
+  const [amountMinDraft, setAmountMinDraft] = useState(filters.amountMin ?? "");
+  const [amountMaxDraft, setAmountMaxDraft] = useState(filters.amountMax ?? "");
+  // §2.7 — save-search affordance
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [savingSearch, setSavingSearch] = useState(false);
+  const [saved, setSaved] = useState<SavedSearchLite[]>(savedSearches);
 
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
   const selectedGroup = categories.find((c) => c.id === filters.groupId && c.parentId === null);
@@ -78,16 +97,72 @@ export function FiltersBar({
     setToDraft(filters.to ?? "");
   }, [filters.from, filters.to]);
 
+  useEffect(() => {
+    setAmountMinDraft(filters.amountMin ?? "");
+    setAmountMaxDraft(filters.amountMax ?? "");
+  }, [filters.amountMin, filters.amountMax]);
+
+  // keep the local saved-searches list in sync if the prop changes
+  useEffect(() => {
+    setSaved(savedSearches);
+  }, [savedSearches]);
+
   function applyRange() {
     setRangeOpen(false);
-    push({ ...filters, from: fromDraft || undefined, to: toDraft || undefined });
+    push({
+      ...filters,
+      from: fromDraft || undefined,
+      to: toDraft || undefined,
+      amountMin: amountMinDraft || undefined,
+      amountMax: amountMaxDraft || undefined,
+    });
   }
 
   function clearRange() {
     setFromDraft("");
     setToDraft("");
+    setAmountMinDraft("");
+    setAmountMaxDraft("");
     setRangeOpen(false);
-    push({ ...filters, from: undefined, to: undefined });
+    push({ ...filters, from: undefined, to: undefined, amountMin: undefined, amountMax: undefined });
+  }
+
+  // §2.7 — copy the current filter combination as a shareable URL.
+  async function copyLink() {
+    const url = `${window.location.origin}${buildLedgerUrl(filters)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied — share this filtered view");
+    } catch {
+      toast.error("Could not copy link");
+    }
+  }
+
+  // §2.7 — persist the current query (minus month, so it stays reusable) as a
+  // named preset.
+  async function saveCurrent() {
+    const name = saveName.trim();
+    if (!name) {
+      toast.error("Give the search a name");
+      return;
+    }
+    setSavingSearch(true);
+    const res = await saveSearch(name, { ...filters, month: undefined });
+    setSavingSearch(false);
+    if (res.ok) {
+      toast.success("Search saved");
+      setSaved((cur) => [...cur, { id: res.id, name, params: { ...filters, month: undefined } }]);
+      setSaveName("");
+      setSaveOpen(false);
+    } else {
+      toast.error(res.error ?? "Could not save search");
+    }
+  }
+
+  async function removeSaved(id: string) {
+    const res = await deleteSavedSearch(id);
+    if (res.ok) setSaved((cur) => cur.filter((s) => s.id !== id));
+    else toast.error(res.error ?? "Could not delete search");
   }
 
   // changing the filtered category mid-rename would target the wrong row
@@ -249,14 +324,24 @@ export function FiltersBar({
           </SelectContent>
         </Select>
         <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
-        {/* UX pass — custom date range entry point */}
+        {/* UX pass — custom date range + amount range entry point (§2.7) */}
         <button
           type="button"
-          className={pill(!!(filters.from || filters.to))}
+          className={pill(!!(filters.from || filters.to || filters.amountMin || filters.amountMax))}
           onClick={() => setRangeOpen((v) => !v)}
         >
           <Calendar className="mr-0.5 inline h-3 w-3" />
-          {filters.from || filters.to ? "Range" : "Dates"}
+          {filters.from || filters.to || filters.amountMin || filters.amountMax ? "Range" : "Dates"}
+        </button>
+        {/* §2.7 — share the current filter combination as a URL */}
+        <button type="button" className={pill(false)} onClick={() => void copyLink()} aria-label="Copy shareable link">
+          <Link2 className="mr-0.5 inline h-3 w-3" />
+          Share
+        </button>
+        {/* §2.7 — save the current query as a named preset */}
+        <button type="button" className={pill(saveOpen)} onClick={() => setSaveOpen((v) => !v)} aria-label="Save this search">
+          <Bookmark className="mr-0.5 inline h-3 w-3" />
+          Save
         </button>
       </div>
 
@@ -283,7 +368,7 @@ export function FiltersBar({
           <Button size="sm" className="h-8 rounded-full px-3 text-xs" onClick={applyRange}>
             <Check className="mr-1 h-3.5 w-3.5" /> Apply
           </Button>
-          {(filters.from || filters.to) && (
+          {(filters.from || filters.to || filters.amountMin || filters.amountMax) && (
             <Button size="sm" variant="ghost" className="h-8 rounded-full px-3 text-xs" onClick={clearRange}>
               Clear
             </Button>
@@ -291,8 +376,91 @@ export function FiltersBar({
         </div>
       )}
 
+      {/* §2.7 — amount-range panel (revealed by the same "Range" toggle) */}
+      {rangeOpen && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-muted-foreground/20 bg-muted p-2">
+          <span className="text-xs font-medium text-muted-foreground">Amount ₹</span>
+          <Input
+            aria-label="Minimum amount"
+            type="number"
+            min={0}
+            inputMode="decimal"
+            placeholder="min"
+            value={amountMinDraft}
+            onChange={(e) => setAmountMinDraft(e.target.value)}
+            className="h-8 w-24 text-xs"
+          />
+          <span className="text-xs text-muted-foreground">to</span>
+          <Input
+            aria-label="Maximum amount"
+            type="number"
+            min={0}
+            inputMode="decimal"
+            placeholder="max"
+            value={amountMaxDraft}
+            onChange={(e) => setAmountMaxDraft(e.target.value)}
+            className="h-8 w-24 text-xs"
+          />
+          <span className="text-[11px] text-muted-foreground">per transaction</span>
+        </div>
+      )}
+
+      {/* §2.7 — inline save-search name prompt */}
+      {saveOpen && (
+        <div className="flex items-center gap-1.5 rounded-lg border border-muted-foreground/20 bg-muted p-1.5">
+          <Input
+            aria-label="Search name"
+            autoFocus
+            className="h-8 min-w-0 flex-1"
+            placeholder="Name this search (e.g. Big fuel spends)"
+            value={saveName}
+            onChange={(e) => setSaveName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void saveCurrent();
+              if (e.key === "Escape") setSaveOpen(false);
+            }}
+            maxLength={40}
+          />
+          <Button size="sm" className="h-8 rounded-full px-3 text-xs" disabled={savingSearch} onClick={() => void saveCurrent()}>
+            <Bookmark className="mr-1 h-3.5 w-3.5" /> Save
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 rounded-full px-3 text-xs"
+            onClick={() => setSaveOpen(false)}
+            aria-label="Cancel save"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* §2.7 — saved search presets as one-tap chips */}
+      {saved.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Saved</span>
+          {saved.map((s) => (
+            <span key={s.id} className={cn(pill(false), "flex items-center gap-1")}>
+              <button type="button" className="flex items-center gap-1" onClick={() => push(s.params)}>
+                <Bookmark className="inline h-3 w-3" />
+                {s.name}
+              </button>
+              <button
+                type="button"
+                aria-label={`Delete saved search ${s.name}`}
+                className="ml-1 inline-flex text-muted-foreground hover:text-foreground"
+                onClick={() => void removeSaved(s.id)}
+              >
+                <X className="inline h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* active-filter chips — only rendered while something is set */}
-      {(filters.memberId || filters.tag || filters.categoryId || filters.groupId || filters.uncategorized || filters.from || filters.to || filters.q?.trim()) && (
+      {(filters.memberId || filters.tag || filters.categoryId || filters.groupId || filters.uncategorized || filters.from || filters.to || filters.amountMin || filters.amountMax || filters.q?.trim()) && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Active</span>
           {selectedMemberChip && (
@@ -327,6 +495,11 @@ export function FiltersBar({
             <button type="button" className={pill(false)} onClick={clearRange}>
               <Calendar className="mr-0.5 inline h-3 w-3" />
               {filters.from ?? "…"} – {filters.to ?? "…"} <X className="ml-0.5 inline h-3 w-3" />
+            </button>
+          )}
+          {(filters.amountMin || filters.amountMax) && (
+            <button type="button" className={pill(false)} onClick={clearRange}>
+              ₹{filters.amountMin || "0"}–{filters.amountMax || "∞"} <X className="ml-0.5 inline h-3 w-3" />
             </button>
           )}
           {filters.categoryId && selectedCat && !renaming && (

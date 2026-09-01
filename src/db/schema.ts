@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgEnum,
   pgTable,
@@ -187,3 +188,21 @@ export const templates = pgTable("templates", {
 
 export type Template = typeof templates.$inferSelect;
 export type NewTemplate = typeof templates.$inferInsert;
+
+/**
+ * Saved ledger searches (§2.7). A household-wide library of named filter
+ * presets — "Big fuel spends", "Kid stuff last quarter" — each storing the
+ * serialized LedgerFilters so a tap re-applies the exact query. One master
+ * password = one household, so there is no per-member ownership column.
+ * `params` is a JSON copy of the sanitized LedgerFilters (members / tags /
+ * category / amount range / q / date range), with `month` deliberately
+ * omitted so a saved search stays reusable across months.
+ */
+export const savedSearches = pgTable("saved_searches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  params: jsonb("params").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type SavedSearch = typeof savedSearches.$inferSelect;

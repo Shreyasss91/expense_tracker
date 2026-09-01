@@ -4,6 +4,7 @@ import { getTransactionsPage, getPendingReviewCount } from "@/actions/transactio
 import { getReviewPage } from "@/actions/review";
 import { getCategories, getMembers, getRecentCategoryIds } from "@/lib/meta";
 import { FiltersBar } from "@/components/transactions/filters";
+import { listSavedSearches } from "@/actions/saved-searches";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { ExportButton } from "@/components/transactions/export-button";
 import { MonthStrip } from "@/components/transactions/month-strip";
@@ -33,7 +34,7 @@ export default async function TransactionsPage({
   const stripBase = parse(`${monthKeyInIST()}-01`, "yyyy-MM-dd", new Date());
   const stripMonths = Array.from({ length: 36 }, (_, i) => format(addMonths(stripBase, i - 35), "yyyy-MM"));
 
-  const [firstPage, memberRows, categoryRows, monthBudget, pendingReviewCount, reviewPage, recentCategoryIds, excludeBills] = await Promise.all([
+  const [firstPage, memberRows, categoryRows, monthBudget, pendingReviewCount, reviewPage, recentCategoryIds, excludeBills, savedSearchesRes] = await Promise.all([
     getTransactionsPage({ cursor: null, filters }),
     getMembers(),
     getCategories(),
@@ -47,6 +48,8 @@ export default async function TransactionsPage({
     // §1.10 — the global exclude-bills toggle, so the ledger headline can
     // agree with the budget bar.
     getExcludeBillsEnabled(db),
+    // §2.7 — saved search presets for the filter bar's one-tap chips
+    listSavedSearches(),
   ]);
   const summary = await getLedgerSummary(filters, excludeBills);
 
@@ -99,7 +102,12 @@ export default async function TransactionsPage({
           recentCategoryIds={recentCategoryIds}
         />
       )}
-      <FiltersBar members={memberOptions} categories={categoryOptions} filters={ledgerFilters} />
+      <FiltersBar
+        members={memberOptions}
+        categories={categoryOptions}
+        filters={ledgerFilters}
+        savedSearches={savedSearchesRes.ok ? savedSearchesRes.searches : []}
+      />
       {/* remount on filter change so client state resets to the new server page */}
       <TransactionsList
         key={JSON.stringify(filters)}

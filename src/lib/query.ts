@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, ilike, inArray, isNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, transactions } from "@/db/schema";
-import { rupeesToPaise } from "@/lib/money";
+import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { monthKeySchema } from "@/lib/validations";
 
 export const PAGE_SIZE = 50; // §7.3
@@ -21,6 +21,9 @@ export interface TransactionListFilters {
   /** Amendment 20 — `category=uncategorized` in the URL; rows with NULL category_id. */
   uncategorized?: boolean;
   tag?: "one_time" | "recurring" | "lifestyle";
+  /** §2.7 — amount range, in paise. Used by the "real query tool" search. */
+  amountMin?: number;
+  amountMax?: number;
   /** YYYY-MM */
   month?: string;
   /** UX pass — custom date range (inclusive), YYYY-MM-DD. */
@@ -60,12 +63,26 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
   }
   if (filters.from) conds.push(gte(transactions.date, filters.from));
   if (filters.to) conds.push(lte(transactions.date, filters.to));
+  // §2.7 — amount range, compared against the numeric amount column (the
+  // stored value is a string, so cast both sides). Stored in paise; divide
+  // back to rupees for the comparison literal.
+  if (filters.amountMin != null && filters.amountMin > 0) {
+    conds.push(sql`CAST(${transactions.amount} AS numeric) >= CAST(${paiseToDbString(filters.amountMin)} AS numeric)`);
+  }
+  if (filters.amountMax != null && filters.amountMax > 0) {
+    conds.push(sql`CAST(${transactions.amount} AS numeric) <= CAST(${paiseToDbString(filters.amountMax)} AS numeric)`);
+  }
   if (filters.search?.trim()) {
-    // §1.10 — escape LIKE/ILIKE metacharacters so a search for `%` (or `_`)
-    // matches the literal character instead of acting as a wildcard that
-    // matches every row. The default ESCAPE is backslash.
-    const term = filters.search.trim().replace(/[\\%_]/g, (ch) => `\\${ch}`);
-    conds.push(ilike(transactions.note, `%${term}%`));
+    // §2.7 — multi-term AND: split on whitespace and require every term to
+    // match the note (substring, case-insensitive). §1.10 — escape LIKE/ILIKE
+    // metacharacters so a term like `%` matches the literal character rather
+    // than acting as a wildcard over every row.
+    const terms = filters.search.trim().split(/\s+/).filter(Boolean);
+    const termConds = terms.map((raw) => {
+      const term = raw.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+      return ilike(transactions.note, `%${term}%`);
+    });
+    conds.push(and(...termConds)!);
   }
 
   // §7.3 keyset cursor — strict total order (date DESC, time DESC, created_at DESC, id DESC)

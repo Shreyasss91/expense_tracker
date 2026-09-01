@@ -6,6 +6,7 @@
 import { z } from "zod";
 import { TRANSACTION_TAGS } from "./constants";
 import { dateSchema, monthKeySchema } from "./validations";
+import { rupeesToPaise } from "./money";
 import type { TransactionListFilters } from "./query";
 
 /** The filter state as carried by the ledger URL. `q` is the search text. */
@@ -26,6 +27,9 @@ export interface LedgerFilters {
   /** UX pass — custom date range (inclusive), YYYY-MM-DD. */
   from?: string;
   to?: string;
+  /** §2.7 — amount range, user-facing rupees strings ("2000"). */
+  amountMin?: string;
+  amountMax?: string;
   q?: string;
 }
 
@@ -43,6 +47,8 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
   if (filters.month) params.set("month", filters.month);
   if (filters.from) params.set("from", filters.from);
   if (filters.to) params.set("to", filters.to);
+  if (filters.amountMin?.trim()) params.set("amount_min", filters.amountMin.trim());
+  if (filters.amountMax?.trim()) params.set("amount_max", filters.amountMax.trim());
   if (filters.q?.trim()) params.set("q", filters.q.trim());
   const qs = params.toString();
   return qs ? `/transactions?${qs}` : "/transactions";
@@ -87,8 +93,32 @@ export function parseLedgerSearchParams(
       const v = read(sp.to);
       return v && dateSchema.safeParse(v).success ? v : undefined;
     })(),
+    // §2.7 — amount range, parsed from rupees into paise. Invalid / non-positive
+    // values are dropped (treated as "no bound"). If both bounds parse but min
+    // exceeds max we swap them so the user never gets a silently empty result.
+    amountMin: (() => {
+      const v = read(sp.amount_min);
+      return v && Number.isFinite(Number(v)) && Number(v) > 0 ? rupeesToPaise(v) : undefined;
+    })(),
+    amountMax: (() => {
+      const v = read(sp.amount_max);
+      return v && Number.isFinite(Number(v)) && Number(v) > 0 ? rupeesToPaise(v) : undefined;
+    })(),
     search: read(sp.q)?.slice(0, 100),
   };
 
-  return { filters, ledgerFilters: { ...filters, q: filters.search } };
+  // swap a reversed range so the query isn't vacuous
+  if (filters.amountMin != null && filters.amountMax != null && filters.amountMin > filters.amountMax) {
+    [filters.amountMin, filters.amountMax] = [filters.amountMax, filters.amountMin];
+  }
+
+  const rawAmountMin = read(sp.amount_min);
+  const rawAmountMax = read(sp.amount_max);
+  const ledgerAmountMin = filters.amountMin != null && rawAmountMin ? rawAmountMin.trim() : undefined;
+  const ledgerAmountMax = filters.amountMax != null && rawAmountMax ? rawAmountMax.trim() : undefined;
+
+  return {
+    filters,
+    ledgerFilters: { ...filters, q: filters.search, amountMin: ledgerAmountMin, amountMax: ledgerAmountMax },
+  };
 }
