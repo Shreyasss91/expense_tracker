@@ -83,16 +83,27 @@ export function BudgetCard({
       </p>
     ) : (
       <div className="space-y-1">
-        <div className="flex items-baseline justify-between text-sm">
-          <span className="font-semibold tabular-nums">{formatINR(spentPaise)}</span>
-          <span className="text-xs text-muted-foreground">of {formatINR(totalPaise)}</span>
-        </div>
+        {pacing ? (
+          // §2.5 — the running month leads with the *pacing* headline (the
+          // number that changes behaviour) instead of the static "₹X of ₹Y".
+          <BudgetPacing spent={spentPaise} budget={totalPaise} pacing={pacing} />
+        ) : (
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="font-semibold tabular-nums">{formatINR(spentPaise)}</span>
+            <span className="text-xs text-muted-foreground">of {formatINR(totalPaise)}</span>
+          </div>
+        )}
+        {pacing && (
+          <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+            <span>{formatINR(spentPaise)} spent</span>
+            <span>of {formatINR(totalPaise)}</span>
+          </div>
+        )}
         <BudgetBar spent={spentPaise} budget={totalPaise} pulseOver />
-        <BudgetRemaining spent={spentPaise} budget={totalPaise} />
+        {!pacing && <BudgetRemaining spent={spentPaise} budget={totalPaise} />}
         {excludeBills && billsPaise > 0 && (
           <p className="text-[11px] text-muted-foreground">excluding {formatINR(billsPaise)} in bills</p>
         )}
-        {pacing && <BudgetPacing spent={spentPaise} budget={totalPaise} pacing={pacing} />}
       </div>
     );
 
@@ -142,10 +153,12 @@ export function BudgetCard({
 }
 
 /**
- * UX pass — pacing line for the running month: the safe daily spend for what's
- * left ("₹X/day · Nd left") plus a pace verdict against the straight-line ideal
- * (budget × day/days). "On pace" hides itself when within ₹50 of ideal so the
- * line stays quiet when things are fine.
+ * §2.5 — pacing headline for the running month. This is the number that
+ * changes behaviour, so it leads the Budget card:
+ *   "₹1,850 left for 11 more days (₹168/day)"
+ * plus a projected month-end from the actual burn rate so far:
+ *   "at this rate you'll land at ₹14,200 (₹4,200 over)".
+ * Replaces the old static "₹12,400 / ₹10,000 = over" read.
  */
 function BudgetPacing({
   spent,
@@ -157,24 +170,35 @@ function BudgetPacing({
   pacing: { dayOfMonth: number; daysInMonth: number };
 }) {
   const daysLeft = pacing.daysInMonth - pacing.dayOfMonth + 1;
-  const remaining = Math.max(0, budget - spent);
-  const perDay = Math.floor(remaining / daysLeft / 100) * 100; // whole-rupee readability
-  const expectedByNow = Math.round((budget * pacing.dayOfMonth) / pacing.daysInMonth);
-  const paceDeltaPaise = spent - expectedByNow;
-  const onPace = Math.abs(paceDeltaPaise) < 5000;
+  const remaining = budget - spent;
+  const perDay = daysLeft > 0 ? Math.floor(Math.abs(remaining) / daysLeft / 100) * 100 : 0; // whole-rupee readability
+  // Linear extrapolation of the actual burn rate so far (spent × days/days_elapsed).
+  const projected = pacing.dayOfMonth > 0 ? Math.round((spent * pacing.daysInMonth) / pacing.dayOfMonth) : spent;
+  const projectedOver = projected - budget;
 
   return (
-    <p className="text-[11px] tabular-nums text-muted-foreground">
-      <span className="font-medium text-foreground">{formatINR(perDay)}</span>/day left ·{" "}
-      {daysLeft} day{daysLeft === 1 ? "" : "s"}
-      {!onPace && (
-        <>
-          {" · "}
-          <span className={cn("font-medium", paceDeltaPaise > 0 ? "text-red-600" : "text-emerald-600")}>
-            {formatINR(Math.abs(paceDeltaPaise))} {paceDeltaPaise > 0 ? "over" : "under"} pace
-          </span>
-        </>
-      )}
-    </p>
+    <div className="space-y-0.5">
+      <p className="text-sm font-medium tabular-nums">
+        {remaining >= 0 ? (
+          <>
+            <span className="text-emerald-600">{formatINR(remaining)}</span> left for {daysLeft} more day
+            {daysLeft === 1 ? "" : "s"}{" "}
+            <span className="text-muted-foreground">({formatINR(perDay)}/day)</span>
+          </>
+        ) : (
+          <>
+            <span className="text-red-600">{formatINR(-remaining)}</span> over · {daysLeft} day
+            {daysLeft === 1 ? "" : "s"} left
+          </>
+        )}
+      </p>
+      <p className="text-[11px] tabular-nums text-muted-foreground">
+        at this rate you&apos;ll land at{" "}
+        <span className={cn("font-medium", projectedOver > 0 ? "text-red-600" : "text-emerald-600")}>
+          {formatINR(projected)}
+        </span>{" "}
+        {projectedOver > 0 ? `(${formatINR(projectedOver)} over)` : `(${formatINR(-projectedOver)} under)`}
+      </p>
+    </div>
   );
 }
