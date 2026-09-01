@@ -120,6 +120,40 @@ export function ReviewQueueCard({
     [removeFromQueue],
   );
 
+  /**
+   * Delete from inside the edit dialog (the dialog's own trash button calls
+   * onRequestDelete). Previously this was a no-op in the Review context, so
+   * tapping Delete in the dialog silently did nothing — no toast, no delete.
+   * Mirror the row's own swipe/delete path: optimistic removal from the queue
+   * + pending-count decrement, a 5s Undo that restores the original row, and a
+   * real server delete once the toast auto-closes (mirrors requestBulkDelete
+   * and the row onDelete handler above).
+   */
+  const handleRequestDelete = useCallback(
+    (row: { id: string }) => {
+      const original = rows.find((r) => r.id === row.id);
+      setRows((prev) => prev.filter((r) => r.id !== row.id));
+      setPendingCount((c) => Math.max(0, c - 1));
+      toast("Deleted", {
+        duration: UNDO_WINDOW_MS,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            if (original) {
+              setRows((prev) => [original, ...prev.filter((r) => r.id !== original.id)]);
+              emitLedgerMutation({ kind: "update", id: original.id, row: original });
+            }
+          },
+        },
+        onAutoClose: () => {
+          emitLedgerMutation({ kind: "delete", id: row.id });
+          void deleteTransaction(row.id);
+        },
+      });
+    },
+    [rows],
+  );
+
   function enterSelection(row: ReviewItem) {
     setSelectionMode(true);
     setSelectedIds(new Set([row.id]));
@@ -429,9 +463,7 @@ export function ReviewQueueCard({
           onOpenChange={(o) => {
             if (!o) setEditing(null);
           }}
-          onRequestDelete={() => {
-            /* handled by the row's own swipe affordance */
-          }}
+          onRequestDelete={handleRequestDelete}
           onSaved={handleEdited}
         />
       </CardContent>
