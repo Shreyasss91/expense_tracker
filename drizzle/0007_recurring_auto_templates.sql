@@ -7,12 +7,13 @@
 --                marker that keeps the daily cron from duplicating a bill
 --   member_id    whose ledger the entry lands under; NULL = first member
 --
--- Idempotent; safe to re-run. `db:push` users: push picks these up from
--- schema.ts directly (no SQL needed).
+-- Idempotent; safe to re-run. The ADD COLUMN statements now use IF NOT EXISTS
+-- (the original version lacked it, contradicting this comment), and `db:push`
+-- users pick these up from schema.ts directly (no SQL needed).
 
-ALTER TABLE "templates" ADD COLUMN "auto_day" integer;
-ALTER TABLE "templates" ADD COLUMN "last_auto_key" text;
-ALTER TABLE "templates" ADD COLUMN "member_id" uuid;
+ALTER TABLE "templates" ADD COLUMN IF NOT EXISTS "auto_day" integer;
+ALTER TABLE "templates" ADD COLUMN IF NOT EXISTS "last_auto_key" text;
+ALTER TABLE "templates" ADD COLUMN IF NOT EXISTS "member_id" uuid;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'templates_member_id_members_id_fk') THEN
