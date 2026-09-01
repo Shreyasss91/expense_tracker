@@ -299,7 +299,10 @@ export function TransactionEditDialog({
     }
     const member = members.find((m) => m.id === memberId);
     // empty selection = uncategorized — a deliberate, valid choice (Amendment 20)
-    const category = categoryId ? categories.find((c) => c.id === categoryId) : null;
+    // Resolve against `cats` (the local list synced from the prop), NOT the
+    // `categories` server prop: a category created inline in this sheet lives
+    // only in `cats`, so a prop lookup silently writes Uncategorized.
+    const category = categoryId ? cats.find((c) => c.id === categoryId) : null;
     if (!member) {
       setSubmitAttempted(true);
       setError("Pick a member");
