@@ -7,6 +7,7 @@ import { FiltersBar } from "@/components/transactions/filters";
 import { listSavedSearches } from "@/actions/saved-searches";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { ExportButton } from "@/components/transactions/export-button";
+import { ImportButton } from "@/components/transactions/import-dialog";
 import { MonthStrip } from "@/components/transactions/month-strip";
 import { LedgerSummaryHeader } from "@/components/transactions/ledger-summary";
 import { ReviewQueueCard } from "@/components/review/review-queue-card";
@@ -84,8 +85,13 @@ export default async function TransactionsPage({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">Ledger</h1>
-        {/* UX pass — exports describe exactly the filtered set on screen */}
-        <ExportButton filters={filters} />
+        {/* UX pass — exports describe exactly the filtered set on screen.
+            §2.10 — export is a format menu (CSV / 7-column CSV / JSON / XLSX)
+            and import is the way back in, so backup is no longer one-way. */}
+        <div className="flex items-center gap-1">
+          <ImportButton />
+          <ExportButton filters={filters} />
+        </div>
       </div>
       <MonthStrip months={stripMonths} selected={filters.month} filters={ledgerFilters} />
       {/* Layout pass — budget bar lives inside the summary card now, so the

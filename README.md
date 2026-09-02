@@ -53,10 +53,13 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run db:push` | Push schema directly (dev convenience) |
 | `npm run db:seed` | Seed members, categories and the 1,157 transactions (idempotent) |
 | `npm run db:setup` | Push schema + seed |
-| `npm run test:seed-roundtrip` | Prove the CSV export reproduces `seed.csv` (header, 8 columns, HH:MM, 2-dp amounts, ordering) |
+| `npm run test:seed-roundtrip` | Prove the CSV export reproduces `seed.csv` (header, 7 columns, HH:MM, 2-dp amounts, ordering) |
 | `npm run test:rename-roundtrip` | Prove a category rename propagates to every historical transaction and reverts cleanly |
+| `npm run test:csv-parse` | Prove the CSV writer and the §2.10 import parser agree on RFC 4180 quoting |
+| `npm run test:export-format` | Prove CSV / JSON exports round-trip losslessly through the import path (§2.10) |
+| `npm run test:xlsx` | Prove the hand-rolled .xlsx writer emits a valid, complete OPC package (§2.10) |
 | `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, renders the exact seeded totals, and checks every request is within the response-time budget (default 8s; `SMOKE_MAX_MS` overrides) |
-| `npm run verify:export-live` | Call the deployed app's CSV export and prove it reproduces `seed.csv` |
+| `npm run verify:export-live` | Call the deployed app's `/api/export` route and prove the canonical CSV reproduces `seed.csv` |
 
 ## Architecture notes (spec highlights)
 
@@ -65,13 +68,13 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 - **Seed identity** (§8.1): seeded transaction IDs are UUIDv5 of the verbatim `seed.csv` line + occurrence ordinal, so re-seeding is a no-op and the two intentional duplicate pairs stay distinct.
 - **Dashboard** (§7.2): all analytics are SQL aggregates; zero-state safe per §6.3.1 (no `NaN%`, `—` for zero denominators, `Son` always renders ₹0.00).
 - **Ledger** (§7.3): keyset pagination on `(date DESC, time DESC, created_at DESC, id DESC)`, page size 50, infinite scroll. Delete is swipe-left with a ~5s Undo window (§6.4.1).
-- **CSV export** (§6.6): same 8 columns as `seed.csv`, plain 2-dp amounts, `HH:MM` times, RFC 4180 quoting.
+- **CSV export** (§6.6, §2.10): same 7 columns as `seed.csv`, plain 2-dp amounts, `HH:MM` times, RFC 4180 quoting. Streams from GET `/api/export` (batched, row-capped) in three more shapes — a 16-column CSV, full-fidelity JSON (the restore format), and .xlsx. `/api/import` is the way back in; `/api/cron/backup` emails/Telegrams the canonical CSV monthly.
 
 ## Deploying (Vercel)
 
 1. Push the repo to GitHub.
 2. Import the repo in Vercel (framework preset: Next.js).
-3. Add the four env vars from `.env.example` (real values).
+3. Add the env vars from `.env.example` (the four core ones, plus `CRON_SECRET` and the §2.10 backup channel vars if you want the monthly backup cron).
 4. Run `npm run db:push && npm run db:seed` against the production database (or via a build step).
 
 The seed data itself is immutable — `seed_data/seed.csv` must not be edited, reordered, deduplicated, or given a trailing newline (§8.3).

@@ -3,13 +3,15 @@
  *
  * Proves the deployed app's CSV export reproduces `seed.csv`:
  *
- *   seed.csv ──db:seed──▶ prod DB ──exportCsv action──▶ CSV ──must equal──▶ seed.csv
+ *   seed.csv ──db:seed──▶ prod DB ──/api/export──▶ CSV ──must equal──▶ seed.csv
  *
- * Flow: login to the deployed app, locate the `exportCsv` action id inside
- * the live client chunks, invoke it through React's own encodeReply wire
- * format, then compare the returned CSV against seed.csv in canonical form
- * (header, 7 columns, HH:MM times, 2-dp amounts, date-ASC ordering,
- * multiset equality). Fails loudly on any drift.
+ * §2.10 moved export from a Server Action to the streaming GET /api/export
+ * route, so the flow is now a plain authenticated fetch of
+ * `/api/export?format=csv&columns=canonical` (the 7-column seed.csv contract,
+ * §6.6) — no more locating the action id inside the live client chunks. The
+ * response is compared against seed.csv in canonical form (header, 7 columns,
+ * HH:MM times, 2-dp amounts, date-ASC ordering, multiset equality) and the
+ * truncation header must say the export was complete. Fails loudly on drift.
  *
  * Env:
  *   PROD_URL                 default https://tokenscript.vercel.app
@@ -17,14 +19,10 @@
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
-import { createRequire } from "node:module";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { login } from "./lib/live.mjs";
 import { parseCsv } from "./lib/csv.mjs";
-
-const require = createRequire(import.meta.url);
-const { encodeReply } = require("next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.node.unbundled.development.js");
 
 const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
 const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
@@ -43,40 +41,24 @@ async function main() {
     throw new Error("no family master password — set FAMILY_MASTER_PASSWORD in .env.local");
   }
 
-  const client = await login(BASE, PASSWORD);
+  const client = await login(BASE);
 
-  // 1. Find the exportCsv action id in the live client chunks.
-  const page = await client.fetch("/transactions");
-  const html = await page.text();
-  const chunkUrls = [...html.matchAll(/src="(\/_next\/static\/chunks\/[^"]+\.js)"/g)].map((m) => m[1]);
-  let actionId = null;
-  for (const u of chunkUrls) {
-    const res = await client.fetch(u);
-    const src = await res.text();
-    const m = src.match(/createServerReference\)\("([0-9a-f]{40,})"[^)]*?"exportCsv"\)/);
-    if (m) {
-      actionId = m[1];
-      break;
-    }
+  // 1. Stream the canonical CSV from the export route — the same URL the
+  //    ledger's "CSV — 7-column" menu item downloads.
+  const res = await client.fetch("/api/export?format=csv&columns=canonical");
+  check(res.status === 200, `GET /api/export → ${res.status}`);
+  if (res.status !== 200) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`export route failed: ${body.slice(0, 200)}`);
   }
-  check(actionId !== null, "located exportCsv action id in the live chunks");
-  if (!actionId) throw new Error("exportCsv action id not found in any chunk");
+  check(
+    res.headers.get("content-type")?.startsWith("text/csv"),
+    `content-type is CSV (got ${res.headers.get("content-type")})`,
+  );
+  check(res.headers.get("x-export-truncated") === "0", "export reports itself as not truncated");
+  check(res.headers.get("x-export-rows") !== null, "export reports its row count in x-export-rows");
 
-  // 2. Invoke the action with React's own zero-arg wire encoding.
-  const body = await encodeReply([]);
-  const res = await client.fetch("/transactions", {
-    method: "POST",
-    headers: { "Next-Action": actionId, "Content-Type": "text/plain;charset=UTF-8" },
-    body,
-  });
-  const text = await res.text();
-  check(res.status === 200, `exportCsv action → ${res.status}`);
-
-  // 3. The Flight response embeds the CSV as a T-row: `2:T<hexlen>,<csv>`.
-  const m = text.match(/2:T([0-9a-f]+),(.*)$/s);
-  check(m !== null, "parsed CSV out of the Flight response");
-  if (!m) throw new Error(`unexpected action response: ${text.slice(0, 120)}`);
-  const csv = m[2].slice(0, parseInt(m[1], 16));
+  const csv = await res.text();
   const parsedExport = parseCsv(csv);
   check(parsedExport.length > 0, "CSV contains at least a header row");
   check(
@@ -84,7 +66,7 @@ async function main() {
     "CSV starts with the canonical header",
   );
 
-  // 4. Compare with seed.csv in canonical form (multiset, amounts → 2 dp).
+  // 2. Compare with seed.csv in canonical form (multiset, amounts → 2 dp).
   const seedCsv = readFileSync(join(process.cwd(), "seed_data", "seed.csv"), "utf8");
   const parsedSeed = parseCsv(seedCsv);
   check(parsedSeed.length > 0, "seed.csv contains a header row");
@@ -112,7 +94,7 @@ async function main() {
     }
   }
 
-  // 5. Format spot-checks on the parsed export (dates, times, amounts).
+  // 3. Format spot-checks on the parsed export (dates, times, amounts).
   for (const f of exportRows) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f[0])) throw new Error(`bad date: ${f[0]}`);
     if (!/^\d{2}:\d{2}$/.test(f[1])) throw new Error(`bad time: ${f[1]}`);

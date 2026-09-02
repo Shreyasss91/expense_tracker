@@ -9,10 +9,8 @@ import { db } from "@/db";
 import { categories, members, transactions } from "@/db/schema";
 import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
-import { todayInIST } from "@/lib/dates";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
 import { buildWhere, expandGroupFilter, listOrderBy, mapRow, PAGE_SIZE, receiptCountExpr, type Cursor, type TransactionListFilters } from "@/lib/query";
-import { CSV_HEADER, formatCsvLine } from "@/lib/csv-export";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
 import { isGenericNote } from "@/lib/generic-notes";
@@ -352,60 +350,8 @@ export async function getTransactionsPage(args: {
   };
 }
 
-/**
- * UX pass — CSV export now honors the ledger's active filter set when one is
- * provided (month/member/tag/category/uncategorized/search/date-range);
- * called with no arguments it exports everything, as before. The WHERE is
- * built by the same buildWhere() the list uses, so the file always describes
- * exactly what the user was looking at.
- */
-export async function exportCsv(filters?: TransactionListFilters): Promise<{ ok: true; csv: string; filename: string } | { ok: false; error: string }> {
-  const session = await auth();
-  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
-  const where = filters && Object.keys(filters).length > 0 ? buildWhere(await expandGroupFilter(filters), null) : undefined;
-
-  const rows = await db
-    .select({
-      date: transactions.date,
-      time: transactions.time,
-      member: members.name,
-      note: transactions.note,
-      amount: transactions.amount,
-      category: categories.name,
-      tag: transactions.tag,
-    })
-    .from(transactions)
-    .innerJoin(members, eq(transactions.memberId, members.id))
-    .leftJoin(categories, eq(transactions.categoryId, categories.id))
-    .where(where)
-    // §1.10 — qualify every column (the LEFT JOIN to categories also has a
-    // created_at, so the bare `created_at` was ambiguous) and extend the
-    // tiebreak through time/created_at/id so the export order is fully
-    // deterministic and matches the ledger's keyset ordering.
-    .orderBy(
-      sql`${transactions.date} ASC, ${transactions.time} ASC, ${transactions.createdAt} ASC, ${transactions.id} ASC`,
-    );
-
-  const lines = rows.map((r) =>
-    formatCsvLine({
-      date: r.date,
-      time: r.time,
-      member: r.member,
-      note: r.note,
-      amount: r.amount,
-      category: r.category,
-      tag: r.tag,
-    }),
-  );
-
-  const csv = [CSV_HEADER, ...lines].join("\n") + "\n";
-  // Scope the filename so multiple exports don't overwrite each other.
-  const parts: string[] = [filters?.month ?? "all"];
-  if (filters?.memberId) parts.push("member");
-  if (filters?.tag) parts.push(filters.tag);
-  if (filters?.uncategorized) parts.push("uncategorized");
-  if (filters?.categoryId) parts.push("category");
-  if (filters?.groupId) parts.push("group");
-  if (filters?.from || filters?.to) parts.push("range");
-  return { ok: true as const, csv, filename: `ledger-${parts.join("-")}-${todayInIST()}.csv` };
-}
+// §2.10 — the old `exportCsv` Server Action (one unbounded SELECT, whole
+// result set joined into a single JS string — §1.10) is gone. Export moved to
+// the streaming GET /api/export route (batched, capped, session-authenticated),
+// which also keeps the canonical 7-column contract byte-identical (§6.6) via
+// csvLine(row, "canonical"). `verify:export-live` now exercises that route.

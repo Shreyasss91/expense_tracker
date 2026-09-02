@@ -7,6 +7,76 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Export and backup — streaming export, JSON, XLSX, scheduled monthly backup, and an import path (§2.10) — 2 September 2026
+
+The audit's §2.10: *"CSV is unbounded (§1.10) and 7-column. Add: streaming export, JSON (full
+fidelity, including `reviewed_at` and attachments), XLSX for spreadsheet users, and a scheduled
+monthly email/Telegram of the CSV — the Telegram digest foundation already exists (`c7c1fb6`).
+Also an import path so a restore is possible; right now export is one-way."*
+
+### Fixes
+
+- **The export was unbounded and single-shot.** `exportCsv` ran one unbounded SELECT, joined the
+  whole result into a JS string inside a Server Action, and had no ceiling. Replaced by
+  `src/lib/export-rows.ts` — a keyset-curated, batched (500 rows/trip), capped (100k rows)
+  async iterator — streamed by GET `/api/export` (`src/app/api/export/route.ts`). Peak memory is
+  one batch, and truncation is reported in `x-export-rows` / `x-export-truncated` headers
+  committed before the first byte.
+- **The old `exportCsv` Server Action is deleted.** The ledger's Export button became a plain
+  `<a href download>` menu (CSV full / CSV 7-column / JSON / XLSX), so the action had no client
+  reference left, and `verify:export-live` (which located its action id inside live client
+  chunks) would have failed on the first deploy after this change. The script now fetches
+  `/api/export?format=csv&columns=canonical` directly and checks the same seed.csv equality.
+- **`src/lib/csv.ts` gained `parseCsv`** — the read side of the RFC 4180 contract, kept
+  textually aligned with `scripts/lib/csv.mjs` so the shipped importer and exporter agree
+  byte for byte.
+
+### Surfaces
+
+- **Three new export shapes** (`src/lib/export-format.ts`): a 16-column extended CSV (ids, slugs,
+  group, shared/split_with, `reviewed_at`, attachment locators), full-fidelity JSON with the
+  `family-ledger-export@1` envelope (amounts as both rupee decimal and integer paise, ISO
+  timestamps), and a real .xlsx (numbers as numeric cells, frozen bold header; hand-rolled
+  ZIP/OPC writer in `src/lib/zip.ts` + `src/lib/xlsx.ts` — no spreadsheet dependency).
+  The canonical 7-column CSV stays byte-identical to the pre-change format (§6.6/§8).
+- **Import — the way back in** (`/api/import`, `src/lib/ledger-import.ts`, `src/lib/import-apply.ts`):
+  accepts the JSON backup, the 16-column CSV and the 7-column CSV; `?mode=preview` reports
+  before anything is written, `?mode=commit` inserts. Idempotent two ways — by primary key for
+  id-bearing files, by (date, time, member, amount, note) fingerprint for the canonical CSV.
+  Members/categories resolve by slug then display name, so renames between backup and restore
+  still restore; unresolved members skip the row, unresolved categories import uncategorized
+  (losing the label is better than losing the rupees). The ledger header gained an Import
+  button with a two-step preview sheet (`src/components/transactions/import-dialog.tsx`).
+- **Scheduled monthly backup** (`/api/cron/backup`, 1st at 04:00 IST in `vercel.json`):
+  builds the canonical CSV of the previous month through the capped iterator and delivers it
+  via Telegram `sendDocument` and/or Resend email (`src/lib/backup-delivery.ts`), idempotent
+  per month through `app_settings`, failing loudly (503) when no channel is configured rather
+  than silently doing nothing. Env vars documented in `.env.example`.
+
+### Verification
+
+- `npm run typecheck` → exit 0; `npm run lint` → clean (the three remaining warnings are
+  pre-existing, in budget-mutations.ts / recurring-detection.ts).
+- `npm run test:csv-parse` — 14 checks: writer → reader round-trip incl. embedded commas,
+  quotes, newlines, CRLF, unterminated-quote rejection.
+- `npm run test:export-format` — 49 checks: canonical line byte-identity, extended-CSV/JSON →
+  `parseImportFile` round-trips, validation rejections, fingerprints, filenames/URLs, XLSX cells.
+- `npm run test:xlsx` — 33 checks: CRC-32 against the standard check value, ZIP local/central/
+  EOCD layout and offsets, all six OPC parts, inline strings, numeric cells, escaping,
+  control-char stripping, frozen bold header, column names past Z.
+- All three added to the CI `checks` job (DB-free).
+
+### Runtime status
+
+Code-complete, type-clean, lint-clean. The /api/export and /api/import routes are unit-verified
+through the format layer but not yet exercised against the deployed app; `verify:export-live`
+will do so once deployed. The backup cron needs `CRON_SECRET` plus at least one channel's env
+vars (`TELEGRAM_BOT_TOKEN`+`TELEGRAM_CHAT_ID` or `RESEND_API_KEY`+`BACKUP_EMAIL_TO`+`BACKUP_EMAIL_FROM`)
+on Vercel. No schema change — the import path writes to the existing `transactions` table.
+
+---
+
+
 ## Group-filter completion & pie drill-through — 26 August 2026 (owner follow-up to the nested-categories pass)
 
 Recorded as defect fixes plus one additive surface on top of the 25-August hierarchy pass;

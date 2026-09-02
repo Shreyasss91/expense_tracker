@@ -21,7 +21,10 @@
     "test:budget-semantics": "tsx src/db/budget-semantics-test.ts",
     "test:ledger-url": "tsx src/lib/ledger-url-test.ts",
     "test:csv-quoting": "tsx src/lib/csv-quoting-test.ts",
+    "test:csv-parse": "tsx src/lib/csv-parse-test.ts",
     "test:csv-parser": "node scripts/lib/csv-test.mjs",
+    "test:xlsx": "tsx src/lib/xlsx-test.ts",
+    "test:export-format": "tsx src/lib/export-format-test.ts",
     "test:validation": "tsx src/lib/validation-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "verify:export-live": "node scripts/export-live-check.mjs"
