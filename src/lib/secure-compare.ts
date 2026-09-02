@@ -1,5 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
-
 /**
  * Constant-time string comparison to avoid leaking the correct password or
  * CRON_SECRET via response timing (CWE-208). Returns false immediately when
@@ -8,12 +6,25 @@ import { timingSafeEqual } from "node:crypto";
  *
  * Do NOT replace this with `a === b` — that short-circuits on the first
  * differing byte and is trivially timing-distinguishable.
+ *
+ * §1.8 fix-up (2 Sep 2026): this module previously imported
+ * `timingSafeEqual` from `node:crypto`. `auth.config.ts` is imported by BOTH
+ * the Node server (src/auth.ts) and `src/middleware.ts`, and middleware is
+ * compiled for the Edge runtime, where webpack cannot bundle `node:` URI
+ * imports — `next build` failed on the middleware chunk (pre-existing since
+ * the §1.8 pass; surfaced as red CI on §2.9). Web Crypto has no
+ * timingSafeEqual, so the portable form is TextEncoder bytes + an XOR
+ * accumulator loop, which is what this now is. TextEncoder is available in
+ * both the Edge runtime and Node ≥ 18.
  */
 export function timingSafeStringEqual(a: string, b: string): boolean {
-  const ab = Buffer.from(a, "utf8");
-  const bb = Buffer.from(b, "utf8");
+  const encoder = new TextEncoder();
+  const ab = encoder.encode(a);
+  const bb = encoder.encode(b);
   if (ab.length !== bb.length) return false;
-  return timingSafeEqual(ab, bb);
+  let diff = 0;
+  for (let i = 0; i < ab.length; i += 1) diff |= ab[i] ^ bb[i];
+  return diff === 0;
 }
 
 /**
