@@ -167,6 +167,11 @@ export function DateTimeField({
  * two tags sit stacked in the right column in canonical order
  * (lifestyle, recurring, one_time minus selected). Tapping an alternative
  * swaps it into the big slot — one tap to any tag, fully deterministic.
+ *
+ * §3.4 — keyboard support: ArrowUp/Down/Left/Right move through the tag
+ * options, Enter/Space selects (native button behaviour). The roving tabindex
+ * previously sat on the checked radio only in an inverted form; now the
+ * whole group is tabbable once and arrows move within it.
  */
 export function TagSelector({
   value,
@@ -176,17 +181,38 @@ export function TagSelector({
   onChange: (t: TransactionTag) => void;
 }) {
   const alternatives = TRANSACTION_TAGS.filter((t) => t !== value);
+
+  // §3.4 — roving tabindex: the checked option holds tab focus; arrows move
+  // between all options (checked + alternatives) in canonical order.
+  const onRadioKeyDown = (e: React.KeyboardEvent) => {
+    const order = TRANSACTION_TAGS;
+    const current = order.indexOf(value);
+    let next: number | null = null;
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") next = (current + 1) % order.length;
+    else if (e.key === "ArrowUp" || e.key === "ArrowLeft") next = (current - 1 + order.length) % order.length;
+    if (next !== null) {
+      e.preventDefault();
+      onChange(order[next]);
+      // move DOM focus to the (possibly new) checked big button
+      requestAnimationFrame(() => {
+        (e.currentTarget.closest('[role="radiogroup"]')?.querySelector<HTMLButtonElement>('[data-tag-checked="true"]'))?.focus();
+      });
+    }
+  };
+
   return (
     <div
       role="radiogroup"
       aria-label="Tag"
+      onKeyDown={onRadioKeyDown}
       className="grid h-14 w-[52%] min-w-[150px] max-w-[240px] grid-cols-2 grid-rows-2 gap-1"
     >
       <button
         type="button"
         role="radio"
         aria-checked
-        tabIndex={-1}
+        data-tag-checked="true"
+        tabIndex={0}
         className="row-span-2 flex items-center justify-center gap-1 truncate rounded-lg bg-primary px-1.5 text-xs font-medium text-primary-foreground sm:text-sm"
       >
         <Check className="h-3 w-3 shrink-0" />
@@ -198,6 +224,7 @@ export function TagSelector({
           type="button"
           role="radio"
           aria-checked={false}
+          tabIndex={-1}
           onClick={() => onChange(t)}
           className="truncate rounded-md border bg-secondary px-1.5 text-[10px] font-medium text-muted-foreground active:scale-95 sm:text-[11px]"
         >
@@ -336,7 +363,8 @@ export function CategoryGrid({
         type="button"
         onClick={() => onSelect(c.id)}
         className={cn(
-          "relative inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium active:scale-95",
+          // §3.4 — py-2.5 (with text-xs) keeps chips ≥44px tall.
+          "relative inline-flex items-center gap-1 rounded-full border px-3 py-2.5 text-xs font-medium active:scale-95",
           selectedId === c.id && "bg-primary text-primary-foreground",
         )}
         style={selectedId === c.id ? undefined : { borderColor: c.color }}

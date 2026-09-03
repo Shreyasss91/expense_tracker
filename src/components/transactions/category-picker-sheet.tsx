@@ -55,6 +55,7 @@ export function CategoryPickerSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={isDesktop ? "right" : "bottom"}
+        aria-labelledby="cp-sheet-title"
         className={
           isDesktop
             ? "flex h-full w-full max-w-sm flex-col rounded-l-2xl px-4 py-4 sm:px-6"
@@ -62,6 +63,8 @@ export function CategoryPickerSheet({
         }
         showCloseButton={false}
       >
+        {/* §3.4 — name the dialog for screen readers (visually hidden). */}
+        <h2 className="sr-only" id="cp-sheet-title">Assign category</h2>
         {!isDesktop && <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />}
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>

@@ -376,7 +376,16 @@ export function QuickAddSheet({
 
   return (
     <Sheet open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) { setJustAdded(false); setAddedCount(0); reset(); onClose(); } }}>
-      <SheetContent side="bottom" className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6" showCloseButton={false}>
+      <SheetContent
+        side="bottom"
+        aria-labelledby="qa-sheet-title"
+        className="mx-auto flex max-h-[92dvh] max-w-2xl flex-col rounded-t-2xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6"
+        showCloseButton={false}
+      >
+        {/* §3.4 — the dialog must be named: Radix warns and screen readers
+            announce a nameless dialog otherwise. Visually hidden; the header
+            row below stays the visual identity. */}
+        <h2 className="sr-only" id="qa-sheet-title">Quick Add — log an expense</h2>
         <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />
         <div className="mb-1 flex items-center gap-2">
           <Button
@@ -526,7 +535,7 @@ export function QuickAddSheet({
         </div>
 
         <div className="border-t border-muted-foreground/10 pt-3">
-          {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+          {error && <p role="alert" className="mb-2 text-sm font-medium text-destructive">{error}</p>}
           {justAdded ? (
             /* Multi-entry confirmation — the form above is already reset and
                live again; typing an amount also dismisses this banner. */

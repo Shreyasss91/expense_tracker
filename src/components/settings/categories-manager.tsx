@@ -373,7 +373,8 @@ function AddRow({
         <Button
           type="button"
           size="icon"
-          className="h-6 w-6"
+          // §3.4 — 44px touch target for a destructive-adjacent confirm.
+          className="h-11 w-11"
           disabled={saving || !name.trim()}
           onClick={() => {
             setSaving(true);
@@ -390,7 +391,7 @@ function AddRow({
         >
           <Check className="h-3.5 w-3.5" />
         </Button>
-        <Button type="button" size="icon" variant="ghost" className="h-6 w-6" disabled={saving} onClick={() => setOpen(false)} aria-label="Cancel">
+        <Button type="button" size="icon" variant="ghost" className="h-11 w-11" disabled={saving} onClick={() => setOpen(false)} aria-label="Cancel">
           <X className="h-3.5 w-3.5" />
         </Button>
       </div>

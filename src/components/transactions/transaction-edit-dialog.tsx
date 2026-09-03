@@ -529,6 +529,7 @@ export function TransactionEditDialog({
     >
       <SheetContent
         side={isDesktop ? "right" : "bottom"}
+        aria-labelledby="ed-sheet-title"
         className={
           isDesktop
             ? "flex h-full w-full max-w-md flex-col rounded-l-2xl px-4 py-4 sm:px-6"
@@ -536,6 +537,8 @@ export function TransactionEditDialog({
         }
         showCloseButton={false}
       >
+        {/* §3.4 — name the dialog for screen readers (visually hidden). */}
+        <h2 className="sr-only" id="ed-sheet-title">Edit transaction</h2>
         {!isDesktop && <div className="mx-auto mb-1 h-1.5 w-10 rounded-full bg-muted" />}
         <div className="mb-1 flex items-center gap-2">
           {splitting ? (
@@ -809,14 +812,14 @@ export function TransactionEditDialog({
         <div className="border-t border-muted-foreground/10 pt-3">
           {splitting ? (
             <>
-              {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+              {error && <p role="alert" className="mb-2 text-sm font-medium text-destructive">{error}</p>}
               <Button type="submit" className="h-12 w-full text-base" disabled={!canSplitSave}>
                 {splitSaving ? "Splitting…" : `Split into ${splits.length} transactions`}
               </Button>
             </>
           ) : (
             <>
-              {error && <p className="mb-2 text-sm font-medium text-destructive">{error}</p>}
+              {error && <p role="alert" className="mb-2 text-sm font-medium text-destructive">{error}</p>}
               <div className="mb-2 flex gap-2">
                 <Button type="button" variant="outline" className="h-9 flex-1 text-xs" onClick={() => void saveAsTemplate()} disabled={savingTemplate}>
                   {savingTemplate ? "Saving template…" : "Save as template"}

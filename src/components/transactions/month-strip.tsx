@@ -8,7 +8,8 @@ import { buildLedgerUrl, type LedgerFilters } from "@/lib/ledger-url";
 
 function chip(active: boolean) {
   return cn(
-    "h-9 shrink-0 rounded-full px-3.5 text-xs font-medium transition-colors",
+    // §3.4 — h-11 (44px) meets the minimum touch-target size.
+    "h-11 shrink-0 rounded-full px-3.5 text-xs font-medium transition-colors",
     active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted-foreground/10",
   );
 }

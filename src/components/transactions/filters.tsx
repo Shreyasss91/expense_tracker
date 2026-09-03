@@ -232,6 +232,7 @@ export function FiltersBar({
         <Input
           type="search"
           placeholder="Search notes…"
+          aria-label="Search notes"
           className="h-9 pl-9 pr-8"
           value={q}
           onChange={(e) => setQ(e.target.value)}

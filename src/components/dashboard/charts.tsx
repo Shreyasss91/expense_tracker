@@ -171,6 +171,16 @@ export function CategoryPie({ leaves, month }: { leaves: CategoryTreeSlice[]; mo
 
   const total = level.reduce((s, c) => s + c.paise, 0);
 
+  // §3.4 — spoken equivalent of the pie: top slices + total. The legend list
+  // below the chart already carries the full data as real DOM text, so the
+  // label summarizes and points at it.
+  const topSpoken = level
+    .slice()
+    .sort((a, b) => b.paise - a.paise)
+    .slice(0, 3)
+    .map((s) => `${s.name} ${formatINR(s.paise)}`)
+    .join(", ");
+
   // §6.3.1 empty state: a card, not a zero-slice chart
   if (total === 0) {
     return (
@@ -183,7 +193,7 @@ export function CategoryPie({ leaves, month }: { leaves: CategoryTreeSlice[]; mo
 
   return (
     <div>
-      <div className="h-48">
+      <div className="h-48" role="img" aria-label={`Spending breakdown pie chart. Top categories: ${topSpoken}. Full list follows below.`}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             {/* slice strokes follow the theme background so slices read as
@@ -285,8 +295,11 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
     );
   }
 
+  // §3.4 — spoken equivalent of the bar chart: each month and its total.
+  const spoken = points.map((p) => `${p.label} ${p.expensePaise > 0 ? formatINR(p.expensePaise) : "no spend"}`).join(", ");
+
   return (
-    <div className="h-56">
+    <div className="h-56" role="img" aria-label={`Six-month expense trend: ${spoken}.`}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />

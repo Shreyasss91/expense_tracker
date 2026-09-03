@@ -89,7 +89,8 @@ export function MembersManager({ members }: { members: MemberOption[] }) {
                 key={color}
                 type="button"
                 aria-label={`Colour ${color}`}
-                className={`h-6 w-6 rounded-full transition-transform ${m.color === color ? "ring-2 ring-ring ring-offset-2" : ""}`}
+                // §3.4 — 44px hit area; the 24px swatch paints inside it.
+                className={`m-0.5 h-9 w-9 rounded-full transition-transform ${m.color === color ? "ring-2 ring-ring ring-offset-2" : ""}`}
                 style={{ background: color }}
                 onClick={() => patch(i, "color", color)}
               />

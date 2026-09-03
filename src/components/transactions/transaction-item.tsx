@@ -128,10 +128,14 @@ export function TransactionItem({
 
   return (
     <div className="relative overflow-hidden rounded-xl">
-      {/* delete affordance behind the row (§6.4.1) */}
+      {/* delete affordance behind the row (§6.4.1) — §3.4: only focusable
+          once revealed by a swipe; keyboard users would otherwise tab onto an
+          invisible destructive button behind every row. */}
       <button
         type="button"
         aria-label="Delete transaction"
+        aria-hidden={!swiped}
+        tabIndex={swiped ? 0 : -1}
         onClick={() => onDelete(row)}
         className="absolute inset-y-0 right-0 flex w-20 items-center justify-center bg-destructive text-white"
       >

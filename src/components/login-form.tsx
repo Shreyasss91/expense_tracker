@@ -46,7 +46,9 @@ export function LoginForm() {
           />
         </div>
       </div>
-      {error && <p className="text-sm font-medium text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">{error}</p>
+      )}
       <Button type="submit" className="h-12 w-full" disabled={pending || !password}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
