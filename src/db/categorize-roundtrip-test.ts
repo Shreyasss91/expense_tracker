@@ -24,6 +24,8 @@
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
+import { assertNotProductionDb } from "./test-db-guard";
+assertNotProductionDb("categorize-roundtrip-test");
 
 import { and, eq, inArray, isNull, like, sql } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";

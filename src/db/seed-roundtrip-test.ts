@@ -15,6 +15,8 @@
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
+import { assertNotProductionDb } from "./test-db-guard";
+assertNotProductionDb("seed-roundtrip-test");
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";

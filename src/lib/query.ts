@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { attachments, categories, transactions } from "@/db/schema";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { monthKeySchema } from "@/lib/validations";
+import { monthEndForKey } from "@/lib/dates";
 
 export const PAGE_SIZE = 50; // §7.3
 
@@ -40,10 +41,8 @@ export interface Cursor {
 }
 
 function monthEnd(monthKey: string): string {
-  const month = monthKeySchema.parse(monthKey);
-  const [y, m] = month.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return `${month}-${String(lastDay).padStart(2, "0")}`;
+  // §1.10 — shared implementation (validated by the caller's monthKeySchema).
+  return monthEndForKey(monthKeySchema.parse(monthKey));
 }
 
 export function buildWhere(filters: TransactionListFilters, cursor: Cursor | null): SQL | undefined {

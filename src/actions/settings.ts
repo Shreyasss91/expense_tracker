@@ -8,6 +8,7 @@ import { setAppSetting, EXCLUDE_BILLS_KEY } from "@/db/app-settings-mutations";
 import { isAssignableCategory } from "@/db/category-mutations";
 import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations";
 import { budgets, categories, members, templates, transactions } from "@/db/schema";
+import { monthEndForKey } from "@/lib/dates";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { rupeesToPaise } from "@/lib/money";
 import { createCategoryGroupSchema, createCategorySchema, mergeCategoriesSchema, monthKeySchema, moveCategoryToGroupSchema, saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
@@ -42,6 +43,29 @@ function categoryColor(slug: string): string {
 }
 
 /**
+ * §1.10 — race-safe slug insert. The old read-then-insert (fetch all slugs,
+ * pick a free one, INSERT) 500s on the unique constraint when two creates
+ * pick the same slug concurrently. Now: insert with ON CONFLICT DO NOTHING;
+ * a null return means the slug was taken in the race window, so bump the
+ * -N suffix and retry (bounded so a pathological loop cannot spin forever).
+ */
+async function insertWithSlugRetry(
+  values: Omit<typeof categories.$inferInsert, "id" | "slug">,
+  baseSlug: string,
+): Promise<typeof categories.$inferSelect | null> {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const slug = attempt === 0 ? baseSlug : `${baseSlug}-${attempt + 1}`;
+    const [row] = await db
+      .insert(categories)
+      .values({ ...values, slug })
+      .onConflictDoNothing({ target: categories.slug })
+      .returning();
+    if (row) return row;
+  }
+  return null;
+}
+
+/**
  * §6.2/§6.5 — create a category inline from Quick Add / the edit dialog.
  * The slug (§5.3) is generated from the name and is immutable; the color is
  * picked deterministically. Two-level hierarchy: inline-created categories
@@ -69,11 +93,7 @@ export async function createCategory(raw: z.infer<typeof createCategorySchema>) 
     if (!groupRow) return { ok: false as const, error: "Default group not found" };
   }
 
-  const existing = await db.select({ slug: categories.slug }).from(categories);
-  const taken = new Set(existing.map((r) => r.slug));
   const base = slugifyCategoryName(name);
-  let slug = base;
-  for (let i = 2; taken.has(slug); i++) slug = `${base}-${i}`;
 
   // sortOrder is scoped to the destination group's children.
   const [maxRow] = await db
@@ -81,17 +101,17 @@ export async function createCategory(raw: z.infer<typeof createCategorySchema>) 
     .from(categories)
     .where(eq(categories.parentId, groupRow.id));
 
-  const [row] = await db
-    .insert(categories)
-    .values({
-      slug,
+  const row = await insertWithSlugRetry(
+    {
       name,
       emoji: emoji || "🏷️",
-      color: categoryColor(slug),
+      color: categoryColor(base),
       sortOrder: (maxRow?.max ?? 0) + 1,
       parentId: groupRow.id,
-    })
-    .returning();
+    },
+    base,
+  );
+  if (!row) return { ok: false as const, error: "Could not save — too many categories with this name" };
 
   revalidatePath("/");
   revalidatePath("/transactions");
@@ -119,28 +139,25 @@ export async function createCategoryGroup(raw: z.infer<typeof createCategoryGrou
   if (!parsed.success) return { ok: false as const, error: "Invalid group data" };
   const { name, emoji } = parsed.data;
 
-  const existing = await db.select({ slug: categories.slug }).from(categories);
-  const taken = new Set(existing.map((r) => r.slug));
   const base = `${GROUP_SLUG_PREFIX}${slugifyCategoryName(name)}`;
-  let slug = base;
-  for (let i = 2; taken.has(slug); i++) slug = `${base}-${i}`;
 
   const [maxRow] = await db
     .select({ max: sql<number>`COALESCE(MAX(${categories.sortOrder}), 0)` })
     .from(categories)
     .where(isNull(categories.parentId));
 
-  const [row] = await db
-    .insert(categories)
-    .values({
-      slug,
+  // §1.10 — same race-safe insert as createCategory.
+  const row = await insertWithSlugRetry(
+    {
       name,
       emoji: emoji || "🧺",
-      color: categoryColor(slug),
+      color: categoryColor(base),
       sortOrder: (maxRow?.max ?? 0) + 1,
       parentId: null,
-    })
-    .returning();
+    },
+    base,
+  );
+  if (!row) return { ok: false as const, error: "Could not save — too many groups with this name" };
 
   revalidatePath("/");
   revalidatePath("/transactions"); // the ledger filter dropdown lists groups too
@@ -462,7 +479,7 @@ export async function getCategoryBudgetStatus(monthKey: string) {
         total: sql<string>`SUM(${transactions.amount})`,
       })
       .from(transactions)
-      .where(and(gte(transactions.date, `${key}-01`), lte(transactions.date, monthEnd(key))))
+      .where(and(gte(transactions.date, `${key}-01`), lte(transactions.date, monthEndForKey(key))))
       .groupBy(transactions.categoryId),
   ]);
 
@@ -478,10 +495,4 @@ export async function getCategoryBudgetStatus(monthKey: string) {
     });
 
   return { ok: true as const, categories: categoryStatuses };
-}
-
-function monthEnd(monthKey: string): string {
-  const [y, m] = monthKeySchema.parse(monthKey).split("-").map(Number);
-  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
 }

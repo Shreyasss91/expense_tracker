@@ -26,6 +26,8 @@
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
+import { assertNotProductionDb } from "./test-db-guard";
+assertNotProductionDb("budget-semantics-test");
 
 import { randomUUID } from "node:crypto";
 import { and, eq, gte, inArray, lte, sql } from "drizzle-orm";
@@ -36,6 +38,8 @@ import { EXCLUDE_BILLS_KEY, getAppSetting, setAppSetting } from "./app-settings-
 import { replaceBudgetScope } from "./budget-mutations";
 import { appSettings, budgets, categories, members, transactions } from "./schema";
 import { transactionSchema } from "../lib/validations";
+// §1.10 — shared implementation; the local copy is deleted.
+import { monthEndForKey as monthEnd } from "@/lib/dates";
 import { paiseToDbString, rupeesToPaise } from "../lib/money";
 
 const client = neon(process.env.DATABASE_URL ?? "");
@@ -48,11 +52,6 @@ function check(cond: boolean, msg: string) {
     failures += 1;
     console.error(`  ✗ ${msg}`);
   }
-}
-
-function monthEnd(monthKey: string): string {
-  const [y, m] = monthKey.split("-").map(Number);
-  return `${monthKey}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
 }
 
 async function main() {

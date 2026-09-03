@@ -28,6 +28,22 @@ export function monthKeyInIST(date: Date = new Date()): string {
   return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM");
 }
 
+/**
+ * §1.10 — the LAST day of a "yyyy-MM" month key, as YYYY-MM-DD. Pure
+ * calendar math (no timezone), shared by the ledger query, the settings
+ * budget status and anything else that bounds a month-key range. Previously
+ * four copies lived in query.ts / budgets.ts / settings.ts and the budget
+ * test; they must all agree, so there is one.
+ */
+export function monthEndForKey(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) {
+    throw new Error(`Invalid month key: ${monthKey}`);
+  }
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+}
+
 /** Group label per §6.4: "Today" | "Yesterday" | "12 Aug 2026". */
 export function dateGroupLabel(dateStr: string): string {
   const now = new Date();
