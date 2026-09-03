@@ -134,6 +134,12 @@ export function ReviewQueueCard({
       const original = rows.find((r) => r.id === row.id);
       setRows((prev) => prev.filter((r) => r.id !== row.id));
       setPendingCount((c) => Math.max(0, c - 1));
+      // §3.3 — commit on every close path (timer, swipe or X); Sonner skips
+      // onAutoClose on a user dismiss, which used to strand the delete.
+      const commit = () => {
+        emitLedgerMutation({ kind: "delete", id: row.id });
+        void deleteTransaction(row.id);
+      };
       toast("Deleted", {
         duration: UNDO_WINDOW_MS,
         action: {
@@ -145,10 +151,8 @@ export function ReviewQueueCard({
             }
           },
         },
-        onAutoClose: () => {
-          emitLedgerMutation({ kind: "delete", id: row.id });
-          void deleteTransaction(row.id);
-        },
+        onAutoClose: commit,
+        onDismiss: commit,
       });
     },
     [rows],
@@ -268,6 +272,11 @@ export function ReviewQueueCard({
     const snapshot = [...targets];
     setRows((prev) => prev.filter((r) => !selectedIds.has(r.id)));
     exitSelection();
+    // §3.3 — commit on every close path (timer, swipe or X); see handleRequestDelete.
+    const commit = () => {
+      for (const s of snapshot) emitLedgerMutation({ kind: "delete", id: s.id });
+      void deleteTransactions(snapshot.map((s) => s.id));
+    };
     toast(`${snapshot.length} deleted`, {
       duration: UNDO_WINDOW_MS,
       action: {
@@ -277,10 +286,8 @@ export function ReviewQueueCard({
           for (const s of snapshot) emitLedgerMutation({ kind: "update", id: s.id, row: s });
         },
       },
-      onAutoClose: () => {
-        for (const s of snapshot) emitLedgerMutation({ kind: "delete", id: s.id });
-        void deleteTransactions(snapshot.map((s) => s.id));
-      },
+      onAutoClose: commit,
+      onDismiss: commit,
     });
     setPendingCount((c) => Math.max(0, c - snapshot.length));
   }
@@ -370,9 +377,15 @@ export function ReviewQueueCard({
                             onEdit={setEditing}
                             onDelete={(row) => {
                               // §6.4.1-style optimistic delete with undo; the
-                              // main ledger list hears about it via the bus
+                              // main ledger list hears about it via the bus.
+                              // §3.3 — commit on every close path (timer,
+                              // swipe or X), not just the timer.
                               setRows((prev) => prev.filter((r) => r.id !== row.id));
                               setPendingCount((c) => Math.max(0, c - 1));
+                              const commit = () => {
+                                emitLedgerMutation({ kind: "delete", id: row.id });
+                                void deleteTransaction(row.id);
+                              };
                               toast("Deleted", {
                                 duration: UNDO_WINDOW_MS,
                                 action: {
@@ -382,10 +395,8 @@ export function ReviewQueueCard({
                                     emitLedgerMutation({ kind: "update", id: item.id, row: item });
                                   },
                                 },
-                                onAutoClose: () => {
-                                  emitLedgerMutation({ kind: "delete", id: row.id });
-                                  void deleteTransaction(row.id);
-                                },
+                                onAutoClose: commit,
+                                onDismiss: commit,
                               });
                             }}
                             selectionMode={selectionMode}

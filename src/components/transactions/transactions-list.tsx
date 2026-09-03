@@ -190,13 +190,27 @@ export function TransactionsList({
     setRows((prev) => prev.filter((r) => r.id !== row.id));
     pendingRef.current.set(row.id, { row, index, fired: false });
 
+    // §3.3 — commit on EVERY close path. Sonner fires onAutoClose only when
+    // the timer lapses; a swipe or X dismiss skips it, so a pending delete
+    // could sit in pendingRef until unmount and be silently lost if the app
+    // dies in that window. The Undo handler deletes the pending entry before
+    // the toast closes, so whichever callback fires after Undo finds nothing
+    // to commit — the fired flag guards a double fire.
+    const commit = () => {
+      const p = pendingRef.current.get(row.id);
+      if (p && !p.fired) {
+        p.fired = true;
+        void deleteTransaction(row.id);
+      }
+    };
+
     // 2. toast with Undo + ~5s window (§6.4.1)
     toast("Transaction deleted", {
       duration: UNDO_WINDOW_MS,
       action: {
         label: "Undo",
         onClick: () => {
-          // 3. Undo: cancel the timer; no database write ever occurred (§6.4.1)
+          // 3. Undo: cancel the pending delete; no database write ever occurred (§6.4.1)
           const p = pendingRef.current.get(row.id);
           pendingRef.current.delete(row.id);
           if (p && !p.fired) {
@@ -208,14 +222,9 @@ export function TransactionsList({
           }
         },
       },
-      // 4. timer lapses → hard delete fires (§6.4.1)
-      onAutoClose: () => {
-        const p = pendingRef.current.get(row.id);
-        if (p && !p.fired) {
-          p.fired = true;
-          void deleteTransaction(row.id);
-        }
-      },
+      // 4. timer lapses OR user dismisses → hard delete fires (§3.3)
+      onAutoClose: commit,
+      onDismiss: commit,
     });
   }
 
@@ -330,6 +339,21 @@ export function TransactionsList({
     for (const s of snapshot) pendingRef.current.set(s.row.id, s);
     exitSelection();
 
+    // §3.3 — commit on every close path (timer, swipe or X); see requestDelete.
+    // The Undo handler deletes pending entries first, so a commit after Undo
+    // is a no-op, and the fired flag prevents a double fire.
+    const commit = () => {
+      const ids: string[] = [];
+      for (const s of snapshot) {
+        const p = pendingRef.current.get(s.row.id);
+        if (p && !p.fired) {
+          p.fired = true;
+          ids.push(s.row.id);
+        }
+      }
+      if (ids.length > 0) void deleteTransactions(ids);
+    };
+
     // 2/3/4. one undoable toast drives the batch (same window as single delete)
     toast(`${snapshot.length} transaction${snapshot.length === 1 ? "" : "s"} deleted`, {
       duration: UNDO_WINDOW_MS,
@@ -351,17 +375,8 @@ export function TransactionsList({
           }
         },
       },
-      onAutoClose: () => {
-        const ids: string[] = [];
-        for (const s of snapshot) {
-          const p = pendingRef.current.get(s.row.id);
-          if (p && !p.fired) {
-            p.fired = true;
-            ids.push(s.row.id);
-          }
-        }
-        if (ids.length > 0) void deleteTransactions(ids);
-      },
+      onAutoClose: commit,
+      onDismiss: commit,
     });
   }
 
