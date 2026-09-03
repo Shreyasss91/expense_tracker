@@ -7,6 +7,40 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## SPEC sync — the September 2026 audit-remediation wave recorded — 3 September 2026
+
+Owner request: "update spec doc to have all the features that have been implemented."
+`SPEC.md` had recorded everything through the 25–26 August passes but **none** of the
+2–3 September audit-remediation work (commits `6f8f2be`…`a666bb2`, 33 commits). This
+entry records that sync. No normative rule changed today — this documents what shipped.
+
+- **§2 stack table:** added Vercel Blob (§2.9), Web Push/VAPID (§2.11), and the PWA row
+  (`sw.js` + manifest + IndexedDB offline-add queue).
+- **§4 schema:** 5 → 8 tables (`saved_searches`, `attachments`, `push_subscriptions`,
+  `activity_log`); `categories.parent_id` hierarchy summary; `transactions.shared` /
+  `split_with`; `budgets.group_id`; template controls (`is_paused`, `is_variable`,
+  `skip_month`) + the 25 Aug recurring fields (`auto_day`, `last_auto_key`,
+  `member_id`); the pg_trgm GIN + `reviewed_at` partial indexes; the full index list.
+- **§6.5 Settings:** new cards recorded — Templates (with pause/skip/variable
+  controls), Offline entries, Notifications, History; merge + move-between-groups
+  added to the category management list; per-group budgets in the Budgets card.
+- **§6.8 (new):** the September feature wave, one paragraph per audit item §2.1–§2.12
+  (group budgets, shared ownership, split amount/percent, recurring detection, pacing
+  headline, saved searches + amount/date ranges, insights, receipts, 4-format
+  streaming export + import + monthly backup, Web Push, household operations) plus
+  the security/integrity hardening and the CI migration-replay job.
+- **§7.1:** the action list grew to the real set (bulk, templates, merge, saved
+  searches, activity) and gained the normative `auth()` session guard as step 1.
+- **§9.1:** optional feature env vars table (Blob, Telegram, Resend, VAPID, CRON_SECRET).
+- **§11 exclusion list:** PWA/offline-first, automated recurring generation, receipt
+  attachments and Telegram/email digest struck through with dated annotations —
+  all four shipped (25 Aug, 2–3 Sept). Merchant auto-categorization stays excluded,
+  with a note distinguishing it from the shipped *suggestions* (Amendment 8).
+- **§6.3:** the Who-spent card's history (removed 24 Aug, reinstated 2 Sept, removed
+  again 3 Sept) is now fully annotated.
+
+---
+
 ## Export and backup — streaming export, JSON, XLSX, scheduled monthly backup, and an import path (§2.10) — 2 September 2026
 
 The audit's §2.10: *"CSV is unbounded (§1.10) and 7-column. Add: streaming export, JSON (full

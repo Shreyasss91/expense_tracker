@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.3 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), and 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `CHANGELOG.md`), and 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `CHANGELOG.md` and `AUDIT-2026-09-01.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -99,6 +99,9 @@
 | Date/Time | `date-fns` + `date-fns-tz` — business timezone `Asia/Kolkata` (§5.7) |
 | Currency | Storage `NUMERIC(12,2)`; app arithmetic in integer paise; display via `Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' })` (§5.8) |
 | Deterministic IDs | `uuid` (v5) — content-addressed seed identity (§8.1) |
+| Object storage | Vercel Blob — receipt attachments (§2.9) |
+| Web Push | VAPID + the `web-push` encryption — budget/review notifications (§2.11) |
+| PWA | `public/sw.js` (shell/asset cache, offline fallback, update-on-visible) + web manifest + IndexedDB offline-add queue |
 | Hosting | Vercel Hobby Tier (connected to existing GitHub repo) |
 
 ---
@@ -150,8 +153,35 @@ The seed script maps the CSV `member` string through **this table as a literal l
 
 ## 4. Database Schema (Drizzle ORM)
 
-5 tables — 3 core (`members`, `categories`, `transactions`) plus `budgets` (§6.7) and
-`app_settings` (§6.7). All IDs are UUIDs.
+8 tables — 3 core (`members`, `categories`, `transactions`) plus `budgets` (§6.7),
+`app_settings` (§6.7), `templates` (Amendment 17), `saved_searches` (§2.7),
+`attachments` (§2.9), `activity_log` (§2.12) and `push_subscriptions` (§2.11).
+All IDs are UUIDs. The authoritative definition is `src/db/schema.ts`; the
+blocks below are the normative summary.
+
+**Two-level category hierarchy (25 Aug 2026 pass):** `categories.parent_id`
+(nullable self-FK). NULL = a **GROUP** row (top level, never assignable to a
+transaction/template/budget); non-NULL = a **LEAF** whose parent must be a
+top-level row. Depth is capped at exactly 2, enforced by the mutation actions.
+Every selectable category is a leaf; every rupee rolls up to exactly one group.
+Group slugs are prefixed `grp-` so they can never collide with leaf slugs.
+The 19 seeded categories became leaves under 7 seeded groups
+(`grp-getting-around`, `grp-food-provisions`, `grp-people-care`,
+`grp-home-bills`, `grp-wealth-protection`, `grp-lifestyle-giving`,
+`grp-other` — the catch-all for inline-created categories). Category **merge**
+(§2.12) re-points history and deletes the source; groups can never merge.
+
+**Shared ownership (§2.2, 2 Sept 2026):** `transactions.shared` (boolean,
+default false) + `transactions.split_with` (text[] member ids, empty =
+everyone) — an expense can be borne by the household rather than the single
+member who logged it.
+
+**Template controls (§2.12, 3 Sept 2026):** `templates.is_paused` (never
+auto-stamps), `templates.is_variable` (manual-only — "amount varies, ask me")
+and `templates.skip_month` ("YYYY-MM" the cron skips exactly once, then
+clears). Recurring auto-entry fields from the 25 Aug pass: `auto_day` (1–28),
+`last_auto_key` (idempotency marker), `member_id` (whose ledger the auto
+entry lands under).
 
 ### 4.1 Enums
 ```typescript
@@ -176,6 +206,9 @@ export const categories = pgTable('categories', {
   emoji: text('emoji').notNull(),
   color: text('color').notNull(),
   sortOrder: integer('sort_order').notNull(),
+  // Two-level hierarchy (25 Aug 2026): NULL = a GROUP (top level, never
+  // assignable); non-NULL = a LEAF whose parent is a top-level row. See §4.
+  parentId: uuid('parent_id').references((): AnyPgColumn => categories.id),
 });
 
 export const transactions = pgTable('transactions', {
@@ -188,7 +221,10 @@ export const transactions = pgTable('transactions', {
   date: date('date', { mode: 'string' }).notNull(),   // YYYY-MM-DD, Asia/Kolkata calendar date (§5.7)
   time: time('time', { mode: 'string' }).notNull(),   // Postgres TIME; reads back as HH:MM:SS (§5.6)
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  reviewedAt: timestamp('reviewed_at'),  // NULL = not acknowledged; set only by explicit acknowledge (Amendment 18, 19 Aug 2026 — Review queue, now inside the Ledger page)
+  reviewedAt: timestamp('reviewed_at'),  // NULL = pending review if note is generic; set explicitly via acknowledge (§6.4)
+  // §2.2 — shared ownership: borne by the household rather than the logger.
+  shared: boolean('shared').notNull().default(false),
+  splitWith: text('split_with').array().notNull().default([]),
 }, (t) => ({
   dateIdx: index('transactions_date_idx').on(t.date),
   memberIdx: index('transactions_member_id_idx').on(t.memberId),
@@ -196,6 +232,11 @@ export const transactions = pgTable('transactions', {
   // Keyset pagination cursor (§7.3) — must match the ORDER BY exactly, all four columns
   listCursorIdx: index('transactions_list_cursor_idx')
     .on(t.date.desc(), t.time.desc(), t.createdAt.desc(), t.id.desc()),
+  // UX/perf — pg_trgm GIN index for substring note search (?q= → ILIKE '%term%')
+  noteTrgmIdx: index('transactions_note_trgm_idx').using('gin', sql`${t.note} gin_trgm_ops`),
+  // §1.9 — partial index serving the pending-review scan (WHERE reviewed_at IS NULL)
+  reviewedPendingIdx: index('transactions_reviewed_at_pending_idx')
+    .on(t.reviewedAt).where(sql`${t.reviewedAt} IS NULL`),
 }));
 ```
 
@@ -209,13 +250,16 @@ export const transactions = pgTable('transactions', {
 export const budgets = pgTable('budgets', {
   id: uuid('id').primaryKey().defaultRandom(),
   month: text('month'),            // 'yyyy-MM' for one month; NULL = the every-month default (§6.7)
-  categoryId: uuid('category_id').references(() => categories.id),  // NULL = total monthly budget (§6.7)
+  categoryId: uuid('category_id').references(() => categories.id),  // NULL = total monthly budget (§6.7); a LEAF id = per-category limit
+  // §2.1 — a top-level GROUP id; when set the budget caps the roll-up of all
+  // its leaves. Mutually exclusive with categoryId within a row.
+  groupId: uuid('group_id').references(() => categories.id),
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(),  // Read as string; see §5.8
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (t) => ({
-  // one budget per (month, category) scope — NULLs collapsed via COALESCE
+  // one budget per (month, scope) — all three scope axes collapsed via COALESCE
   scopeUnique: uniqueIndex('budgets_scope_unique')
-    .on(sql`COALESCE(${t.month}, '')`, sql`COALESCE(${t.categoryId}::text, '')`),
+    .on(sql`COALESCE(${t.month}, '')`, sql`COALESCE(${t.categoryId}::text, '')`, sql`COALESCE(${t.groupId}::text, '')`),
 }));
 
 export const appSettings = pgTable('app_settings', {
@@ -231,16 +275,28 @@ export const templates = pgTable('templates', {
   tag: transactionTagEnum('tag').notNull(),     // §5.2 triad applies to templates
   amount: numeric('amount', { precision: 12, scale: 2 }).notNull(), // §5.8
   note: text('note'),                           // optional prefill note
+  // Recurring auto-entry (UX pass, 25 Aug 2026): day of month (1–28) the daily
+  // cron stamps this template; NULL = manual-only.
+  autoDay: integer('auto_day'),
+  lastAutoKey: text('last_auto_key'),           // "YYYY-MM" idempotency marker owned by the cron
+  memberId: uuid('member_id').references(() => members.id), // whose ledger the auto entry lands under
+  // §2.12 (3 Sept 2026): paused never auto-stamps; variable stays manual-only;
+  // skip_month skips the auto-stamp exactly once, then the cron clears it.
+  isPaused: boolean('is_paused').notNull().default(false),
+  isVariable: boolean('is_variable').notNull().default(false),
+  skipMonth: text('skip_month'),
   sortOrder: integer('sort_order').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 ```
 
-**`app_settings`** is a tiny key-value store for global application settings. It currently
-holds exactly one key: `exclude_bills_from_budget` (`'1'`/`'0'` — the global "exclude
-bills from the total budget" toggle, §6.7). Read/written via `src/db/app-settings-mutations.ts`
-(plain statements; upsert on conflict). No row for a key = off.
+**`app_settings`** is a tiny key-value store for global application settings. It holds
+`exclude_bills_from_budget` (`'1'`/`'0'` — the global "exclude bills from the total
+budget" toggle, §6.7), the Telegram digest and monthly-backup idempotency markers
+(`telegram_digest_sent_<month>`, `backup_sent_<month>`), and any future single-key
+toggles. Read/written via `src/db/app-settings-mutations.ts` (plain statements;
+upsert on conflict). No row for a key = off.
 
 **`templates`** (Amendment 17, 19 Aug 2026): recurring transaction templates for Quick Add prefill.
 Templates carry **no member** — the currently active member is stamped at commit time (§3.2).
@@ -248,7 +304,36 @@ Deletion IS permitted (unlike categories/members) — nothing references them. N
 (templates are not ingestion identities). See §4.2 table summary, §6.2 Quick Add template strip,
 §6.5 Settings Templates card, and §7.1 Server Actions for creation/update/deletion rules.
 
-**Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`, the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3), `budgets_scope_unique` (§6.7), and `templates(sort_order)` for Settings ordering.
+**`saved_searches`** (§2.7, 2 Sept 2026): a household-wide library of named ledger
+filter presets ("Big fuel spends") — `name` + `params` (a sanitized JSON copy of
+LedgerFilters, `month` deliberately omitted so a saved search stays reusable
+across months). One master password = one household, so there is no per-member
+ownership column.
+
+**`attachments`** (§2.9, 2 Sept 2026): receipt/attachment rows — `transaction_id`
+(cascade FK), object-storage `pathname` + `url`, `content_type`, `size_bytes`.
+The bytes live in Vercel Blob; every read goes through authed `/api/attachments/[id]`,
+so receipts stay behind the app's auth.
+
+**`push_subscriptions`** (§2.11, 2 Sept 2026): Web Push subscriptions — `endpoint`
+(unique), `p256dh` + `auth` keys stored verbatim, fed into the Web Push encryption
+on send. Household-wide (no per-user column) — every opted-in device receives the
+same budget/review notifications.
+
+**`activity_log`** (§2.12, 3 Sept 2026): persistent audit trail backing the 5-second
+undo toast — `action`, `entity_type`, `entity_id`, `actor` (advisory: the
+active-member label at write time, §3.2.1), `payload` (snapshots: full deleted
+transaction rows for deletes; merge/skip metadata), `created_at`. Deletes carry
+row snapshots and can be **restored** from Settings → History; merges/skips are
+listed as reference. Attribution is advisory only — the member cookie is
+client-editable by design.
+
+**Indexes:** `transactions(date)`, `transactions(member_id)`, `transactions(category_id)`,
+the composite `(date DESC, time DESC, created_at DESC, id DESC)` list cursor (§7.3),
+the `note` pg_trgm GIN index (`?q=` substring search), the `reviewed_at` partial
+index (§1.9), `budgets_scope_unique` (§6.7), `templates(sort_order)`,
+`templates(auto_day)` (cron scan), `attachments(transaction_id)`,
+`push_subscriptions(created_at)`, and `activity_log(created_at DESC)` + `(action)`.
 
 ---
 
@@ -479,6 +564,9 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
   ledger since Amendment 13); months with no data plot as `0`, never a gap.
 - Per-member comparison (**Who spent**) was **removed by owner decision on 24 Aug 2026**
   — member attribution lives in the Ledger's member filter, not the dashboard.
+  *(Briefly reinstated by the §2.2 shared-ownership pass on 2 Sept 2026, then
+  **removed again by owner decision on 3 Sept 2026** — shared-ownership data
+  persists on transactions, but no dashboard attribution card exists.)*
 - The month's transaction panel closes the page (full ledger rows: tap to edit,
   swipe-delete, bulk assign/delete).
 
@@ -570,10 +658,14 @@ Swipe-left delete on a device that gets handed between family members makes acci
 **No soft delete.** No `deleted_at` column, no tombstones, no restore UI, no filtering of deleted rows from queries. The undo window lives entirely in client state before the write, which is precisely why it costs no schema, no query complexity, and no scope growth.
 
 ### 6.5 Settings
-- Manage categories: **create (inline from the edit dialog; the bulk picker and Quick Add do not create), rename, emoji, reorder**. The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered in v1** (§5.3). New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; the "inline from Quick Add" wording by Amendment 20 — see `CHANGELOG.md`.)*
+- Manage categories: **create (inline from the edit dialog; the bulk picker and Quick Add do not create), rename, emoji, reorder, move-between-groups, merge** (§6.8). The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered** — **merge** (§2.12) is the sanctioned way to retire a leaf. New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; the "inline from Quick Add" wording by Amendment 20 — see `CHANGELOG.md`.)*
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized.
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
-- **Budgets (owner amendment, 16 Aug 2026):** a Budgets card edits monthly limits — total and/or per-category, scoped to one month or to "Every month" as the default (§6.7). The card also carries the global **"Exclude bills from budgets"** switch — recurring-tagged spend is then ignored by the total monthly limit (§6.7).
+- **Templates (Amendment 17 + §6.8):** a Templates card edits recurring prefills — name, amount, category, tag, note, auto-add day (1–28), auto-add member — plus per-template **Paused**, **Amount varies** and **Skip this month** controls. Deletion is permitted.
+- **Budgets (owner amendment, 16 Aug 2026 + §2.1):** a Budgets card edits monthly limits — total, per-leaf-category **and per-group** (§6.8), scoped to one month or to "Every month" as the default (§6.7). The card also carries the global **"Exclude bills from budgets"** switch — recurring-tagged spend is then ignored by the total monthly limit (§6.7).
+- **Offline entries (25 Aug pass):** lists this device's queued offline Quick Adds with a per-entry Discard; everything else syncs automatically when connectivity returns.
+- **Notifications (§2.11):** per-device Web Push opt-in for budget pacing + review reminders; reports "not configured" when VAPID keys are absent (§9.1).
+- **History (§2.12):** the activity log surface — every delete and merge with who/when; deleted transactions carry a **Restore** action. Attribution is advisory only (§3.2.1).
 
 ### 6.6 Canonical CSV Export — Normative
 
@@ -682,6 +774,90 @@ the category. This is a client-side, in-app alert only — no email/telegram not
 `replaceBudgetScope` (delete-then-insert, `src/db/budget-mutations.ts`), `revalidatePath('/')`
 + `revalidateTag('transactions')`.
 
+### 6.8 September 2026 feature wave — audit remediation (§2.1–§2.12 of `AUDIT-2026-09-01.md`)
+
+The 2–3 September 2026 pass, driven by the full-project audit, shipped the following
+**implemented** features on top of the 24–26 August state. Each is normative now.
+
+**§2.1 Group-level budgets.** A budget row may target a top-level GROUP
+(`budgets.group_id`, §4.2), capping the roll-up of all its leaves — the dashboard's
+group pie and the budget's unit of control now match. Enforcement precedence:
+leaf-with-own-budget → parent-group-budget → month default → every-month default.
+Settings edits group limits alongside category limits; the dashboard renders a
+Group-budgets card with the per-leaf split beneath.
+
+**§2.2 Per-expense shared ownership.** An optional `shared` flag + `split_with`
+member list on each transaction (§4.2) lets the Quick Add / edit sheet mark an
+expense as household-borne. The data persists on every write; the dashboard
+attribution card was removed again by owner decision (3 Sept 2026) — attribution
+remains queryable data, not a dashboard surface.
+
+**§2.3 Split, extended.** The edit dialog's split mode (25 Aug pass) splits by
+**amount or percentage** with a live "₹X left to assign" counter and a 2-part
+default seed. Split amounts are rupee strings seeded correctly (the original
+paise-seeded version shipped 100× too large and was fixed before this pass).
+
+**§2.4 Recurring detection.** The ledger's history is mined (stable amount ±5%,
+~30-day cadence, note similarity over a trailing window) for recurring-bill
+clusters, surfaced on the dashboard as one-tap "create a template?" suggestions
+(`src/lib/recurring-detection.ts`, guarded — a detection hiccup can never take
+the dashboard down).
+
+**§2.5 Pacing as the budget headline.** The Budget card leads with
+**"₹X left for N days (₹Y/day)"** plus a projected month-end figure ("at this
+rate you'll land at ₹Z"), not just spent/limit. The ledger strip keeps its
+pacing line.
+
+**§2.7 Search as a query tool.** `?q=` supports multi-term AND search with
+`LIKE` metacharacters escaped on the way in; **amount range** filters
+(`?amount_min`/`amount_max`), a custom **date range** (from/to), member +
+category + tag + range combinations that persist as **shareable URLs**, and
+**saved searches** (the `saved_searches` table, §4.2) — named presets invoked
+as one-tap chips, month deliberately excluded so presets stay reusable.
+
+**§2.8 Insight layer.** A diagnostic card above the descriptive charts:
+"X is N% above its 6-month average", uncategorized count+sum promoted to the
+top, per-category record closeness, and the biggest MoM mover. Computed from
+the same SQL aggregates as the dashboard (§7.2) via `src/lib/insights.ts`.
+
+**§2.9 Receipts and attachments.** Photo receipts attach to transactions
+(Vercel Blob storage behind authed proxy routes; `attachments` table, §4.2).
+Attach at capture time or later from the edit dialog; a paperclip marker on
+ledger rows signals "there is a photo behind this number".
+
+**§2.10 Export and backup (see `CHANGELOG.md`, 2 Sept 2026).** Streaming export
+in 4 formats — canonical 7-column CSV (byte-identical to §6.6), 16-column
+extended CSV, full-fidelity JSON (`family-ledger-export@1`), and a real XLSX —
+via GET `/api/export`, batched and capped (100k rows). An **import path**
+(`/api/import`) accepts all export shapes with a preview mode and idempotent
+apply (by PK or by row fingerprint). A **scheduled monthly backup** cron
+(`/api/cron/backup`, 1st at 04:00 IST) delivers the previous month's CSV via
+Telegram and/or email.
+
+**§2.11 Web Push notifications.** Budget pacing (80% of a limit, days left) and
+review-reminder pushes for every opted-in device (`push_subscriptions`, §4.2;
+`/api/cron/push`). Requires the PWA/service worker and VAPID keys on the
+platform; per-device opt-in from Settings → Notifications.
+
+**§2.12 Household operations.** Templates gain **pause / skip-this-month /
+amount-varies** controls (§4.2 columns; the cron honors all three). Categories
+gain **merge** (re-points history/templates/budgets, deletes the source,
+leaf-only). The dashboard gains a **category × month compare matrix**
+("is fuel creeping up?"). The 5-second undo toast is backed by the persistent
+**activity log** (§4.2) with a Settings → History surface and **Restore** for
+deleted transactions.
+
+**Security & integrity hardening shipped in the same pass** (audit §1.5, §1.8,
+§1.10): `auth()` session guards in every Server Action; constant-time secret
+compares (login password, cron bearers); login rate limiting; session `maxAge`;
+`secure` + `sameSite` cookies in production; LIKE-metacharacter escaping; a
+bounded, streaming export; race-safe slug inserts (`ON CONFLICT` + suffix
+retry); a shared `monthEndForKey`; and a production-DB guard on the DB test
+scripts. **CI** (audit §1.4, §0): a fresh-Postgres job replays the full
+migration chain on every push (journal-sync guarded), and the smoke job waits
+for Vercel's commit status — deploy correctness no longer depends on a secret
+being present.
+
 ---
 
 ## 7. Server Actions & Data Fetching
@@ -691,13 +867,31 @@ No traditional REST API routes for mutations. Use Next.js **Server Actions**.
 ### 7.1 Core Server Actions
 - `createTransaction(data: z.infer<typeof transactionSchema>)`
 - `updateTransaction(id: string, data: ...)`
-- `deleteTransaction(id: string)`
+- `deleteTransaction(id: string)` / `deleteTransactions(ids[])` (bulk, ≤500)
+- `assignCategory(ids[], categoryId|null)` (bulk categorize)
+- `acknowledgeTransactionReview(id)` / `acknowledgeTransactionsReview(ids[])`
 - `updateActiveMember(memberId: string)`
+- Templates: `createTemplate` / `updateTemplate` / `deleteTemplate` /
+  `setTemplatePaused(id, paused)` / `skipTemplateMonth(id, monthKey)` (§6.8)
+- Categories: `createCategory` / `createCategoryGroup` / `updateCategory` /
+  `moveCategoryToGroup` / `mergeCategories` / `reorderCategoryGroups` /
+  `reorderCategoriesUnder` (§6.5, §6.8)
+- Budgets & settings: `saveBudgets` / `setTotalBudget` / `setExcludeBills` /
+  `getCategoryBudgetStatus` / `updateMember` / `reorderMembers`
+- Saved searches: `saveSearch` / `deleteSavedSearch` (§6.8)
+- Activity: `listActivity(limit)` / `restoreActivityEntry(id)` (§6.8)
 
 **Every mutating action must, before any write:**
-1. Parse its payload with Zod — including the required `tag` (§5.2).
-2. Verify the `member_id` exists in `members` (§3.2.1 — data integrity, *not* authentication).
-3. Convert amounts to/from integer paise at the boundary (§5.8).
+1. **Check the session — `auth()`; unauthenticated actions return an error, never a write (§1.5 hardening).**
+2. Parse its payload with Zod — including the required `tag` (§5.2).
+3. Verify the `member_id` exists in `members` (§3.2.1 — data integrity, *not* authentication).
+4. Convert amounts to/from integer paise at the boundary (§5.8).
+
+**API routes that exist alongside the actions** (read streams and crons, not
+mutations): `GET /api/export` (§6.8), `POST /api/import` (§6.8), attachment
+upload/serve routes (§2.9), and the CRON_SECRET-protected `/api/cron/*` routes
+(`recurring` daily auto-stamp, `telegram-digest` monthly, `backup` monthly,
+`push` reminders).
 
 ### 7.2 Data Fetching & Aggregation — Normative
 - React Server Components fetch directly with Drizzle `db.select()` + `where` clauses.
@@ -855,6 +1049,17 @@ NEXTAUTH_URL="http://localhost:3000"
 FAMILY_MASTER_PASSWORD="..."
 ```
 
+**Optional feature variables** (each feature fails loudly as "not configured"
+when its variable is absent — never silently; see `.env.example`):
+
+| Variable | Feature |
+|---|---|
+| `BLOB_READ_WRITE_TOKEN` | §2.9 receipt attachments (Vercel Blob) |
+| `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` | Telegram digest + monthly backup delivery |
+| `RESEND_API_KEY` + `BACKUP_EMAIL_TO` + `BACKUP_EMAIL_FROM` | Email backup delivery |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY` + `VAPID_SUBJECT` | §2.11 Web Push (`scripts/generate-vapid.mjs`) |
+| `CRON_SECRET` | Bearer guard for every `/api/cron/*` route |
+
 `APP_TIMEZONE` (§5.7) and `SEED_NAMESPACE` (§8.1) are **hard-coded constants, not environment variables**, exactly as specified in those sections. `SEED_NAMESPACE` in particular must never become configurable — a misconfigured value would silently re-ID the entire transaction history.
 
 ### 9.2 Secret Management — Normative
@@ -946,19 +1151,22 @@ If a secret is ever observed in conversation, in a terminal, or in a file, it mu
 *The following are explicitly EXCLUDED from v1:*
 - Multi-user email/magic-link authentication
 - Freeform user-generated tags
-- Automated recurring transaction generation (v1 = manual logging with `recurring` label)
-- PWA / offline-first (service workers, IndexedDB sync)
-- Receipt photo attachments
+- ~~Automated recurring transaction generation~~ *(removed 25 Aug 2026 — the daily cron auto-stamps due templates, §6.8 / `auto_day`)*
+- ~~PWA / offline-first (service workers, IndexedDB sync)~~ *(removed 25 Aug 2026 — the app is an installable PWA with offline Quick Add capture + auto-sync; update path + iOS install flow added 3 Sept 2026)*
+- ~~Receipt photo attachments~~ *(removed 2 Sept 2026 — §2.9 receipts via Vercel Blob)*
 - Multi-currency support
 - ~~Budget limits + over-budget alerts~~ *(removed from the exclusion list by owner amendment on 16 Aug 2026 — budgets are a permitted v1.2 feature, §6.7)*
-- Telegram/email monthly digest
-- Merchant auto-categorization
+- ~~Telegram/email monthly digest~~ *(removed 19 Aug 2026 — Amendment 19 Telegram digest; monthly email/Telegram CSV backup added 2 Sept 2026, §6.8)*
+- Merchant auto-categorization *(note-based category *suggestions* shipped 18 Aug 2026, Amendment 8 — suggestions never auto-assign)*
 - Voice input
 
 > *"Dark mode" was **removed from this exclusion list** by owner amendment on 15 August
 > 2026 — dark mode is a permitted v1.2 feature (§6.1). "Budget limits + over-budget alerts"
 > was **removed** by owner amendment on 16 August 2026 — budgets are a permitted v1.2
-> feature (§6.7). All other items above remain excluded. See `CHANGELOG.md`.*
+> feature (§6.7). The 25 Aug 2026 UX/PWA pass removed **PWA/offline-first** and
+> **automated recurring generation**; the 2–3 Sept 2026 audit-remediation pass removed
+> **receipt attachments** and **scheduled digest delivery** (§6.8). All other items above
+> remain excluded. See `CHANGELOG.md`.*
 
 ---
 
