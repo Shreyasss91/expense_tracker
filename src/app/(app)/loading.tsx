@@ -4,6 +4,13 @@ import { Skeleton } from "@/components/ui/skeleton";
  * UX pass — mirrors the Overview page's real layout order and approximate
  * card heights (hero → 3-up stats → budget → tags → category pie → trend),
  * so the skeleton hands off to content without visible layout shift.
+ *
+ * §3.6 — heights track the cards they replace instead of one hardcoded
+ * `h-[340px]`: every dashboard card renders a variable number of rows
+ * (insights, suggestions, group budgets, who-spent are all conditional), so
+ * the pie/trend blocks use `min-h` bands — tall enough to hold the common
+ * case, allowed to grow — rather than a fixed height that guaranteed shift
+ * whenever the real card was taller or shorter.
  */
 export default function AppLoading() {
   return (
@@ -14,26 +21,26 @@ export default function AppLoading() {
       </div>
 
       {/* Expense hero */}
-      <Skeleton className="h-[108px] rounded-xl" />
+      <Skeleton className="min-h-[108px] rounded-xl" />
 
       {/* Top category · Bills · Lifestyle */}
       <div className="grid grid-cols-3 gap-2">
-        <Skeleton className="h-20 rounded-xl" />
-        <Skeleton className="h-20 rounded-xl" />
-        <Skeleton className="h-20 rounded-xl" />
+        <Skeleton className="min-h-20 rounded-xl" />
+        <Skeleton className="min-h-20 rounded-xl" />
+        <Skeleton className="min-h-20 rounded-xl" />
       </div>
 
       {/* Budget card */}
-      <Skeleton className="h-[132px] rounded-xl" />
+      <Skeleton className="min-h-[132px] rounded-xl" />
 
       {/* Tag breakdown */}
-      <Skeleton className="h-[168px] rounded-xl" />
+      <Skeleton className="min-h-[168px] rounded-xl" />
 
-      {/* Spending by category (pie + legend) */}
-      <Skeleton className="h-[340px] rounded-xl" />
+      {/* Spending by category (pie + legend) — legend rows vary by category count */}
+      <Skeleton className="min-h-[280px] rounded-xl" />
 
-      {/* 6-month trend */}
-      <Skeleton className="h-[288px] rounded-xl" />
+      {/* 6-month trend — chart + title */}
+      <Skeleton className="min-h-[288px] rounded-xl" />
     </div>
   );
 }

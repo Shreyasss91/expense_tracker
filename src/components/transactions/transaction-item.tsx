@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Pencil, Paperclip, Trash2 } from "lucide-react";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { displayTime } from "@/lib/dates";
@@ -41,6 +41,16 @@ export function TransactionItem({
   const startX = useRef<number | null>(null);
   const startY = useRef<number | null>(null);
   const dragging = useRef(false);
+  // §3.6 — live drag distance in a ref: the long-press guard below used to
+  // close over `dx` state, so a 450ms-old timer read a stale value and a row
+  // that had been swiped shut could still enter selection mode.
+  const dxRef = useRef(0);
+  const swipedRef = useRef(false);
+  // §3.6 — rAF coalescing: touchmove fires far faster than the display
+  // refresh; committing state per event re-rendered the row dozens of times
+  // per gesture. The latest delta is stored in the ref and flushed once per
+  // frame.
+  const rafRef = useRef<number | null>(null);
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // swallow the synthetic click that follows a fired long-press, so entering
   // selection mode doesn't immediately toggle the row back off
@@ -56,16 +66,42 @@ export function TransactionItem({
     }
   }
 
+  function flushDx() {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      setDx(dxRef.current);
+    });
+  }
+
+  // §3.6 — shared snap: touchend, touchcancel and close-on-click all land here.
+  function snap(dxValue: number, swipedValue: boolean) {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    dxRef.current = dxValue;
+    swipedRef.current = swipedValue;
+    setDx(dxValue);
+    setSwiped(swipedValue);
+  }
+
+  useEffect(() => () => {
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    clearPressTimer();
+  }, []);
+
   function onTouchStart(e: React.TouchEvent) {
     startX.current = e.touches[0].clientX;
     startY.current = e.touches[0].clientY;
     dragging.current = true;
     longPressFired.current = false;
-    // long-press arms selection mode unless the finger moves (scroll/swipe)
+    // long-press arms selection mode unless the finger moves (scroll/swipe).
+    // §3.6 — reads dxRef/swipedRef (live values), never stale state.
     if (!selectionMode && onLongPress) {
       pressTimer.current = setTimeout(() => {
         pressTimer.current = null;
-        if (!swiped && dx === 0) {
+        if (!swipedRef.current && dxRef.current === 0) {
           dragging.current = false;
           longPressFired.current = true;
           onLongPress(row);
@@ -87,8 +123,9 @@ export function TransactionItem({
     }
     const delta = t.clientX - startX.current;
     // only horizontal swipes; clamp between full reveal and 0
-    const next = swiped ? Math.max(DELETE_REVEAL, Math.min(0, delta + DELETE_REVEAL)) : Math.min(0, delta);
-    setDx(next);
+    const next = swipedRef.current ? Math.max(DELETE_REVEAL, Math.min(0, delta + DELETE_REVEAL)) : Math.min(0, delta);
+    dxRef.current = next;
+    flushDx(); // §3.6 — one state commit per frame, not per touchmove
   }
 
   function onTouchEnd() {
@@ -96,13 +133,18 @@ export function TransactionItem({
     startX.current = null;
     startY.current = null;
     dragging.current = false;
-    if (dx < DELETE_REVEAL / 2) {
-      setSwiped(true);
-      setDx(DELETE_REVEAL);
-    } else {
-      setSwiped(false);
-      setDx(0);
-    }
+    if (dxRef.current < DELETE_REVEAL / 2) snap(DELETE_REVEAL, true);
+    else snap(0, false);
+  }
+
+  // §3.6 — an interrupted touch (incoming call, notification shade, gesture
+  // nav) used to leave the row stuck open because nothing handled touchcancel.
+  function onTouchCancel() {
+    clearPressTimer();
+    startX.current = null;
+    startY.current = null;
+    dragging.current = false;
+    snap(0, false);
   }
 
   function handleClick() {
@@ -111,12 +153,9 @@ export function TransactionItem({
       longPressFired.current = false;
       return;
     }
-    if (dragging.current || swiped) {
+    if (dragging.current || swipedRef.current) {
       // a tap while swiped closes the reveal instead of opening the editor
-      if (swiped) {
-        setSwiped(false);
-        setDx(0);
-      }
+      if (swipedRef.current) snap(0, false);
       return;
     }
     if (selectionMode) {
@@ -156,6 +195,7 @@ export function TransactionItem({
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
         className={cn(
           "relative flex w-full cursor-pointer items-center gap-3 rounded-xl bg-card px-3 py-3 text-left shadow-sm transition-transform duration-200",
           "active:bg-accent",

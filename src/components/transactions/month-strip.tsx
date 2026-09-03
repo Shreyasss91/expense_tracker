@@ -32,9 +32,18 @@ export function MonthStrip({
   const router = useRouter();
   const refs = useRef(new Map<string, HTMLButtonElement>());
 
-  // keep the selected month visible — center it when the strip or selection changes
+  // §3.6 — center the selected month ONLY on a real month change, never on
+  // mount: firing scrollIntoView on every mount yanked the whole page on each
+  // navigation. The first render (mountedRef false → true) skips the scroll;
+  // subsequent selection changes scroll instantly (auto, not smooth — the
+  // smooth animation ran even when the strip was already positioned).
+  const mountedRef = useRef(false);
   useEffect(() => {
-    if (selected) refs.current.get(selected)?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    if (selected) refs.current.get(selected)?.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
   }, [selected]);
 
   function pushMonth(month?: string) {
