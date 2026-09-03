@@ -216,7 +216,7 @@ export function TransactionItem({
         ) : null}
         <span
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xl"
-          style={{ background: cat ? `${cat.color}1f` : "#9ca3af1f" }}
+          style={{ background: cat ? `${cat.color}1f` : "color-mix(in srgb, var(--muted-foreground) 12%, transparent)" }}
         >
           {cat ? cat.emoji : "?"}
         </span>

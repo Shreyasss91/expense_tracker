@@ -212,10 +212,12 @@ const getDashboardData = unstable_cache(
     );
     const largest = largestRows[0];
 
+    // §3.7 — tag colours read the chart tokens instead of hex literals, so
+    // dark mode gets its lifted palette too.
     const tags = [
-      { key: "lifestyle", label: "Lifestyle", paise: rupeesToPaise(totals.lifestyle), color: "#0ea5e9" },
-      { key: "recurring", label: "Bills", paise: rupeesToPaise(totals.recurring), color: "#8b5cf6" },
-      { key: "one_time", label: "One-time buys", paise: rupeesToPaise(totals.oneTime), color: "#f59e0b" },
+      { key: "lifestyle", label: "Lifestyle", paise: rupeesToPaise(totals.lifestyle), color: "var(--chart-1)" },
+      { key: "recurring", label: "Bills", paise: rupeesToPaise(totals.recurring), color: "var(--chart-2)" },
+      { key: "one_time", label: "One-time buys", paise: rupeesToPaise(totals.oneTime), color: "var(--chart-3)" },
     ] as const;
 
     // §6.3.1: months with no data plot as 0, not a gap — the axis stays continuous.
@@ -349,7 +351,7 @@ export default async function DashboardPage({
       groupId,
       name: group?.name ?? "Group",
       emoji: group?.emoji ?? "🧺",
-      color: group?.color ?? "#9ca3af",
+      color: group?.color ?? "var(--chart-1)",
       limitPaise,
       spentPaise: groupSpentPaise.get(groupId) ?? 0,
       leaves: leaves.map((l) => ({ id: l.id, name: l.name ?? "", emoji: l.emoji ?? "", paise: rupeesToPaise(l.total) })),
@@ -440,7 +442,7 @@ export default async function DashboardPage({
           <Card>
             <CardContent className="p-2.5">
               <p className="text-[11px] leading-tight text-muted-foreground">Bills</p>
-              <p className="mt-0.5 truncate text-sm font-semibold tabular-nums text-[#8b5cf6] sm:text-base">{formatINR(data.billsPaise)}</p>
+              <p className="mt-0.5 truncate text-sm font-semibold tabular-nums text-[var(--chart-2)] sm:text-base">{formatINR(data.billsPaise)}</p>
               <p className="truncate text-[10px] text-muted-foreground sm:text-xs">
                 {data.billsCount > 0 ? `${data.billsCount} recurring` : "none"}
               </p>
@@ -532,7 +534,7 @@ export default async function DashboardPage({
               id: r.id,
               name: r.name ?? "Uncategorized",
               emoji: r.emoji ?? "❔",
-              color: r.color ?? "#9ca3af",
+              color: r.color ?? "var(--chart-1)",
               paise: rupeesToPaise(r.total),
               prevPaise: data.catPrev[String(r.id)] ?? 0,
               parentId: r.parentId,

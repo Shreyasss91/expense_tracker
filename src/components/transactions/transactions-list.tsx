@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ListChecks, Tag, Trash2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory } from "@/actions/transactions";
 import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
 import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
 import { dateGroupLabel } from "@/lib/dates";
 import { formatINR, rupeesToPaise } from "@/lib/money";
+import { emptyStateCopy, plural } from "@/lib/copy";
+import { useEscToExit } from "@/lib/use-esc-exit";
+import { BulkActionBar, SelectModeButton } from "@/components/shared/bulk-action-bar";
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { TransactionItem } from "./transaction-item";
@@ -257,15 +260,8 @@ export function TransactionsList({
     return () => emitSelectionMode(false);
   }, [selectionMode]);
 
-  // Esc exits selection mode (desktop convenience)
-  useEffect(() => {
-    if (!selectionMode) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") exitSelection();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selectionMode]);
+  // §3.7 — shared Esc-to-exit effect (was duplicated in the review queue)
+  useEscToExit(selectionMode, exitSelection);
 
   /** Select every loaded row, or clear the selection when everything is already
    * selected. Honest scope: the loaded pages, not the whole filtered set. */
@@ -305,7 +301,7 @@ export function TransactionsList({
         return;
       }
       toast.success(
-        categoryId ? `Categorized ${res.updated} transaction${res.updated === 1 ? "" : "s"}` : `Removed category from ${res.updated} transaction${res.updated === 1 ? "" : "s"}`,
+        categoryId ? `Categorized ${plural(res.updated, "transaction")}` : `Removed category from ${plural(res.updated, "transaction")}`,
         {
           duration: UNDO_WINDOW_MS,
           action: {
@@ -355,7 +351,7 @@ export function TransactionsList({
     };
 
     // 2/3/4. one undoable toast drives the batch (same window as single delete)
-    toast(`${snapshot.length} transaction${snapshot.length === 1 ? "" : "s"} deleted`, {
+    toast(`${plural(snapshot.length, "transaction")} deleted`, {
       duration: UNDO_WINDOW_MS,
       action: {
         label: "Undo",
@@ -403,13 +399,9 @@ export function TransactionsList({
       {enableSelection && (
         <div className="flex items-center justify-end">
           {!selectionMode ? (
-            rows.length > 0 && (
-              <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={() => enterSelection(rows[0])}>
-                <ListChecks className="h-3.5 w-3.5" /> Select
-              </Button>
-            )
+            rows.length > 0 && <SelectModeButton onClick={() => enterSelection(rows[0])} />
           ) : (
-            <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 rounded-full text-xs text-muted-foreground" onClick={exitSelection}>
+            <Button type="button" variant="ghost" size="sm" className="gap-1 rounded-full text-xs text-muted-foreground" onClick={exitSelection}>
               <X className="h-3.5 w-3.5" /> Cancel selection
             </Button>
           )}
@@ -419,16 +411,18 @@ export function TransactionsList({
       {groups.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
           <span className="text-3xl">🗒️</span>
-          <p className="mt-2 text-sm font-medium">
-            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to
-              ? "No transactions found"
-              : "Nothing here yet"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to
-              ? "Try clearing the filters."
-              : "Log your first expense in seconds."}
-          </p>
+          {/* §3.7 — standardised empty-state copy (shared with the review queue) */}
+          {(() => {
+            const copy = emptyStateCopy(
+              Boolean(filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to),
+            );
+            return (
+              <>
+                <p className="mt-2 text-sm font-medium">{copy.title}</p>
+                <p className="text-xs text-muted-foreground">{copy.hint}</p>
+              </>
+            );
+          })()}
           <Button type="button" size="sm" className="mt-4 rounded-full" onClick={openQuickAdd}>
             Add an expense
           </Button>
@@ -470,42 +464,16 @@ export function TransactionsList({
         ) : null}
       </div>
 
-      {/* sticky bulk-action bar — sits above the mobile bottom nav */}
+      {/* sticky bulk-action bar — shared component (§3.7) */}
       {selectionMode && (
-        <div className="fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+0.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-2 rounded-full border bg-background/95 p-2 shadow-lg backdrop-blur md:bottom-4">
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={exitSelection} aria-label="Cancel selection">
-            <X className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-medium tabular-nums">{selectedIds.size} selected</span>
-          <button
-            type="button"
-            className="text-xs font-medium text-muted-foreground hover:text-foreground"
-            onClick={toggleSelectAll}
-          >
-            {allSelected ? "Clear" : "All"}
-          </button>
-          <div className="ml-auto flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-9 gap-1 rounded-full"
-              disabled={selectedIds.size === 0}
-              onClick={requestBulkDelete}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" /> Delete
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="h-9 gap-1 rounded-full"
-              disabled={selectedIds.size === 0}
-              onClick={() => setPickerOpen(true)}
-            >
-              <Tag className="h-4 w-4" /> Assign
-            </Button>
-          </div>
-        </div>
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onCancel={exitSelection}
+          onDelete={requestBulkDelete}
+          onAssign={() => setPickerOpen(true)}
+          onSelectAll={toggleSelectAll}
+          allSelected={allSelected}
+        />
       )}
 
       <CategoryPickerSheet

@@ -68,11 +68,15 @@ export function BudgetBar({
   );
 }
 
-/** Deep green → deep red ramp for the in-band portion of the bar. */
-const BUDGET_GRADIENT = "linear-gradient(to right, #166534, #65a30d 30%, #facc15 55%, #f97316 78%, #b91c1c)";
+/** Deep green → deep red ramp for the in-band portion of the bar.
+ *  §3.7 — gradient stops read the chart tokens (chart-4 emerald → chart-3
+ *  amber → chart-5 red) so the ramp follows the theme instead of hardcoded
+ *  hex literals that would sit wrong in dark mode. */
+const BUDGET_GRADIENT =
+  "linear-gradient(to right, var(--chart-4), color-mix(in srgb, var(--chart-4), var(--chart-3) 50%) 30%, var(--chart-3) 55%, color-mix(in srgb, var(--chart-3), var(--chart-5) 60%) 78%, var(--chart-5))";
 
 /** The overflow segment past 100% of budget — the deepest red. */
-const OVER_BUDGET_COLOR = "#991b1b";
+const OVER_BUDGET_COLOR = "var(--chart-5)";
 
 /** §6.7 — "₹X left" (green) or "₹X over" (red) under the total budget bar. */
 export function BudgetRemaining({ spent, budget }: { spent: number; budget: number }) {

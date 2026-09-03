@@ -7,6 +7,7 @@ import { createTemplate, deleteTemplate, setTemplatePaused, skipTemplateMonth, u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CategoryOptgroups } from "@/components/shared/category-optgroups";
 import type { CategoryOption, MemberOption, TemplateOption } from "@/components/quick-add/types";
 
 type TemplateTag = TemplateOption["tag"];
@@ -29,13 +30,13 @@ export function TemplatesManager({
   categories: CategoryOption[];
   members: MemberOption[];
 }) {
-  // Templates carry an ASSIGNABLE category — leaves only; groups exist purely
-  // as rollup containers and the server rejects them.
-  const { leavesByGroup, firstLeafId } = (() => {
+  // §3.7 — grouped options render through the shared <optgroup> builder;
+  // only the default selection (first leaf) is computed here.
+  const firstLeafId = (() => {
     const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
     const groupRows = sorted.filter((c) => c.parentId === null);
     const sections = groupRows.map((g) => ({ group: g, leaves: sorted.filter((c) => c.parentId === g.id) }));
-    return { leavesByGroup: sections, firstLeafId: sections[0]?.leaves[0]?.id ?? "" };
+    return sections[0]?.leaves[0]?.id ?? "";
   })();
 
   const [items, setItems] = useState(templates);
@@ -49,17 +50,9 @@ export function TemplatesManager({
   const [isVariable, setIsVariable] = useState(false);
   const [saving, setSaving] = useState<string | "new" | null>(null);
 
-  /** Grouped <optgroup> options for native selects — leaves only. */
+  /** Grouped options via the shared builder (§3.7) — leaves only. */
   function categoryOptions() {
-    return leavesByGroup.map(({ group, leaves }) => (
-      <optgroup key={group.id} label={`${group.emoji} ${group.name}`}>
-        {leaves.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.emoji} {c.name}
-          </option>
-        ))}
-      </optgroup>
-    ));
+    return <CategoryOptgroups categories={categories} />;
   }
 
   function patch<K extends keyof TemplateOption>(id: string, field: K, value: TemplateOption[K]) {

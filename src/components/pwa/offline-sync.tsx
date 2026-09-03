@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CloudUpload } from "lucide-react";
 import { toast } from "sonner";
 import { createTransaction } from "@/actions/transactions";
+import { plural } from "@/lib/copy";
 import {
   countPendingAdds,
   emitPendingSync,
@@ -58,7 +59,7 @@ async function runSync() {
   const remaining = await countPendingAdds();
   emitPendingSync();
   if (remaining === 0 && synced > 0) {
-    toast.success(`Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}`);
+    toast.success(`Synced ${synced} offline ${plural(synced, "entry", "entries")}`);
   } else if (blocked > 0) {
     // §3.5 — previously a non-network rejection only set `blocked` without a
     // toast when some sibling entry synced; a permanently-failing entry
@@ -66,8 +67,8 @@ async function runSync() {
     // surfaces the review toast every run.
     toast.warning(
       remaining === blocked
-        ? `${remaining} offline ${remaining === 1 ? "entry" : "entries"} couldn't sync — needs review`
-        : `${blocked} synced, ${remaining} ${remaining === 1 ? "entry" : "entries"} couldn't sync — needs review`,
+        ? `${remaining} offline ${plural(remaining, "entry", "entries")} couldn't sync — needs review`
+        : `${blocked} synced, ${remaining} ${plural(remaining, "entry", "entries")} couldn't sync — needs review`,
       {
         duration: 8000,
         action: {
@@ -137,10 +138,10 @@ export function PendingSyncPill() {
       type="button"
       onClick={() => {
         requestSync();
-        toast.info(`Syncing ${count} offline ${count === 1 ? "entry" : "entries"}…`);
+        toast.info(`Syncing ${count} offline ${plural(count, "entry", "entries")}…`);
       }}
       className="flex h-9 items-center gap-1.5 rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/10"
-      aria-label={`${count} offline ${count === 1 ? "entry" : "entries"} waiting to sync`}
+      aria-label={`${count} offline ${plural(count, "entry", "entries")} waiting to sync`}
     >
       <CloudUpload className="h-4 w-4" />
       <span className="tabular-nums">{count}</span>

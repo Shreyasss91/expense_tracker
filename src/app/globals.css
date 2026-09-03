@@ -72,11 +72,15 @@
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* §3.7 — the app's chart palette, consumed via var(--chart-N). These were
+     defined since the first commit and never used while components hardcoded
+     hex literals; the hexes are now mapped onto them so dark mode inherits
+     adjusted values instead of drifting. */
+  --chart-1: #0ea5e9; /* sky — lifestyle / Getting Around */
+  --chart-2: #8b5cf6; /* violet — recurring / People & Care */
+  --chart-3: #f59e0b; /* amber — one-time buys / Food & Provisions */
+  --chart-4: #10b981; /* emerald — Home & Bills */
+  --chart-5: #ef4444; /* red — expense / Wealth & Protection */
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -107,11 +111,13 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  /* §3.7 — dark-mode variants of the chart palette: same hues, lifted
+     lightness so bars/slices read against the dark card. */
+  --chart-1: #38bdf8;
+  --chart-2: #a78bfa;
+  --chart-3: #fbbf24;
+  --chart-4: #34d399;
+  --chart-5: #f87171;
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);

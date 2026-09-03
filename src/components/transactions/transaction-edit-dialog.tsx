@@ -2,19 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown, Plus, Trash2, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { MemberDropdown } from "@/components/shared/member-dropdown";
+import { CategoryOptgroups } from "@/components/shared/category-optgroups";
 import { updateTransaction, createTransaction, deleteTransaction, deleteTransactions } from "@/actions/transactions";
 import { createTemplate } from "@/actions/templates";
 import { getCategoryBudgetStatus } from "@/actions/settings";
@@ -557,31 +551,13 @@ export function TransactionEditDialog({
             </Button>
           )}
           {activeMember && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto h-7 gap-1 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted"
-                >
-                  <span>{activeMember.emoji}</span>
-                  {activeMember.name}
-                  <ChevronsUpDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Reassign to</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {members.map((m) => (
-                  <DropdownMenuItem key={m.id} onSelect={() => setMemberId(m.id)} className="gap-2">
-                    <span className="text-base">{m.emoji}</span>
-                    <span className="flex-1">{m.name}</span>
-                    {m.id === activeMember.id && <Check className="h-4 w-4 text-primary" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <MemberDropdown
+              members={members}
+              activeMemberId={memberId}
+              onSelect={setMemberId}
+              label="Reassign to"
+              triggerClassName="ml-auto h-7 gap-1 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted"
+            />
           )}
         </div>
 
@@ -682,26 +658,9 @@ export function TransactionEditDialog({
                     onChange={(e) => patchSplit(i, { categoryId: e.target.value })}
                     className="h-8 w-36 shrink-0 rounded-lg border bg-background px-1.5 text-xs"
                   >
-                    <option value="">Uncategorized</option>
-                    {/* leaves only — split parts become transactions, and
-                        transactions can never reference a group */}
-                    {[...new Set(cats.filter((c) => c.parentId !== null).map((c) => c.parentId))].map(
-                      (parentId) => {
-                        const group = cats.find((c) => c.id === parentId);
-                        return (
-                          <optgroup key={parentId} label={`${group?.emoji ?? "🧺"} ${group?.name ?? "Other"}`}>
-                            {cats
-                              .filter((c) => c.parentId === parentId)
-                              .sort((a, b) => a.sortOrder - b.sortOrder)
-                              .map((c) => (
-                                <option key={c.id} value={c.id}>
-                                  {c.emoji} {c.name}
-                                </option>
-                              ))}
-                          </optgroup>
-                        );
-                      },
-                    )}
+                    {/* §3.7 — shared <optgroup> builder; leaves only — split
+                        parts become transactions, which can never reference a group */}
+                    <CategoryOptgroups categories={cats} includeUncategorized />
                   </select>
                 </div>
               </div>
@@ -821,13 +780,14 @@ export function TransactionEditDialog({
             <>
               {error && <p role="alert" className="mb-2 text-sm font-medium text-destructive">{error}</p>}
               <div className="mb-2 flex gap-2">
-                <Button type="button" variant="outline" className="h-9 flex-1 text-xs" onClick={() => void saveAsTemplate()} disabled={savingTemplate}>
+                <Button type="button" variant="outline" size="sm" className="flex-1 text-xs" onClick={() => void saveAsTemplate()} disabled={savingTemplate}>
                   {savingTemplate ? "Saving template…" : "Save as template"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  className="h-9 flex-1 text-xs"
+                  size="sm"
+                  className="flex-1 text-xs"
                   onClick={enterSplitMode}
                   disabled={!(paise > 0)}
                 >

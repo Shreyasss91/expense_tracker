@@ -46,12 +46,15 @@ export interface TrendPoint {
   expensePaise: number;
 }
 
+// §3.7 — token colours as raw CSS vars (the tokens are full colour values,
+// not hsl component triplets; the old hsl(var(--…)) wrapping was invalid CSS
+// that silently fell back to defaults).
 const tooltipStyle = {
   fontSize: 12,
   borderRadius: 8,
-  border: "1px solid hsl(var(--border))",
-  background: "hsl(var(--popover))",
-  color: "hsl(var(--popover-foreground))",
+  border: "1px solid var(--border)",
+  background: "var(--popover)",
+  color: "var(--popover-foreground)",
 };
 
 function inr(v: number) {
@@ -150,14 +153,14 @@ export function CategoryPie({ leaves, month }: { leaves: CategoryTreeSlice[]; mo
           g.paise += leaf.paise;
           g.prevPaise += leaf.prevPaise ?? 0;
         } else {
-          groups.set(key, { key, name: "Uncategorized", emoji: "❔", color: "#9ca3af", paise: leaf.paise, prevPaise: leaf.prevPaise ?? 0 });
+          groups.set(key, { key, name: "Uncategorized", emoji: "❔", color: "var(--muted-foreground)", paise: leaf.paise, prevPaise: leaf.prevPaise ?? 0 });
         }
         continue;
       }
       const key = `g:${leaf.parentId}`;
       let g = groups.get(key);
       if (!g) {
-        g = { key, name: leaf.groupName ?? "—", emoji: leaf.groupEmoji ?? "🧺", color: leaf.groupColor ?? "#9ca3af", paise: 0, prevPaise: 0, children: [], groupId: leaf.parentId };
+        g = { key, name: leaf.groupName ?? "—", emoji: leaf.groupEmoji ?? "🧺", color: leaf.groupColor ?? "var(--muted-foreground)", paise: 0, prevPaise: 0, children: [], groupId: leaf.parentId };
         groups.set(key, g);
       }
       g.paise += leaf.paise;
@@ -198,7 +201,7 @@ export function CategoryPie({ leaves, month }: { leaves: CategoryTreeSlice[]; mo
           <PieChart>
             {/* slice strokes follow the theme background so slices read as
                 one chart in both modes (white gaps look harsh in dark) */}
-            <Pie data={level} dataKey="paise" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2} strokeWidth={1} stroke="hsl(var(--background))">
+            <Pie data={level} dataKey="paise" nameKey="name" innerRadius={48} outerRadius={80} paddingAngle={2} strokeWidth={1} stroke="var(--background)">
               {level.map((s) => (
                 <Cell key={s.key} fill={s.color} />
               ))}
@@ -302,13 +305,15 @@ export function TrendChart({ points }: { points: TrendPoint[] }) {
     <div className="h-56" role="img" aria-label={`Six-month expense trend: ${spoken}.`}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
-          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           {/* tick fill defaults to #666, which is unreadable on a dark card —
               pin it to the theme's muted foreground instead */}
-          <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} />
-          <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={false} axisLine={false} tickFormatter={(v) => compactPaiseAxis(Number(v))} />
-          <Tooltip formatter={(v) => [inr(Number(v)), "Expense"]} contentStyle={tooltipStyle} cursor={{ fill: "hsl(var(--muted))" }} />
-          <Bar dataKey="expensePaise" name="Expense" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={42} />
+          <XAxis dataKey="label" interval="preserveStartEnd" tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 10, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} tickFormatter={(v) => compactPaiseAxis(Number(v))} />
+          <Tooltip formatter={(v) => [inr(Number(v)), "Expense"]} contentStyle={tooltipStyle} cursor={{ fill: "var(--muted)" }} />
+          {/* §3.7 — token fill: the old #ef4444 literal stayed bright red in
+              dark mode; var(--chart-5) lifts it there. */}
+          <Bar dataKey="expensePaise" name="Expense" fill="var(--chart-5)" radius={[4, 4, 0, 0]} maxBarSize={42} />
         </BarChart>
       </ResponsiveContainer>
     </div>

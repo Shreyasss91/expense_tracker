@@ -2,16 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, CheckCheck, ChevronDown, Tag, Trash2, X } from "lucide-react";
+import { Check, CheckCheck, ChevronDown, Tag, X } from "lucide-react";
 import { getReviewPage, type ReviewItem } from "@/actions/review";
 import { acknowledgeTransactionsReview, acknowledgeTransactionReview, assignCategory, deleteTransaction, deleteTransactions } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { BulkActionBar, SelectModeButton } from "@/components/shared/bulk-action-bar";
+import { useEscToExit } from "@/lib/use-esc-exit";
 import { CategoryPickerSheet } from "@/components/transactions/category-picker-sheet";
 import { TransactionEditDialog } from "@/components/transactions/transaction-edit-dialog";
 import { TransactionItem } from "@/components/transactions/transaction-item";
 import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
 import { isGenericNote } from "@/lib/generic-notes";
+import { plural } from "@/lib/copy";
 import type { Cursor } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
@@ -169,21 +172,14 @@ export function ReviewQueueCard({
     setPickerOpen(false);
   }
 
-  // Esc exits selection mode (desktop convenience)
-  useEffect(() => {
-    if (!selectionMode) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") exitSelection();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [selectionMode]);
-
   // Broadcast so the bottom nav tucks the + FAB away while the bulk bar is open
   useEffect(() => {
     emitSelectionMode(selectionMode);
     return () => emitSelectionMode(false);
   }, [selectionMode]);
+
+  // §3.7 — shared Esc-to-exit effect (was duplicated in the ledger list)
+  useEscToExit(selectionMode, exitSelection);
 
   /** Month-end batch: acknowledge every loaded item in one server call. No
    * undo toast — acknowledgement is reversible by design (any later note edit
@@ -202,7 +198,7 @@ export function ReviewQueueCard({
       setSelectedIds(new Set());
       setSelectionMode(false);
       setPendingCount((c) => Math.max(0, c - res.acknowledged));
-      toast.success(`Acknowledged ${res.acknowledged} item${res.acknowledged === 1 ? "" : "s"}`);
+      toast.success(`Acknowledged ${plural(res.acknowledged, "item")}`);
     } finally {
       setAcknowledgingAll(false);
     }
@@ -277,7 +273,7 @@ export function ReviewQueueCard({
       for (const s of snapshot) emitLedgerMutation({ kind: "delete", id: s.id });
       void deleteTransactions(snapshot.map((s) => s.id));
     };
-    toast(`${snapshot.length} deleted`, {
+    toast(`${plural(snapshot.length, "entry")} deleted`, {
       duration: UNDO_WINDOW_MS,
       action: {
         label: "Undo",
@@ -348,22 +344,20 @@ export function ReviewQueueCard({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      className="h-7 gap-1 rounded-full text-xs text-muted-foreground"
+                      className="gap-1 rounded-full text-xs text-muted-foreground"
                       onClick={() => void acknowledgeAll()}
                       disabled={acknowledgingAll}
                     >
                       <CheckCheck className="h-3.5 w-3.5" /> {acknowledgingAll ? "Acknowledging…" : "Acknowledge all"}
                     </Button>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 rounded-full text-xs text-muted-foreground" onClick={() => enterSelection(rows[0])}>
-                      Select
-                    </Button>
+                    <SelectModeButton onClick={() => enterSelection(rows[0])} />
                   </div>
                 )
               )}
             </div>
 
             {rows.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">No items pending review ✓</div>
+              <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Nothing here yet — the queue is clear ✓</div>
             ) : (
               grouped.map(([month, items]) => (
                 <section key={month} className="space-y-2">
@@ -438,22 +432,14 @@ export function ReviewQueueCard({
           </div>
         )}
 
-        {/* sticky bulk bar while selecting inside the queue */}
+        {/* sticky bulk bar while selecting inside the queue — shared component (§3.7) */}
         {selectionMode && (
-          <div className="fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+0.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-2 rounded-full border bg-background/95 p-2 shadow-lg backdrop-blur md:bottom-4">
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={exitSelection} aria-label="Cancel selection">
-              <X className="h-4 w-4" />
-            </Button>
-            <span className="text-sm font-medium tabular-nums">{selectedIds.size} selected</span>
-            <div className="ml-auto flex items-center gap-2">
-              <Button type="button" size="sm" variant="outline" className="h-9 gap-1 rounded-full" disabled={selectedIds.size === 0} onClick={requestBulkDelete}>
-                <Trash2 className="h-4 w-4 text-destructive" /> Delete
-              </Button>
-              <Button type="button" size="sm" className="h-9 gap-1 rounded-full" disabled={selectedIds.size === 0} onClick={() => setPickerOpen(true)}>
-                <Tag className="h-4 w-4" /> Assign
-              </Button>
-            </div>
-          </div>
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onCancel={exitSelection}
+            onDelete={requestBulkDelete}
+            onAssign={() => setPickerOpen(true)}
+          />
         )}
 
         <CategoryPickerSheet

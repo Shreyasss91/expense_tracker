@@ -3,19 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { MemberDropdown } from "@/components/shared/member-dropdown";
 import { createTransaction } from "@/actions/transactions";
 import { updateActiveMember } from "@/actions/member";
 import { emitLedgerMutation } from "@/lib/events";
@@ -398,31 +391,13 @@ export function QuickAddSheet({
             {justAdded ? "Done" : "Add transaction"}
           </Button>
           {activeMember && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto h-7 gap-1 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted"
-                >
-                  <span>{activeMember.emoji}</span>
-                  {activeMember.name}
-                  <ChevronsUpDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel>Who&apos;s adding this?</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {members.map((m) => (
-                  <DropdownMenuItem key={m.id} onSelect={() => void switchMember(m.id)} className="gap-2">
-                    <span className="text-base">{m.emoji}</span>
-                    <span className="flex-1">{m.name}</span>
-                    {m.id === activeMember.id && <Check className="h-4 w-4 text-primary" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <MemberDropdown
+              members={members}
+              activeMemberId={activeMember.id}
+              onSelect={(id) => void switchMember(id)}
+              label="Who's adding this?"
+              triggerClassName="ml-auto h-7 gap-1 rounded-full bg-muted px-2.5 text-xs text-muted-foreground hover:bg-muted"
+            />
           )}
         </div>
 

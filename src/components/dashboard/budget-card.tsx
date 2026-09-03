@@ -140,7 +140,7 @@ export function BudgetCard({
       ) : (
         <Button
           variant="ghost"
-          size="xs"
+          size="sm"
           className="gap-1 text-muted-foreground"
           onClick={startEdit}
           aria-label="Edit monthly budget"

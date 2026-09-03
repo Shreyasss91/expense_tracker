@@ -38,7 +38,7 @@ export function AppHeader({
           <InstallButton />
           <ThemeToggle />
           <MemberSwitcher members={members} activeMemberId={activeMemberId} />
-          <Button variant="ghost" size="icon" className="h-9 w-9" asChild aria-label="Settings">
+          <Button variant="ghost" size="icon" asChild aria-label="Settings">
             <Link href="/settings">
               <Settings className="h-5 w-5" />
             </Link>
