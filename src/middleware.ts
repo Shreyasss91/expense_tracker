@@ -11,6 +11,6 @@ export const config = {
   // drops the "Add to Home Screen" eligibility. They must stay public:
   // the manifest and icons carry no user data.
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest$|icon$|apple-icon$|sw\\.js$|offline$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest|js|css|woff2?)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest$|icon$|icon-192$|apple-icon$|sw\\.js$|offline$|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest|js|css|woff2?)$).*)",
   ],
 };

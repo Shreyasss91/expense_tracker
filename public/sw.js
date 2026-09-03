@@ -14,7 +14,7 @@
  * Server Actions are POSTs and never touch this worker; only same-origin
  * GETs are handled.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `shell-${VERSION}`;
 const ASSET_CACHE = `assets-${VERSION}`;
 const OFFLINE_URL = "/offline";

@@ -22,6 +22,13 @@ import {
 
 let syncing = false;
 
+// §3.5 — focus-triggered syncs are throttled: an IndexedDB read on every
+// window focus is wasted work when nothing changed and the user is flipping
+// between tabs. One attempt per 30s is plenty for a queue the user is told
+// about via the pill.
+const FOCUS_SYNC_MIN_INTERVAL_MS = 30_000;
+let lastFocusSyncAt = 0;
+
 async function runSync() {
   if (syncing || typeof navigator === "undefined" || !navigator.onLine) return;
   const items = await listPendingAdds();
@@ -29,7 +36,7 @@ async function runSync() {
 
   syncing = true;
   let synced = 0;
-  let blocked = false;
+  let blocked = 0;
   for (const item of items) {
     try {
       const res = await createTransaction(item.payload);
@@ -39,7 +46,7 @@ async function runSync() {
       } else {
         // The server rejected it — queueing can't fix validation problems
         // (e.g. a category deleted while offline). Keep it and tell the user.
-        blocked = true;
+        blocked++;
       }
     } catch {
       // Network dropped mid-sync — stop and leave the rest queued.
@@ -52,16 +59,25 @@ async function runSync() {
   emitPendingSync();
   if (remaining === 0 && synced > 0) {
     toast.success(`Synced ${synced} offline ${synced === 1 ? "entry" : "entries"}`);
-  } else if (blocked) {
-    toast.warning(`${remaining} offline ${remaining === 1 ? "entry needs" : "entries need"} attention`, {
-      duration: 8000,
-      action: {
-        label: "Review",
-        onClick: () => {
-          window.location.assign("/settings#offline-entries");
+  } else if (blocked > 0) {
+    // §3.5 — previously a non-network rejection only set `blocked` without a
+    // toast when some sibling entry synced; a permanently-failing entry
+    // re-queued forever with no user-visible error. Any blocked entry now
+    // surfaces the review toast every run.
+    toast.warning(
+      remaining === blocked
+        ? `${remaining} offline ${remaining === 1 ? "entry" : "entries"} couldn't sync — needs review`
+        : `${blocked} synced, ${remaining} ${remaining === 1 ? "entry" : "entries"} couldn't sync — needs review`,
+      {
+        duration: 8000,
+        action: {
+          label: "Review",
+          onClick: () => {
+            window.location.assign("/settings#offline-entries");
+          },
         },
       },
-    });
+    );
   }
 }
 
@@ -74,7 +90,14 @@ export function OfflineSyncManager() {
   useEffect(() => {
     void runSync();
     const onOnline = () => void runSync();
-    const onFocus = () => void runSync();
+    // §3.5 — throttled: at most one focus-driven attempt per 30s (see
+    // FOCUS_SYNC_MIN_INTERVAL_MS). The online event stays unthrottled.
+    const onFocus = () => {
+      const now = Date.now();
+      if (now - lastFocusSyncAt < FOCUS_SYNC_MIN_INTERVAL_MS) return;
+      lastFocusSyncAt = now;
+      void runSync();
+    };
     window.addEventListener("online", onOnline);
     window.addEventListener("focus", onFocus);
     return () => {

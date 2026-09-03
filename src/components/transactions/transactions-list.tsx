@@ -472,7 +472,7 @@ export function TransactionsList({
 
       {/* sticky bulk-action bar — sits above the mobile bottom nav */}
       {selectionMode && (
-        <div className="fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-2 rounded-full border bg-background/95 p-2 shadow-lg backdrop-blur md:bottom-4">
+        <div className="fixed inset-x-0 bottom-[calc(var(--bottom-nav-h)+0.5rem+env(safe-area-inset-bottom))] z-40 mx-auto flex w-[calc(100%-2rem)] max-w-md items-center gap-2 rounded-full border bg-background/95 p-2 shadow-lg backdrop-blur md:bottom-4">
           <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full" onClick={exitSelection} aria-label="Cancel selection">
             <X className="h-4 w-4" />
           </Button>

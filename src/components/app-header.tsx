@@ -20,7 +20,11 @@ export function AppHeader({
   const { open } = useQuickAdd();
 
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/90 backdrop-blur">
+    // §3.5 — pt-[env(safe-area-inset-top)]: with black-translucent status bar
+    // (layout.tsx appleWebApp) the header content sits under the iOS notch in
+    // standalone mode; the inset pads it down. --header-h (globals.css) already
+    // accounts for the h-14 row itself.
+    <header className="sticky top-0 z-40 border-b bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-3xl items-center gap-1 px-4">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl">📒</span>

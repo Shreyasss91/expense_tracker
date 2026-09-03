@@ -16,7 +16,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       // mobile nav. The offset drops them just below the sticky app header
       // and clears the iOS notch via the safe-area inset.
       position="top-center"
-      offset={`calc(4rem + env(safe-area-inset-top))`}
+      // §3.5 — offset derives from the shared --header-h token (see
+      // globals.css) instead of a hardcoded 4rem guess.
+      offset={`calc(var(--header-h) + 0.5rem + env(safe-area-inset-top))`}
       // Owner request: multiple toasts stack fully expanded, one above
       // another — Sonner's default collapses older toasts behind the newest
       // and only fans them out on hover, which hides feedback like a

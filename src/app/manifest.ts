@@ -23,6 +23,9 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait",
     background_color: "#09090b",
+    // Static manifest field — Chromium reads the richer per-scheme values
+    // from layout.tsx's viewport.themeColor (light #ffffff / dark #171717);
+    // this is only the fallback for browsers that ignore the meta route.
     theme_color: "#171717",
     categories: ["finance", "productivity"],
     // Android long-press app shortcuts. "Add expense" deep-links with ?new=1,
@@ -42,6 +45,10 @@ export default function manifest(): MetadataRoute.Manifest {
       },
     ],
     icons: [
+      // §3.5 — 192px companion: some Android/Chromium surfaces request 192
+      // specifically and upscaled the 512-only declaration. /icon-192 is
+      // generated the same way as /icon (src/app/icon-192.tsx).
+      { src: "/icon-192", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icon", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
