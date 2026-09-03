@@ -40,14 +40,56 @@ jobs:
       - name: Semantic validation (DB-free date/time/month regression)
         run: npm run test:validation
 
-  # DB-backed invariants (seed, rename, budget round-trip + semantics). Point
-  # DATABASE_URL at a disposable Neon branch; the tests are self-healing
-  # (the seed is idempotent, the rename test always reverts, and the budget
-  # tests write to throwaway months and snapshot-restore real data). The steps
-  # are gated on HAS_CI_DB because `secrets` is not valid in `if:` — only in
-  # `env:`, so the presence check happens there.
+  # §1.4 — the committed migration chain MUST replay from scratch on every
+  # push: the 0004/0005 collision went unnoticed precisely because the only
+  # migration step was silently skipped whenever the Neon secret was absent.
+  # A disposable vanilla Postgres service container (no secret needed) applies
+  # drizzle/0000…0016 in order; any collision or non-idempotent statement
+  # fails the build. drizzle-kit migrate uses its own postgres driver, so a
+  # plain local Postgres is a valid target (the app's neon-http seed/tests
+  # cannot reach it, which is why the data checks stay in db-tests below).
+  migrations:
+    name: Migration chain replay (fresh Postgres)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Apply the full chain (0000 → 0016) on an empty database
+        run: npm run db:migrate
+      - name: Verify journal and SQL files stay 1:1
+        run: node scripts/check-migrations.mjs
+
+  # DB-backed data invariants (seed, hierarchy, categorize, rename, budget
+  # round-trip + semantics) that run through the app's neon-http driver and
+  # therefore need a Neon database. Point DATABASE_URL at a disposable Neon
+  # branch; the tests are self-healing (the seed is idempotent, the rename
+  # test always reverts, and the budget tests write to throwaway months and
+  # snapshot-restore real data). Gated on HAS_CI_DB because `secrets` is not
+  # valid in `if:` — only in `env:`, so the presence check happens there.
+  # The migration chain itself is verified on EVERY push by the migrations
+  # job above, secret or not.
   db-tests:
-    name: DB round-trip tests
+    name: DB round-trip tests (Neon branch)
     runs-on: ubuntu-latest
     env:
       HAS_CI_DB: ${{ secrets.DATABASE_URL != '' }}
@@ -59,9 +101,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: No CI database secret — skipping DB tests
+      - name: No CI database secret — skipping Neon data tests
         if: ${{ env.HAS_CI_DB != 'true' }}
-        run: echo "::notice title=skipped::Set the DATABASE_URL secret (a disposable Neon branch) to enable the DB round-trip tests."
+        run: echo "::notice title=skipped::Set the DATABASE_URL secret (a disposable Neon branch) to enable the Neon data round-trip tests. The migration chain itself is verified on every push by the migrations job."
       - name: Apply migrations
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run db:migrate
@@ -71,6 +113,12 @@ jobs:
       - name: Seed round-trip (export reproduces seed.csv)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:seed-roundtrip
+      - name: Category hierarchy invariants (two-level tree, assignability)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:hierarchy
+      - name: Categorize round-trip (bulk assign persists + reverts)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:categorize-roundtrip
       - name: Rename round-trip (rename propagates to history, reverts)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:rename-roundtrip
