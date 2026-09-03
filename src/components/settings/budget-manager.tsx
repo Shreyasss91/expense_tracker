@@ -113,18 +113,21 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
   // §6.7 — when the category list gains ids (a category created inline from Quick
   // Add / the edit dialog), give each new category a clean input row. The id-set
   // guard never touches values the user has already typed.
+  // §3.8 — deps are the serialized id list, not the `leaves` array (which is
+  // recreated every render and re-ran the effect body each time). The ref
+  // comparison inside is now the only guard needed.
   const catIdsRef = useRef(leaves.map((c) => c.id).sort().join(","));
+  const catIds = leaves.map((c) => c.id).sort().join(",");
   useEffect(() => {
-    const ids = leaves.map((c) => c.id).sort().join(",");
-    if (ids !== catIdsRef.current) {
-      catIdsRef.current = ids;
+    if (catIds !== catIdsRef.current) {
+      catIdsRef.current = catIds;
       setCatInputs((prev) => {
         const next = { ...prev };
         for (const c of leaves) if (!(c.id in next)) next[c.id] = "";
         return next;
       });
     }
-  }, [categories, leaves]);
+  }, [catIds]);
 
   function switchScope(next: string) {
     const scopeKey = next === DEFAULT_SCOPE ? "" : next;

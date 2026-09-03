@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory } from "@/actions/transactions";
@@ -15,9 +16,22 @@ import { BulkActionBar, SelectModeButton } from "@/components/shared/bulk-action
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { TransactionItem } from "./transaction-item";
-import { TransactionEditDialog } from "./transaction-edit-dialog";
-import { CategoryPickerSheet } from "./category-picker-sheet";
 import { Button } from "@/components/ui/button";
+
+/* §3.8 — the heavy editing stack (edit dialog: split mode, receipts, budget
+ * hints; category picker: suggestion engine) used to ride along with every
+ * ledger list — including the dashboard's first paint. Both are client-only
+ * overlays that do nothing until opened, so they load on FIRST OPEN via
+ * next/dynamic instead of on first paint. The rows themselves stay eager —
+ * they are the content. */
+const TransactionEditDialog = dynamic(
+  () => import("./transaction-edit-dialog").then((m) => m.TransactionEditDialog),
+  { ssr: false },
+);
+const CategoryPickerSheet = dynamic(
+  () => import("./category-picker-sheet").then((m) => m.CategoryPickerSheet),
+  { ssr: false },
+);
 
 const UNDO_WINDOW_MS = 5000; // §6.4.1 ~5 seconds
 
