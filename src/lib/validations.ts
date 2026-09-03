@@ -75,6 +75,12 @@ export const templateSchema = z.object({
   // Whose ledger the auto entry lands under; null/undefined = household
   // default (first member). Existence is checked server-side.
   memberId: z.string().uuid().nullable().optional(),
+  // §2.12 — template controls: paused never auto-stamps; variable stays
+  // manual-only; skipMonth ("YYYY-MM") skips the auto-stamp exactly once.
+  // Optional so existing manual-only callers keep compiling.
+  isPaused: z.boolean().optional(),
+  isVariable: z.boolean().optional(),
+  skipMonth: monthKeySchema.nullable().optional(),
 });
 
 export type TemplateInput = z.infer<typeof templateSchema>;
@@ -113,6 +119,12 @@ export const moveCategoryToGroupSchema = z.object({
   categoryId: z.string().uuid(),
   groupId: z.string().uuid(),
 });
+
+/** §2.12 — merge two leaf categories: re-point history then delete the source. */
+export const mergeCategoriesSchema = z.object({
+  sourceId: z.string().uuid(),
+  targetId: z.string().uuid(),
+}).refine((v) => v.sourceId !== v.targetId, "Source and target must differ");
 
 export const updateMemberSchema = z.object({
   id: z.string().uuid(),

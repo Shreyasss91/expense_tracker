@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { Plus, Save, Trash2 } from "lucide-react";
-import { createTemplate, deleteTemplate, updateTemplate } from "@/actions/templates";
+import { createTemplate, deleteTemplate, setTemplatePaused, skipTemplateMonth, updateTemplate } from "@/actions/templates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +46,7 @@ export function TemplatesManager({
   const [note, setNote] = useState("");
   const [autoDay, setAutoDay] = useState("");
   const [autoMemberId, setAutoMemberId] = useState("");
+  const [isVariable, setIsVariable] = useState(false);
   const [saving, setSaving] = useState<string | "new" | null>(null);
 
   /** Grouped <optgroup> options for native selects — leaves only. */
@@ -95,6 +96,9 @@ export function TemplatesManager({
       note: note || null,
       autoDay: day,
       memberId: autoMemberId || null,
+      isPaused: false,
+      isVariable,
+      skipMonth: null,
     });
     setSaving(null);
     if (!result.ok) {
@@ -113,6 +117,9 @@ export function TemplatesManager({
         sortOrder: current.length + 1,
         autoDay: day,
         memberId: autoMemberId || null,
+        isPaused: false,
+        isVariable,
+        skipMonth: null,
       },
     ]);
     setName("");
@@ -120,6 +127,7 @@ export function TemplatesManager({
     setNote("");
     setAutoDay("");
     setAutoMemberId("");
+    setIsVariable(false);
     toast.success("Template saved");
   }
 
@@ -139,6 +147,9 @@ export function TemplatesManager({
       sortOrder: item.sortOrder,
       autoDay: item.autoDay ?? null,
       memberId: item.memberId ?? null,
+      isPaused: item.isPaused ?? false,
+      isVariable: item.isVariable ?? false,
+      skipMonth: item.skipMonth ?? null,
     });
     setSaving(null);
     if (result.ok) toast.success("Template saved");
@@ -208,6 +219,10 @@ export function TemplatesManager({
             </select>
           </div>
         </div>
+        <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+          <input type="checkbox" checked={isVariable} onChange={(e) => setIsVariable(e.target.checked)} className="size-3.5" />
+          Amount varies — keep manual (never auto-stamp)
+        </label>
         <Button type="button" className="mt-3 gap-1.5" onClick={() => void add()} disabled={saving === "new"}>
           <Plus className="size-4" /> Add template
         </Button>
@@ -262,7 +277,58 @@ export function TemplatesManager({
                   {members.map((member) => <option key={member.id} value={member.id}>{member.emoji} {member.name}</option>)}
                 </select>
               </div>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={item.isVariable ?? false}
+                    onChange={(e) => patch(item.id, "isVariable", e.target.checked)}
+                    className="size-3.5"
+                  />
+                  Amount varies
+                </label>
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={item.isPaused ?? false}
+                    onChange={(e) => {
+                      const paused = e.target.checked;
+                      patch(item.id, "isPaused", paused);
+                      void setTemplatePaused(item.id, paused).then((res) => {
+                        if (!res.ok) {
+                          patch(item.id, "isPaused", !paused);
+                          toast.error(res.error ?? "Could not update");
+                        }
+                      });
+                    }}
+                    className="size-3.5"
+                  />
+                  Paused
+                </label>
+                {item.skipMonth && (
+                  <span className="text-[11px] text-muted-foreground">skips {item.skipMonth}</span>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
+                {item.autoDay != null && !(item.isPaused ?? false) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      const now = new Date();
+                      const key = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                      void skipTemplateMonth(item.id, key).then((res) => {
+                        if (res.ok) {
+                          patch(item.id, "skipMonth", key);
+                          toast.success(`Skipped ${key}`);
+                        } else toast.error(res.error ?? "Could not skip");
+                      });
+                    }}
+                  >
+                    Skip this month
+                  </Button>
+                )}
                 <Button type="button" variant="outline" size="sm" className="gap-1.5" onClick={() => void save(item)} disabled={saving === item.id}>
                   <Save className="size-3.5" /> Save
                 </Button>

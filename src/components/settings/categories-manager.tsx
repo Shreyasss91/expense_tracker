@@ -16,6 +16,7 @@ import {
 import {
   createCategory,
   createCategoryGroup,
+  mergeCategories,
   moveCategoryToGroup,
   reorderCategoriesUnder,
   reorderCategoryGroups,
@@ -113,6 +114,30 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
     } else {
       toast.error(res.error ?? "Could not move");
     }
+  }
+
+  const leaves = items.filter((c) => c.parentId !== null).sort((a, b) => a.name.localeCompare(b.name));
+  const [mergeSource, setMergeSource] = useState("");
+  const [mergeTarget, setMergeTarget] = useState("");
+  const [merging, setMerging] = useState(false);
+
+  async function merge() {
+    if (!mergeSource || !mergeTarget || mergeSource === mergeTarget) {
+      toast.error("Pick two different categories");
+      return;
+    }
+    setMerging(true);
+    const res = await mergeCategories({ sourceId: mergeSource, targetId: mergeTarget });
+    setMerging(false);
+    if (!res.ok) {
+      toast.error(res.error ?? "Could not merge");
+      return;
+    }
+    toast.success(`Merged — moved ${res.moved.transactions} expense(s)`);
+    setMergeSource("");
+    setMergeTarget("");
+    emitLedgerMutation({ kind: "refetch" });
+    router.refresh();
   }
 
   return (
@@ -251,6 +276,43 @@ export function CategoriesManager({ categories }: { categories: CategoryOption[]
         categories (not groups) can be picked for transactions. Deletion is not available — history always
         keeps its category.
       </p>
+
+      {/* §2.12 — merge two leaves: history re-points to the target, source is removed */}
+      <div className="rounded-xl border border-dashed p-3">
+        <p className="text-xs font-medium">Merge categories</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
+          Move every expense, template and budget from one category into another, then remove the empty source.
+        </p>
+        <div className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <Select value={mergeSource} onValueChange={setMergeSource}>
+            <SelectTrigger aria-label="Merge source category" className="h-9 text-xs">
+              <SelectValue placeholder="From (removed)…" />
+            </SelectTrigger>
+            <SelectContent>
+              {leaves.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.emoji} {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={mergeTarget} onValueChange={setMergeTarget}>
+            <SelectTrigger aria-label="Merge target category" className="h-9 text-xs">
+              <SelectValue placeholder="Into (kept)…" />
+            </SelectTrigger>
+            <SelectContent>
+              {leaves.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.emoji} {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button type="button" variant="outline" size="sm" onClick={() => void merge()} disabled={merging || !mergeSource || !mergeTarget}>
+            {merging ? "Merging…" : "Merge"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

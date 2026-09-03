@@ -8,7 +8,8 @@ import { db } from "@/db";
 import { members, templates } from "@/db/schema";
 import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
-import { idSchema, templateSchema, type TemplateInput } from "@/lib/validations";
+import { idSchema, monthKeySchema, templateSchema, type TemplateInput } from "@/lib/validations";
+import { logActivity } from "@/db/activity-log";
 
 export async function createTemplate(raw: TemplateInput) {
   const session = await auth();
@@ -43,6 +44,9 @@ export async function createTemplate(raw: TemplateInput) {
         sortOrder: data.sortOrder ?? Number(maxRow?.max ?? 0) + 1,
         autoDay: data.autoDay ?? null,
         memberId: data.memberId ?? null,
+        isPaused: data.isPaused ?? false,
+        isVariable: data.isVariable ?? false,
+        skipMonth: data.skipMonth ?? null,
       })
       .returning();
 
@@ -101,6 +105,9 @@ export async function updateTemplate(id: string, raw: TemplateInput) {
       // Only an autoDay change clears it (see autoDayChanged above).
       ...(autoDayChanged ? { lastAutoKey: null } : {}),
       memberId: data.memberId ?? null,
+      isPaused: data.isPaused ?? false,
+      isVariable: data.isVariable ?? false,
+      skipMonth: data.skipMonth ?? null,
       updatedAt: new Date(),
     })
     .where(eq(templates.id, idCheck.data))
@@ -128,6 +135,64 @@ export async function deleteTemplate(id: string) {
   revalidateTag("templates");
   revalidatePath("/");
   revalidatePath("/transactions");
+  revalidatePath("/settings");
+  return { ok: true as const };
+}
+
+/**
+ * §2.12 — pause/resume a template. Paused templates never auto-stamp; the
+ * manual Quick Add prefill keeps working.
+ */
+export async function setTemplatePaused(id: string, paused: boolean) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  const idCheck = idSchema.safeParse(id);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid template id" };
+
+  const [row] = await db
+    .update(templates)
+    .set({ isPaused: paused, updatedAt: new Date() })
+    .where(eq(templates.id, idCheck.data))
+    .returning({ id: templates.id });
+  if (!row) return { ok: false as const, error: "Template not found" };
+
+  revalidateTag("templates");
+  revalidatePath("/settings");
+  return { ok: true as const };
+}
+
+/**
+ * §2.12 — skip the auto-stamp exactly once for `monthKey` ("YYYY-MM").
+ * Implemented as a marker the cron consumes: on the matching month it marks
+ * the template handled without inserting, then clears the marker.
+ */
+export async function skipTemplateMonth(id: string, monthKey: string) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  const idCheck = idSchema.safeParse(id);
+  const monthCheck = monthKeySchema.safeParse(monthKey);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid template id" };
+  if (!monthCheck.success) return { ok: false as const, error: "Invalid month" };
+
+  const [row] = await db
+    .update(templates)
+    .set({ skipMonth: monthCheck.data, updatedAt: new Date() })
+    .where(eq(templates.id, idCheck.data))
+    .returning({ id: templates.id });
+  if (!row) return { ok: false as const, error: "Template not found" };
+
+  try {
+    await logActivity({
+      action: "skip_template_month",
+      entityType: "template",
+      entityId: row.id,
+      payload: { skipMonth: monthCheck.data },
+    });
+  } catch {
+    // audit logging is best-effort
+  }
+
+  revalidateTag("templates");
   revalidatePath("/settings");
   return { ok: true as const };
 }

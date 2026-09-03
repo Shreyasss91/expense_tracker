@@ -7,10 +7,11 @@ import { db } from "@/db";
 import { setAppSetting, EXCLUDE_BILLS_KEY } from "@/db/app-settings-mutations";
 import { isAssignableCategory } from "@/db/category-mutations";
 import { replaceBudgetScope, replaceTotalBudgetRow } from "@/db/budget-mutations";
-import { categories, members, transactions } from "@/db/schema";
+import { budgets, categories, members, templates, transactions } from "@/db/schema";
 import { budgetsForMonth, resolveEffectiveBudget } from "@/lib/budgets";
 import { rupeesToPaise } from "@/lib/money";
-import { createCategoryGroupSchema, createCategorySchema, monthKeySchema, moveCategoryToGroupSchema, saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
+import { createCategoryGroupSchema, createCategorySchema, mergeCategoriesSchema, monthKeySchema, moveCategoryToGroupSchema, saveBudgetsSchema, setExcludeBillsSchema, setTotalBudgetSchema, updateCategorySchema, updateMemberSchema } from "@/lib/validations";
+import { logActivity } from "@/db/activity-log";
 import { z } from "zod";
 
 function validateCompleteUniqueIds(ids: string[], expectedIds: string[]): string[] | null {
@@ -175,6 +176,63 @@ export async function moveCategoryToGroup(raw: z.infer<typeof moveCategoryToGrou
   revalidatePath("/settings");
   revalidateTag("categories");
   return { ok: true as const };
+}
+
+/**
+ * §2.12 — merge two LEAF categories: re-point transactions, templates and
+ * category budgets from source to target, then delete the source row.
+ * Groups can never merge (they are containers, not assignable).
+ */
+export async function mergeCategories(raw: z.infer<typeof mergeCategoriesSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  const parsed = mergeCategoriesSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false as const, error: "Invalid merge data" };
+  const { sourceId, targetId } = parsed.data;
+
+  const [source, target] = await Promise.all([
+    db.query.categories.findFirst({ where: eq(categories.id, sourceId) }),
+    db.query.categories.findFirst({ where: eq(categories.id, targetId) }),
+  ]);
+  if (!source || !target) return { ok: false as const, error: "Category not found" };
+  if (source.parentId === null || target.parentId === null) {
+    return { ok: false as const, error: "Only leaf categories can merge — groups are containers" };
+  }
+
+  const [txRows, tplRows, budRows] = await Promise.all([
+    db.update(transactions).set({ categoryId: targetId }).where(eq(transactions.categoryId, sourceId)).returning({ id: transactions.id }),
+    db.update(templates).set({ categoryId: targetId }).where(eq(templates.categoryId, sourceId)).returning({ id: templates.id }),
+    db.update(budgets).set({ categoryId: targetId }).where(eq(budgets.categoryId, sourceId)).returning({ id: budgets.id }),
+  ]);
+  await db.delete(categories).where(eq(categories.id, sourceId));
+
+  try {
+    await logActivity({
+      action: "merge_categories",
+      entityType: "category",
+      entityId: targetId,
+      payload: {
+        sourceId,
+        sourceName: source.name,
+        targetId,
+        targetName: target.name,
+        moved: { transactions: txRows.length, templates: tplRows.length, budgets: budRows.length },
+      },
+    });
+  } catch {
+    // audit logging is best-effort
+  }
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidatePath("/settings");
+  revalidateTag("categories");
+  revalidateTag("transactions");
+  revalidateTag("templates");
+  return {
+    ok: true as const,
+    moved: { transactions: txRows.length, templates: tplRows.length, budgets: budRows.length },
+  };
 }
 
 /**

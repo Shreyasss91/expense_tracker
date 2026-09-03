@@ -74,6 +74,22 @@ export async function GET(request: Request) {
     const skipped: string[] = [];
 
     for (const t of due) {
+      // §2.12 — paused templates never auto-stamp; variable-amount templates
+      // stay manual-only ("amount varies — ask me").
+      if (t.isPaused || t.isVariable) {
+        skipped.push(t.id);
+        continue;
+      }
+      // §2.12 — one-shot skip: consume the marker without inserting so the
+      // month is treated as handled, then clear it.
+      if (t.skipMonth && t.skipMonth === monthKey) {
+        await db
+          .update(templates)
+          .set({ skipMonth: null, lastAutoKey: monthKey, updatedAt: new Date() })
+          .where(eq(templates.id, t.id));
+        skipped.push(t.id);
+        continue;
+      }
       // The template's member may have been deleted since it was set — fall
       // back to the household default rather than skipping the bill.
       const memberId = t.memberId && memberIds.has(t.memberId) ? t.memberId : defaultMemberId;

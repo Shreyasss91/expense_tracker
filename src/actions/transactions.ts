@@ -10,6 +10,7 @@ import { categories, members, transactions } from "@/db/schema";
 import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
+import { logActivity } from "@/db/activity-log";
 import { buildWhere, expandGroupFilter, listOrderBy, mapRow, PAGE_SIZE, receiptCountExpr, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
@@ -190,7 +191,20 @@ export async function deleteTransactions(ids: string[]): Promise<{ ok: true; del
   const rows = await db
     .delete(transactions)
     .where(inArray(transactions.id, checkedIds))
-    .returning({ id: transactions.id });
+    .returning();
+
+  try {
+    const cookieStore = await cookies();
+    const actor = cookieStore.get("active_member_id")?.value ?? null;
+    await logActivity({
+      action: "delete_transactions",
+      entityType: "transaction",
+      payload: { count: rows.length, transactions: rows },
+      actor,
+    });
+  } catch {
+    // audit logging is best-effort
+  }
 
   revalidatePath("/");
   revalidatePath("/transactions");
@@ -208,8 +222,22 @@ export async function deleteTransaction(id: string) {
   const [row] = await db
     .delete(transactions)
     .where(eq(transactions.id, idCheck.data))
-    .returning({ id: transactions.id });
+    .returning();
   if (!row) return { ok: false as const, error: "Transaction not found" };
+
+  try {
+    const cookieStore = await cookies();
+    const actor = cookieStore.get("active_member_id")?.value ?? null;
+    await logActivity({
+      action: "delete_transaction",
+      entityType: "transaction",
+      entityId: row.id,
+      payload: { transactions: [row] },
+      actor,
+    });
+  } catch {
+    // audit logging is best-effort
+  }
 
   revalidatePath("/");
   revalidatePath("/transactions");

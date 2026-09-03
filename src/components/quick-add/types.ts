@@ -34,4 +34,9 @@ export interface TemplateOption {
   autoDay: number | null;
   /** Whose ledger the auto entry lands under; null = household default (first member). */
   memberId: string | null;
+  /** §2.12 — paused never auto-stamps; variable stays manual-only. */
+  isPaused: boolean;
+  isVariable: boolean;
+  /** §2.12 — "YYYY-MM" the auto-stamp skips exactly once, then clears. */
+  skipMonth: string | null;
 }

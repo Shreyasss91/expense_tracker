@@ -19,6 +19,7 @@ import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { BudgetBar } from "@/components/dashboard/budget-bar";
 import { CategoryPie, TagBar, TrendChart } from "@/components/dashboard/charts";
+import { CompareMatrix } from "@/components/dashboard/compare-matrix";
 import { TransactionsList } from "@/components/transactions/transactions-list";
 import { RecurringSuggestions } from "@/components/dashboard/recurring-suggestions";
 import { InsightsCard } from "@/components/dashboard/insights-card";
@@ -228,6 +229,33 @@ const getDashboardData = unstable_cache(
       };
     });
 
+    // §2.12 — category × month matrix ("is fuel creeping up?"). Reuses the
+    // trailing-6mo per-category sums already fetched for insights.
+    const compareMonths = trendKeys.map((k) => ({
+      key: k,
+      label: format(parse(`${k}-01`, "yyyy-MM-dd", new Date()), "MMM"),
+    }));
+    const compareByCat = new Map<string, { months: Record<string, number>; total: number }>();
+    for (const r of catMonthly) {
+      const id = String(r.categoryId);
+      const paise = rupeesToPaise(r.total);
+      const slot = compareByCat.get(id) ?? { months: {}, total: 0 };
+      slot.months[r.month] = (slot.months[r.month] ?? 0) + paise;
+      slot.total += paise;
+      compareByCat.set(id, slot);
+    }
+    const catNameById = new Map(catRows.map((r) => [String(r.id), r]));
+    const compareRows = Array.from(compareByCat.entries()).map(([id, v]) => {
+      const meta = catNameById.get(id);
+      return {
+        id,
+        name: meta?.name ?? "Uncategorized",
+        emoji: meta?.emoji ?? "❔",
+        months: v.months,
+        total: v.total,
+      };
+    });
+
     return {
       expensePaise,
       billsPaise: rupeesToPaise(totals.recurring),
@@ -250,6 +278,8 @@ const getDashboardData = unstable_cache(
       // for the pie legend's MoM delta chips.
       catPrev: Object.fromEntries(prevCatRows.map((r) => [String(r.id), rupeesToPaise(r.total)])) as Record<string, number>,
       trend,
+      compareMonths,
+      compareRows,
       // §2.8 — diagnostic insights derived from the aggregates above
       insights: computeInsights({
         monthKey,
@@ -578,6 +608,18 @@ export default async function DashboardPage({
           <TrendChart points={data.trend} />
         </CardContent>
       </Card>
+
+      {/* §2.12 — multi-month compare: category × month matrix */}
+      {data.compareRows.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Compare months</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CompareMatrix months={data.compareMonths} rows={data.compareRows} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Month-wise transactions panel — tap a row to edit, swipe to delete */}
       <Card>

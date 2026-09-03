@@ -39,6 +39,9 @@ export const getTemplates = unstable_cache(
       sortOrder: row.sortOrder,
       autoDay: row.autoDay,
       memberId: row.memberId,
+      isPaused: row.isPaused ?? false,
+      isVariable: row.isVariable ?? false,
+      skipMonth: row.skipMonth ?? null,
     }));
   },
   ["family-ledger", "templates"],

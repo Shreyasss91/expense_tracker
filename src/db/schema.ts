@@ -181,6 +181,12 @@ export const templates = pgTable("templates", {
   sortOrder: integer("sort_order").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  // §2.12 — template controls: paused templates never auto-stamp; variable
+  // templates stay manual-only (amount varies — ask me); skipMonth ("YYYY-MM")
+  // skips the auto-stamp exactly once, then the cron clears it.
+  isPaused: boolean("is_paused").notNull().default(false),
+  isVariable: boolean("is_variable").notNull().default(false),
+  skipMonth: text("skip_month"),
 }, (t) => ({
   sortOrderIdx: index("templates_sort_order_idx").on(t.sortOrder),
   autoDayIdx: index("templates_auto_day_idx").on(t.autoDay),
@@ -270,3 +276,30 @@ export const pushSubscriptions = pgTable(
 );
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+
+/**
+ * §2.12 — persistent audit trail. The 5 s undo toast stays as the fast path;
+ * this table is the durable history: who changed what, when, with enough
+ * payload to restore deleted transactions. `actor` is the active-member label
+ * at write time (advisory — the member cookie is client-editable, §1.8).
+ * `payload` carries snapshots, e.g. `{ transactions: [...] }` for deletes or
+ * `{ sourceId, targetId, moved: n }` for merges.
+ */
+export const activityLog = pgTable(
+  "activity_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    action: text("action").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id"),
+    actor: text("actor"),
+    payload: jsonb("payload"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    createdIdx: index("activity_log_created_at_idx").on(t.createdAt.desc()),
+    actionIdx: index("activity_log_action_idx").on(t.action),
+  }),
+);
+
+export type ActivityLogEntry = typeof activityLog.$inferSelect;

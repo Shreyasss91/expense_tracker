@@ -6,6 +6,7 @@ import { getCategories, getMembers, getTemplates } from "@/lib/meta";
 import { monthKeyInIST } from "@/lib/dates";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CategoriesManager } from "@/components/settings/categories-manager";
+import { ActivityHistory } from "@/components/settings/activity-history";
 import { MembersManager } from "@/components/settings/members-manager";
 import { BudgetManager } from "@/components/settings/budget-manager";
 import { TemplatesManager } from "@/components/settings/templates-manager";
@@ -103,6 +104,19 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} excludeBills={excludeBills} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">History</CardTitle>
+          <CardDescription className="text-xs">
+            Every delete and merge, with who and when. Deleted expenses can be restored — merges are
+            listed for reference.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ActivityHistory />
         </CardContent>
       </Card>
 
