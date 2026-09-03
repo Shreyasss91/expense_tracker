@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, ChevronsUpDown, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -152,6 +152,54 @@ export function TransactionEditDialog({
   const paise = rupeesToPaise(amount);
   const canSubmit = paise > 0 && memberId !== "";
   const activeMember = members.find((m) => m.id === memberId);
+
+  /**
+   * §3.1 — one source of truth for "what this save will actually change".
+   *
+   * The audit's complaint was that the sticky CTA read its label from one
+   * place and the save path built its payload in another, so the button could
+   * advertise a category it then silently failed to write (§1.3).
+   *
+   * Both now derive from this single object: the CTA label shows
+   * `pending.category`, and `save()` posts exactly `pending.payload`. There is
+   * no second lookup to drift out of sync. Resolving against `cats` (not the
+   * server prop) is what makes a category created inline in this sheet save
+   * correctly.
+   *
+   * `changes` also lets the CTA tell the truth about whether there is anything
+   * to save — opening a row and hitting Save used to fire a pointless write.
+   */
+  const pending = useMemo(() => {
+    const category = categoryId ? cats.find((c) => c.id === categoryId) : null;
+    const trimmedNote = note || null;
+    const payload = {
+      memberId,
+      categoryId: category?.id ?? null,
+      amount: paise,
+      date,
+      time,
+      note: trimmedNote,
+      shared,
+      splitWith,
+      tag: tag as "one_time" | "recurring" | "lifestyle",
+    };
+    if (!row) return { payload, category, changes: [] as string[], count: 0 };
+
+    const changes: string[] = [];
+    // Compare through the same helper on both sides, so equivalent
+    // spellings of one amount ("1250.1" vs "1250.10") count as unchanged.
+    if (paise !== rupeesToPaise(row.amount)) changes.push("amount");
+    if ((category?.id ?? null) !== (row.categoryId ?? null)) changes.push("category");
+    if (memberId !== row.memberId) changes.push("member");
+    if (tag !== (row.tag ?? "lifestyle")) changes.push("tag");
+    if (date !== row.date) changes.push("date");
+    if (time !== row.time.slice(0, 5)) changes.push("time");
+    if (trimmedNote !== (row.note ?? null)) changes.push("note");
+    if (shared !== (row.shared ?? false)) changes.push("shared");
+    const prevSplit = [...(row.splitWith ?? [])].sort().join(",");
+    if ([...splitWith].sort().join(",") !== prevSplit) changes.push("split");
+    return { payload, category, changes, count: changes.length };
+  }, [row, categoryId, cats, memberId, paise, date, time, note, shared, splitWith, tag]);
 
   // ── Split mode ───────────────────────────────────────────────────────────
   const SPLIT_MAX = 6;
@@ -364,12 +412,13 @@ export function TransactionEditDialog({
       setError("Enter a valid amount");
       return;
     }
+    if (pending.count === 0) return; // §3.1 — nothing changed; don't hit the server
     const member = members.find((m) => m.id === memberId);
-    // empty selection = uncategorized — a deliberate, valid choice (Amendment 20)
-    // Resolve against `cats` (the local list synced from the prop), NOT the
-    // `categories` server prop: a category created inline in this sheet lives
-    // only in `cats`, so a prop lookup silently writes Uncategorized.
-    const category = categoryId ? cats.find((c) => c.id === categoryId) : null;
+    // §3.1 — the category comes from `pending`, the same object the CTA label
+    // reads. Resolving there against `cats` (not the `categories` server prop)
+    // is what makes a category created inline in this sheet save correctly —
+    // a prop lookup silently wrote Uncategorized (§1.3).
+    const category = pending.category;
     if (!member) {
       setSubmitAttempted(true);
       setError("Pick a member");
@@ -383,14 +432,14 @@ export function TransactionEditDialog({
     const updatedRow: TransactionListRow = {
       ...row,
       memberId,
-      categoryId: category?.id ?? null,
-      tag: tag as TransactionListRow["tag"],
-      amount: paiseToDbString(paise),
-      note: note || null,
-      date,
-      time: `${time}:00`,
-      shared,
-      splitWith,
+      categoryId: pending.payload.categoryId,
+      tag: pending.payload.tag as TransactionListRow["tag"],
+      amount: paiseToDbString(pending.payload.amount),
+      note: pending.payload.note,
+      date: pending.payload.date,
+      time: `${pending.payload.time}:00`,
+      shared: pending.payload.shared,
+      splitWith: pending.payload.splitWith,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: category
         ? { name: category.name, emoji: category.emoji, color: category.color, slug: category.slug }
@@ -398,11 +447,9 @@ export function TransactionEditDialog({
     };
     emitLedgerMutation({ kind: "update", id: row.id, row: updatedRow });
     onOpenChange(false);
-    const base = { memberId, categoryId: category?.id ?? null, amount: paise, date, time, note: note || null, shared, splitWith };
-    const payload = { ...base, tag: tag as "one_time" | "recurring" | "lifestyle" };
     let res: Awaited<ReturnType<typeof updateTransaction>>;
     try {
-      res = await updateTransaction(originalRow.id, payload);
+      res = await updateTransaction(originalRow.id, pending.payload);
     } catch {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
       setSaving(false);
@@ -761,7 +808,11 @@ export function TransactionEditDialog({
               </div>
               {!saving && (
                 <p className="mb-1.5 text-center text-[11px] text-muted-foreground">
-                  {canSubmit ? "press Enter ↵ to save" : "Enter an amount"}
+                  {!canSubmit
+                    ? "Enter an amount"
+                    : pending.count === 0
+                      ? "No changes to save"
+                      : `${pending.count} change${pending.count === 1 ? "" : "s"} · press Enter ↵ to save`}
                 </p>
               )}
               <div className="flex gap-2">
@@ -778,12 +829,19 @@ export function TransactionEditDialog({
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-                <Button type="submit" className="h-12 flex-1 text-base" disabled={!canSubmit || saving}>
+                {/* §3.1 — label and payload both read `pending`, so the button
+                    cannot advertise a category the save won't write. Disabled
+                    when nothing changed, so a stray tap is a no-op. */}
+                <Button
+                  type="submit"
+                  className="h-12 flex-1 text-base"
+                  disabled={!canSubmit || saving || pending.count === 0}
+                >
                   {saving
                     ? "Saving…"
-                    : canSubmit
-                      ? `Save ${formatINRWhole(paise)}${categoryId ? ` · ${cats.find((c) => c.id === categoryId)?.name ?? ""}` : ""}`
-                      : "Save changes"}
+                    : pending.count === 0
+                      ? "No changes"
+                      : `Save ${formatINRWhole(pending.payload.amount)}${pending.category ? ` · ${pending.category.name}` : ""}`}
                 </Button>
               </div>
             </>
