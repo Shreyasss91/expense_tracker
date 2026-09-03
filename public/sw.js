@@ -89,3 +89,55 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
+
+/**
+ * §2.11 — Web Push. The push subscription lives on the clients; this worker
+ * only renders the notification when the push service delivers one. The
+ * payload is a small JSON object ({ title, body, url }) encrypted by the
+ * server with draft-ietf-webpush-encryption; the browser decrypts it before
+ * this handler runs, so `event.data.json()` is plain text.
+ */
+self.addEventListener("push", (event) => {
+  let payload = { title: "Family Ledger", body: "You have an update.", url: "/" };
+  try {
+    if (event.data) payload = { ...payload, ...event.data.json() };
+  } catch {
+    // fall back to the default above
+  }
+
+  const icon = "/icon";
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon,
+      badge: icon,
+      tag: payload.url, // collapse repeats for the same destination
+      data: { url: payload.url || "/" },
+      // Budget/review nudges are routine, not emergencies.
+      requireInteraction: false,
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  const target = (event.notification?.data?.url as string) || "/";
+  event.notification.close();
+
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // Prefer an already-open tab: focus it and navigate, rather than opening
+      // a second instance (the PWA is display:standalone).
+      for (const client of all) {
+        if ("focus" in client) {
+          await client.focus();
+          // navigate() exists on WindowClient; guards for older impls.
+          if ("navigate" in client) await (client as WindowClient).navigate(target);
+          return;
+        }
+      }
+      const opened = await self.clients.openWindow(target);
+      return opened;
+    })(),
+  );
+});

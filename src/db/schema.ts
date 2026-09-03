@@ -238,3 +238,35 @@ export const attachments = pgTable(
 );
 
 export type Attachment = typeof attachments.$inferSelect;
+
+/**
+ * Web Push subscriptions (§2.11). One household, one master password — so
+ * subscriptions are NOT per-user: every device that opts in receives the
+ * same household notifications (budget pacing, review reminders). The push
+ * subscription endpoint is a bearer of its own (it is the URL the push
+ * service POSTs to), so the auth material is the two keys the browser hands
+ * us at subscribe time, stored verbatim and fed straight into the Web Push
+ * encryption (draft-ietf-webpush-encryption) on send.
+ */
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The push service endpoint URL — the only externally routable secret. */
+    endpoint: text("endpoint").notNull().unique(),
+    /** Base64url `p256dh` (client public key) from PushSubscription.keys. */
+    p256dh: text("p256dh").notNull(),
+    /** Base64url `auth` from PushSubscription.keys. */
+    auth: text("auth").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    // A stale subscription (app uninstalled, permission revoked) returns 404
+    // or 410 on send; we delete on seeing that, but last_seen lets a future
+    // cleanup sweep drop ancient, never-reused rows too.
+    lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+  },
+  (t) => ({
+    createdIdx: index("push_subscriptions_created_at_idx").on(t.createdAt),
+  }),
+);
+
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;

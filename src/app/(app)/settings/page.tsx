@@ -10,6 +10,7 @@ import { MembersManager } from "@/components/settings/members-manager";
 import { BudgetManager } from "@/components/settings/budget-manager";
 import { TemplatesManager } from "@/components/settings/templates-manager";
 import { OfflineEntriesManager } from "@/components/settings/offline-entries-manager";
+import { PushSetup } from "@/components/pwa/push-setup";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
 export const metadata = { title: "Settings — Family Ledger" };
@@ -115,6 +116,20 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <OfflineEntriesManager members={memberOptions} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">Notifications</CardTitle>
+          <CardDescription className="text-xs">
+            Get a push when a budget hits 80% of its limit (with the days left) and when entries are waiting
+            to be reviewed. Needs the PWA installed (or at least the service worker registered) and a
+            notification permission — and the server&apos;s VAPID keys set on the deployment platform.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <PushSetup />
         </CardContent>
       </Card>
 

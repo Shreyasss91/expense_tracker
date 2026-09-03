@@ -99,6 +99,13 @@
       "when": 1788300000000,
       "tag": "0013_receipt_attachments",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788400000000,
+      "tag": "0014_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }

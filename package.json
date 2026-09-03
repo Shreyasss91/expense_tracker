@@ -25,6 +25,8 @@
     "test:csv-parser": "node scripts/lib/csv-test.mjs",
     "test:xlsx": "tsx src/lib/xlsx-test.ts",
     "test:export-format": "tsx src/lib/export-format-test.ts",
+    "test:web-push": "tsx src/lib/web-push-test.ts",
+    "generate:vapid": "node scripts/generate-vapid.mjs",
     "test:validation": "tsx src/lib/validation-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "verify:export-live": "node scripts/export-live-check.mjs"
