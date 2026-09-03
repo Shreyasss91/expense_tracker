@@ -107,9 +107,17 @@ export function TransactionEditDialog({
     setCats(categories);
   }, [categories]);
 
-  // (Re)initialise the form whenever a different row is opened.
+  /**
+   * §3.2 — (Re)initialise the form whenever a row is opened.
+   *
+   * The guard keys off `row.id !== lastKey`, which meant closing and reopening
+   * the *same* row skipped re-initialisation entirely and showed whatever was
+   * left in the form — stale values, including a half-finished edit. `open` is
+   * part of the condition and `lastKey` is cleared on close (below), so every
+   * open re-reads the current row.
+   */
   const [lastKey, setLastKey] = useState<string | null>(null);
-  if (row && row.id !== lastKey) {
+  if (open && row && row.id !== lastKey) {
     setLastKey(row.id);
     setTag((row.tag ?? "lifestyle") as TransactionTag);
     // Amendment 20 — uncategorized rows start with no selection; saving without
@@ -131,6 +139,12 @@ export function TransactionEditDialog({
     setSplitWith(row.splitWith ?? []);
     setReceipts([]);
   }
+
+  // §3.2 — drop the key when the sheet closes so the next open of the same row
+  // re-runs the block above instead of restoring a stale form.
+  useEffect(() => {
+    if (!open) setLastKey(null);
+  }, [open]);
 
   // §2.9 — load this row's receipts when the sheet opens on it. Fetched from
   // the client (not passed down from the server) so the ledger's initial page
@@ -426,8 +440,13 @@ export function TransactionEditDialog({
     }
 
     setSaving(true);
-    // Fully optimistic: build the updated row locally, apply it and close the
-    // sheet immediately; on failure the original row is emitted back.
+    setError(null);
+    // §3.2 — still optimistic: the updated row is applied immediately so the
+    // ledger behind the sheet stays live. The difference is that the sheet no
+    // longer closes until the server has answered. Closing first meant a failed
+    // save left the user with a toast and no edits — the sheet was gone, so
+    // the failed edit was unrecoverable. Now it closes on success only, and on
+    // failure stays open with the values intact plus a visible error.
     const originalRow = row;
     const updatedRow: TransactionListRow = {
       ...row,
@@ -446,13 +465,14 @@ export function TransactionEditDialog({
         : null,
     };
     emitLedgerMutation({ kind: "update", id: row.id, row: updatedRow });
-    onOpenChange(false);
     let res: Awaited<ReturnType<typeof updateTransaction>>;
     try {
       res = await updateTransaction(originalRow.id, pending.payload);
     } catch {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
       setSaving(false);
+      setSubmitAttempted(true);
+      setError("Could not save — check your connection and try again");
       toast.error("Could not save");
       return;
     }
@@ -464,9 +484,14 @@ export function TransactionEditDialog({
       // §6.2 — record the category as used so recently used ones float to the top
       if (category) touchCategory(category.id);
       onSaved?.(updatedRow);
+      // §3.2 — close only now that the server has confirmed the write.
+      onOpenChange(false);
     } else {
       emitLedgerMutation({ kind: "update", id: originalRow.id, row: originalRow });
+      setSubmitAttempted(true);
+      setError(res.error ?? "Could not save");
       toast.error(res.error ?? "Could not save");
+      // Sheet stays open — the user's edits are still on screen.
     }
   }
 
