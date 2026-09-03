@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, CheckCheck, ChevronDown, Tag, X } from "lucide-react";
+import { Check, CheckCheck, ChevronDown, X } from "lucide-react";
 import { getReviewPage, type ReviewItem } from "@/actions/review";
 import { acknowledgeTransactionsReview, acknowledgeTransactionReview, assignCategory, deleteTransaction, deleteTransactions } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";

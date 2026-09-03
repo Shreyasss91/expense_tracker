@@ -127,6 +127,9 @@ export function BudgetManager({ categories, months, initialBudgets, excludeBills
         return next;
       });
     }
+    // `leaves` is read only to seed brand-new ids; depending on the array
+    // itself would re-run the body every render (§3.8).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catIds]);
 
   function switchScope(next: string) {
