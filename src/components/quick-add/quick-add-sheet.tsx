@@ -25,9 +25,10 @@ import { ReceiptAttachments } from "@/components/transactions/receipt-attachment
 import { uploadReceipt } from "@/lib/receipt-client";
 
 // §6.2 — repeat entries (recharges, EMIs, rent) start with the last committed
-// tag + note already filled in; the amount, date and time never repeat.
-// Amendment 20 — categories are no longer part of Quick Add at all; they are
-// assigned afterwards in the Ledger (edit dialog / bulk assign).
+// tag already filled in; the amount, date, time and NOTE never repeat (owner
+// decision, 5 Sept 2026: the note field must open empty). Amendment 20 —
+// categories are no longer part of Quick Add at all; they are assigned
+// afterwards in the Ledger (edit dialog / bulk assign).
 const LAST_ENTRY_KEY = "quick-add:last-entry";
 // UX pass — recent distinct notes offered as one-tap chips while the Note
 // field is empty. Per-device localStorage, same pattern as last-entry memory.
@@ -60,25 +61,24 @@ function rememberNote(note: string, current: string[]): string[] {
   return capped;
 }
 
-function loadLastEntry(): { tag: TransactionTag; note: string } {
-  const fallback = { tag: "lifestyle" as const, note: "" };
+function loadLastEntry(): { tag: TransactionTag } {
+  const fallback = { tag: "lifestyle" as const };
   if (typeof window === "undefined") return fallback;
   try {
     const raw = window.localStorage.getItem(LAST_ENTRY_KEY);
     if (!raw) return fallback;
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return fallback;
-    const { tag, note } = parsed as { tag?: unknown; note?: unknown };
+    const { tag } = parsed as { tag?: unknown; note?: unknown };
     return {
       tag: typeof tag === "string" && TRANSACTION_TAGS.some((t) => t === tag) ? (tag as TransactionTag) : "lifestyle",
-      note: typeof note === "string" ? note : "",
     };
   } catch {
     return fallback;
   }
 }
 
-function saveLastEntry(entry: { tag: TransactionTag; note: string }) {
+function saveLastEntry(entry: { tag: TransactionTag }) {
   try {
     window.localStorage.setItem(LAST_ENTRY_KEY, JSON.stringify(entry));
   } catch {
@@ -120,8 +120,9 @@ export function QuickAddSheet({
   // Amendment 11 §2 — always starts collapsed with today's date/default time on
   // every open; still toggleable within the current session/tab.
   const [showDatePicker, setShowDatePicker] = useState(false);
-  // §6.2 — the last committed tag + note, restored on open and updated on save
-  const lastEntryRef = useRef<{ tag: TransactionTag; note: string }>({ tag: "lifestyle", note: "" });
+  // §6.2 — the last committed tag, restored on open and updated on save (the
+  // note is deliberately NOT restored — it must open empty every time)
+  const lastEntryRef = useRef<{ tag: TransactionTag }>({ tag: "lifestyle" });
   // UX pass — recent distinct notes for one-tap refill
   const [recentNotes, setRecentNotes] = useState<string[]>([]);
   // Multi-entry mode: after a successful save the sheet STAYS OPEN with the
@@ -138,12 +139,11 @@ export function QuickAddSheet({
   const [pendingReceipts, setPendingReceipts] = useState<File[]>([]);
   const router = useRouter();
 
-  // Hydrate the remembered tag/note after mount (never during SSR, so the
+  // Hydrate the remembered tag after mount (never during SSR, so the
   // server-rendered defaults stay consistent with the client's first paint).
   useEffect(() => {
     lastEntryRef.current = loadLastEntry();
     setTag(lastEntryRef.current.tag);
-    setNote(lastEntryRef.current.note);
     setRecentNotes(loadRecentNotes());
   }, []);
 
@@ -167,7 +167,7 @@ export function QuickAddSheet({
     setAmount("");
     setTag(lastEntryRef.current.tag);
     setTemplateCategoryId(undefined);
-    setNote(lastEntryRef.current.note);
+    setNote("");
     setError(null);
     setDate(formatInTimeZone(new Date(), APP_TIMEZONE, "yyyy-MM-dd"));
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
@@ -260,7 +260,7 @@ export function QuickAddSheet({
         createdAt: Date.now(),
       });
       // same memory/multi-entry flow as an online save — capture stays friction-free
-      lastEntryRef.current = { tag, note };
+      lastEntryRef.current = { tag };
       saveLastEntry(lastEntryRef.current);
       setRecentNotes((prev) => rememberNote(note, prev));
       const savedPaise = paise;
@@ -320,8 +320,8 @@ export function QuickAddSheet({
       }
       // §6.7 — warn when this expense pushed the month or its category over budget
       if (res.alert) toast.warning(budgetAlertMessage(res.alert));
-      // §6.2 — remember the committed tag/note so repeat entries start filled in
-      lastEntryRef.current = { tag, note };
+      // §6.2 — remember the committed tag so repeat entries start filled in
+      lastEntryRef.current = { tag };
       saveLastEntry(lastEntryRef.current);
       setRecentNotes((prev) => rememberNote(note, prev));
       // Multi-entry — reset the form but KEEP the sheet open; a confirmation

@@ -7,6 +7,27 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Quick Add — the note field opens empty — 5 September 2026
+
+Owner request: *"every time i open add transaction, note field is prefilled with last time entered notes.. i don't want it.. i want note field to be empty when i open a new add transaction."*
+
+The §6.2 "repeat entries" memory (`quick-add:last-entry`, shipped in the 25-Aug UX pass) restored
+the last committed **tag + note** on every open and after every multi-entry reset — so the Note
+field came up pre-filled with the previous transaction's text. Per the owner decision the note no
+longer repeats.
+
+- **The last-entry memory is now tag-only.** `loadLastEntry`/`saveLastEntry` in
+  `src/components/quick-add/quick-add-sheet.tsx` carry just the tag; `reset()` sets the Note field
+  to `""`, so every open (and every Add-another) starts with an empty Note field. Old
+  `quick-add:last-entry` payloads in users' localStorage still parse — the stray `note` key is
+  simply ignored on read and dropped on the next save.
+- **What deliberately stays:** the one-tap "recent notes" chips (`quick-add:recent-notes`, UX pass
+  A3) still render **while the field is empty**, so repeat notes (recharges, EMIs) remain a single
+  tap away — opt-in instead of pre-filled. Tag memory, amount/date/time reset, multi-entry mode
+  and template prefills are all unchanged.
+
+---
+
 ## SPEC sync — the September 2026 audit-remediation wave recorded — 3 September 2026
 
 Owner request: "update spec doc to have all the features that have been implemented."
