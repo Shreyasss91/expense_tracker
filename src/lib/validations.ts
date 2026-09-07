@@ -170,3 +170,18 @@ export const setTotalBudgetSchema = z.object({
 export const setExcludeBillsSchema = z.object({
   enabled: z.boolean(),
 });
+
+/** WhatsApp digest settings — phone is normalized to E.164 digits server-side. */
+export const whatsAppDigestConfigSchema = z.object({
+  phone: z.string().trim().min(1).max(20),
+  enabled: z.boolean(),
+});
+
+/** Manual digest send — channel + period; `month` only for a month-wise send. */
+export const sendDigestSchema = z.object({
+  channel: z.enum(["telegram", "whatsapp"]),
+  // "ready" = the digest due today (weekly on 7/14/21/28, monthly on month-end);
+  // the server resolves the period so clients never duplicate the calendar math.
+  period: z.enum(["month", "mtd", "ready"]),
+  month: monthKeySchema.optional(),
+});
