@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { format, parse } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { digestPeriodForDate } from "@/lib/digest";
 import { sendTelegramDigestIdempotent } from "@/lib/telegram-digest";
 import { getWhatsAppDigestConfig, pingDigestReady } from "@/lib/whatsapp-digest";
@@ -45,7 +45,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, error: "Invalid date format (expected YYYY-MM-DD)" }, { status: 400 });
     }
     const parsed = parse(dateParam, "yyyy-MM-dd", new Date());
-    if (format(parsed, "yyyy-MM-dd") !== dateParam) {
+    // parse() yields an Invalid Date for impossible dates (e.g. 2026-13-99),
+    // and format() throws on those — so check isValid before touching it.
+    if (!isValid(parsed) || format(parsed, "yyyy-MM-dd") !== dateParam) {
       return NextResponse.json({ ok: false, error: "Invalid calendar date" }, { status: 400 });
     }
     date = dateParam;
