@@ -7,6 +7,67 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Weekly + monthly digest on Telegram and WhatsApp — 7 September 2026
+
+Owner request: send a **weekly digest** to a WhatsApp number configured in Settings, plus a manual
+"send now" (month-wise, and this month 1st → today). Owner decisions during the design discussion:
+
+- **WhatsApp channel = Click-to-Chat (wa.me), not the Cloud API.** No Meta account, no message-
+  template approval, no per-message cost. "Sending" opens WhatsApp with the digest pre-filled and
+  the household taps Send — the owner explicitly accepted the manual Send tap.
+- **Schedule = the 7th, 14th, 21st, 28th (weekly) and the last day of the month (monthly), at
+  10:00 PM IST.** When a date is both (e.g. 28 February) the monthly digest wins — it already
+  spans that week. Weekly periods are month-anchored ranges: 1–7, 8–14, 15–22, 22–28.
+- **Telegram and WhatsApp run in parallel** ("mirror implementation of features for both"); the
+  old 1st-of-month Telegram monthly cron is superseded by the unified schedule. The Telegram CSV
+  backup cron is untouched.
+- **Manual send buttons live in Settings (full) and on the dashboard (compact).**
+
+### Engine (new shared layer)
+
+- **`src/lib/digest-format.ts`** (pure, DB-free, unit-tested): period math (`digestPeriodForDate`,
+  `monthPeriod`, `monthToDatePeriod` — the cron and the UI derive from one function so they can
+  never disagree), both message formatters (Telegram HTML, WhatsApp `*markdown*`), phone
+  normalization (`+91 98765 43210` / `09876543210` / 10-digit → E.164 digits) and the wa.me link
+  builder.
+- **`src/lib/digest.ts`** (server-only): `getDigestData(start, end)` — the old monthly digest's SQL
+  aggregates generalized to any date range (totals + per-tag split, top 5 categories, per-member
+  spend), plus re-exports of the pure layer. `previousMonthInIST` moved to `src/lib/dates.ts`
+  (backup delivery import updated).
+- **`src/lib/telegram-digest.ts`** now has an idempotent cron path (`sendTelegramDigestIdempotent`,
+  per-period marker `telegram_digest_sent:<start>..<end>`) and a plain manual path — the old
+  month-only `sendMonthlyTelegramDigest` is gone.
+- **`src/lib/whatsapp-digest.ts`**: Settings storage (`whatsapp_digest_phone` E.164 digits +
+  `whatsapp_digest_enabled` in `app_settings`), `buildWhatsAppDigestLink`, and the push ping
+  (`pingDigestReady` — "digest ready — tap to send on WhatsApp", idempotent per period, same
+  gate pattern as §2.11). No new env vars for WhatsApp.
+
+### Surfaces
+
+- **Cron:** `/api/cron/digest` runs daily at 16:30 UTC (22:00 IST) via `vercel.json` and checks
+  the IST day-of-month in code (no last-day-of-month cron syntax needed). On a digest day it
+  auto-sends Telegram (idempotent) and, when WhatsApp is enabled + configured, pings opted-in
+  devices via Web Push. `?date=YYYY-MM-DD` backfills, `?dryRun=1` reports without sending.
+  The old `/api/cron/telegram-digest` route is deleted.
+- **Settings → "WhatsApp & Telegram digest" card** (`src/components/digest/digest-card.tsx`, full
+  variant): number input + save, automatic-digest toggle, due-today banner, and manual sends —
+  month picker (36-month window) + "This month (1st → today)", each with Telegram and WhatsApp
+  buttons. Telegram sends post immediately; WhatsApp opens the wa.me draft in a new tab.
+- **Dashboard digest card** (compact variant): due-today "Send on WhatsApp" one-tap banner (the
+  wa.me link is built server-side), quick this-month sends, and a Configure link.
+- **Actions:** `saveWhatsAppDigest` + `sendDigestManual` (`src/actions/digest.ts`), zod-validated,
+  auth-guarded; manual sends bypass idempotency by design (user-initiated re-sends are allowed).
+
+### Verification
+
+- `npm run test:digest` — 34 checks: every period branch, the February 28th collision, 31-day
+  months, period-key uniqueness, both formatters (incl. HTML escaping), phone normalization,
+  wa.me encoding.
+- `tsc --noEmit`, `eslint` (no new warnings) and a full `next build` are green; `/api/cron/digest`
+  is registered in the build output.
+
+---
+
 ## Quick Add — the note field opens empty — 5 September 2026
 
 Owner request: *"every time i open add transaction, note field is prefilled with last time entered notes.. i don't want it.. i want note field to be empty when i open a new add transaction."*
