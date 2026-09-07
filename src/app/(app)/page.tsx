@@ -14,6 +14,8 @@ import { budgetsForMonth, resolveEffectiveBudget, resolveGroupBudget } from "@/l
 import { getRecurringSuggestions, type RecurringSuggestion } from "@/lib/recurring-detection";
 import { computeInsights } from "@/lib/insights";
 import { cn } from "@/lib/utils";
+import { DigestDashboardCard } from "@/components/digest/digest-card";
+import { getWhatsAppDigestConfig, getDigestDayContext } from "@/lib/whatsapp-digest";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { BudgetBar } from "@/components/dashboard/budget-bar";
@@ -375,6 +377,16 @@ export default async function DashboardPage({
       ? { dayOfMonth: Number(todayKey.slice(8, 10)), daysInMonth }
       : null;
 
+  // Digest context — on digest days (7/14/21/28 + month-end) the card shows a
+  // one-tap WhatsApp send; the wa.me link is built server-side. Computed
+  // outside the unstable_cache (it depends on today + app_settings, and the
+  // cron revalidates the page after a send).
+  const [whatsappConfig, digestToday] = await Promise.all([
+    getWhatsAppDigestConfig(),
+    getDigestDayContext(todayKey),
+  ]);
+  const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -474,6 +486,13 @@ export default async function DashboardPage({
           />
         </CardContent>
       </Card>
+
+      {/* §19 — weekly/monthly digest: one-tap WhatsApp send + quick manual sends */}
+      <DigestDashboardCard
+        telegramConfigured={telegramConfigured}
+        whatsappPhone={whatsappConfig.phone}
+        digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
+      />
 
       {/* §2.4 — mined recurring-bill suggestions as one-tap template prompts */}
       <RecurringSuggestions suggestions={recurring} />

@@ -12,18 +12,24 @@ import { BudgetManager } from "@/components/settings/budget-manager";
 import { TemplatesManager } from "@/components/settings/templates-manager";
 import { OfflineEntriesManager } from "@/components/settings/offline-entries-manager";
 import { PushSetup } from "@/components/pwa/push-setup";
+import { DigestSettingsCard } from "@/components/digest/digest-card";
+import { getWhatsAppDigestConfig, getDigestDayContext } from "@/lib/whatsapp-digest";
+import { todayInIST } from "@/lib/dates";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills] = await Promise.all([
+  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills, whatsappConfig, digestToday] = await Promise.all([
     getMembers(),
     getCategories(),
     getTemplates(),
     db.select().from(budgets),
     getExcludeBillsEnabled(db),
+    getWhatsAppDigestConfig(),
+    getDigestDayContext(todayInIST()),
   ]);
+  const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
 
   // Scope options for the budget manager — same 36-month window as the ledger strip, newest first.
   const stripBase = parse(`${monthKeyInIST()}-01`, "yyyy-MM-dd", new Date());
@@ -130,6 +136,27 @@ export default async function SettingsPage() {
         </CardHeader>
         <CardContent>
           <OfflineEntriesManager members={memberOptions} />
+        </CardContent>
+      </Card>
+
+      <Card id="whatsapp-digest">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">WhatsApp &amp; Telegram digest</CardTitle>
+          <CardDescription className="text-xs">
+            A weekly digest (7th, 14th, 21st, 28th) and a monthly one (last day of the month) arrive at
+            10 PM. Telegram delivers automatically when its env vars are set; WhatsApp uses Click-to-Chat
+            — the app opens WhatsApp with the digest pre-filled and you tap Send. Manual sends for any
+            month, or this month so far, are below.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DigestSettingsCard
+            telegramConfigured={telegramConfigured}
+            whatsappPhone={whatsappConfig.phone}
+            whatsappEnabled={whatsappConfig.enabled}
+            digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
+            months={months}
+          />
         </CardContent>
       </Card>
 
