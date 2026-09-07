@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { getAppSetting, setAppSetting } from "@/db/app-settings-mutations";
 import { pushSubscriptions } from "@/db/schema";
 import { formatINR } from "@/lib/money";
-import { buildWhatsAppDigestText, buildWhatsAppLink, digestPeriodForDate, getDigestData, type DigestPeriod } from "@/lib/digest";
+import { buildWhatsAppDigestText, buildWhatsAppLink, digestPeriodForDate, DIGEST_SENT_KEY_PREFIX, getDigestData, type DigestPeriod } from "@/lib/digest";
 import { inArray } from "drizzle-orm";
 import { isPushConfigured, sendWebPush, type SendStatus } from "@/lib/web-push";
 
@@ -26,7 +26,7 @@ import { isPushConfigured, sendWebPush, type SendStatus } from "@/lib/web-push";
 
 export const WHATSAPP_PHONE_KEY = "whatsapp_digest_phone";
 export const WHATSAPP_ENABLED_KEY = "whatsapp_digest_enabled";
-const PING_KEY_PREFIX = "whatsapp_digest_pinged:";
+const SENT_KEY_PREFIX = `${DIGEST_SENT_KEY_PREFIX}whatsapp:`;
 
 export interface WhatsAppConfig {
   /** Normalized E.164 digits (e.g. "919876543210"), or null when unset. */
@@ -54,6 +54,16 @@ export async function setWhatsAppDigestConfig(phone: string, enabled: boolean): 
 export async function buildWhatsAppDigestLink(period: DigestPeriod, phoneDigits: string): Promise<string> {
   const text = buildWhatsAppDigestText({ ...(await getDigestData(period.start, period.end)), label: period.label });
   return buildWhatsAppLink(phoneDigits, text);
+}
+
+/**
+ * Record a WhatsApp "send" (a wa.me link was prepared for the household to
+ * tap Send) — the same marker the cron's ping writes, so the cards show one
+ * last-sent history per channel. Called by the manual send action, never by
+ * plain link rendering (dashboard banner), which would record page views.
+ */
+export async function recordWhatsAppDigestSent(period: DigestPeriod): Promise<void> {
+  await setAppSetting(db, `${SENT_KEY_PREFIX}${period.key}`, new Date().toISOString());
 }
 
 export interface DigestDayContext {
@@ -103,7 +113,7 @@ export async function pingDigestReady(period: DigestPeriod): Promise<PingResult>
     return { ...base, ok: true, status: 200, sent: 0, failed: 0, stale: 0 };
   }
 
-  const pingKey = `${PING_KEY_PREFIX}${period.key}`;
+  const pingKey = `${SENT_KEY_PREFIX}${period.key}`;
   if (await getAppSetting(db, pingKey)) {
     return { ...base, ok: true, status: 200, alreadyPinged: true };
   }
@@ -135,6 +145,7 @@ export async function pingDigestReady(period: DigestPeriod): Promise<PingResult>
     await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, staleEndpoints));
   }
 
+  // Same marker as recordWhatsAppDigestSent — doubles as the ping gate.
   await setAppSetting(db, pingKey, new Date().toISOString());
 
   const ok = sent > 0 || failed === 0;

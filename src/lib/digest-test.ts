@@ -16,6 +16,7 @@ import {
   monthPeriod,
   monthToDatePeriod,
   normalizeWhatsAppPhone,
+  periodKeyLabel,
   type DigestData,
 } from "./digest-format";
 
@@ -113,6 +114,13 @@ function main() {
   // --- wa.me link: number + URL-encoded digest text.
   const link = buildWhatsAppLink("919876543210", "Total: ₹1,250 · 3 entries");
   check(link === "https://wa.me/919876543210?text=Total%3A%20%E2%82%B91%2C250%20%C2%B7%203%20entries", "wa.me: number + encoded text");
+
+  // --- Stored period keys reconstruct their display labels (last-sent cards).
+  check(periodKeyLabel("2026-09-01..2026-09-30") === "September 2026", "periodKeyLabel: full month → month name");
+  check(periodKeyLabel("2026-02-01..2026-02-28") === "February 2026", "periodKeyLabel: short month → month name");
+  check(periodKeyLabel("2026-09-01..2026-09-07") === "1–7 Sep", "periodKeyLabel: weekly → short range");
+  check(periodKeyLabel("2026-09-01..2026-09-18") === "1–18 Sep", "periodKeyLabel: month-to-date → short range");
+  check(periodKeyLabel("garbage") === "garbage", "periodKeyLabel: unparseable key falls back to the raw key");
 
   if (failures > 0) {
     console.error(`✗ Digest layer FAILED (${failures} check(s) failed)`);

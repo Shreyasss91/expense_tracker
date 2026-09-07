@@ -38,11 +38,21 @@ interface DigestDayInfo {
   waUrl: string | null;
 }
 
+interface LastSend {
+  channel: "telegram" | "whatsapp";
+  /** Period label, e.g. "1–7 Sep" or "September 2026". */
+  label: string;
+  /** Pre-formatted IST time, e.g. "7 Sep, 9:41 PM". */
+  sentAtLabel: string;
+}
+
 interface BaseProps {
   telegramConfigured: boolean;
   /** Normalized digits (e.g. "919876543210") or null when unset. */
   whatsappPhone: string | null;
   digestToday: DigestDayInfo | null;
+  /** Latest send per channel (newest first) — shown as "last sent". */
+  lastSends: LastSend[];
 }
 
 interface SettingsProps extends BaseProps {
@@ -81,7 +91,7 @@ function SendButton({
   );
 }
 
-export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsappEnabled, digestToday, months }: SettingsProps) {
+export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsappEnabled, digestToday, months, lastSends }: SettingsProps) {
   const router = useRouter();
   const [phoneInput, setPhoneInput] = useState(whatsappPhone ? formatWhatsAppPhone(whatsappPhone) : "");
   const [enabled, setEnabled] = useState(whatsappEnabled);
@@ -237,11 +247,22 @@ export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsapp
           <SendButton busyKey={busy} channel="whatsapp" label="mtd" onSend={() => void send("whatsapp", "mtd")} />
         </div>
       </div>
+
+      {lastSends.length > 0 && (
+        <div className="space-y-1 border-t pt-3">
+          <p className="text-xs font-medium text-muted-foreground">Last sent</p>
+          {lastSends.map((s) => (
+            <p key={s.channel} className="text-xs text-muted-foreground">
+              {s.channel === "telegram" ? "Telegram" : "WhatsApp"} · {s.label} · {s.sentAtLabel}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-export function DigestDashboardCard({ telegramConfigured, whatsappPhone, digestToday }: BaseProps) {
+export function DigestDashboardCard({ telegramConfigured, whatsappPhone, digestToday, lastSends }: BaseProps) {
   const [busy, setBusy] = useState<BusyKey>(null);
 
   async function send(channel: "telegram" | "whatsapp", period: "month" | "mtd" | "ready") {
@@ -301,6 +322,13 @@ export function DigestDashboardCard({ telegramConfigured, whatsappPhone, digestT
         <SendButton busyKey={busy} channel="telegram" label="mtd" onSend={() => void send("telegram", "mtd")} className="h-7 px-2.5 text-xs" />
         {!telegramConfigured && <span className="text-[11px] text-muted-foreground">(Telegram needs env vars)</span>}
       </div>
+
+      {lastSends.length > 0 && (
+        <p className="border-t pt-1.5 text-[11px] text-muted-foreground">
+          Last sent:{" "}
+          {lastSends.map((s) => `${s.channel === "telegram" ? "Telegram" : "WhatsApp"} ${s.label} · ${s.sentAtLabel}`).join(" · ")}
+        </p>
+      )}
     </CardBody>
   );
 }

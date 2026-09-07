@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { todayInIST } from "@/lib/dates";
 import { digestPeriodForDate, monthPeriod, monthToDatePeriod, normalizeWhatsAppPhone } from "@/lib/digest";
-import { setWhatsAppDigestConfig, getWhatsAppDigestConfig, buildWhatsAppDigestLink } from "@/lib/whatsapp-digest";
+import { setWhatsAppDigestConfig, getWhatsAppDigestConfig, buildWhatsAppDigestLink, recordWhatsAppDigestSent } from "@/lib/whatsapp-digest";
 import { sendTelegramDigest } from "@/lib/telegram-digest";
 import { sendDigestSchema, whatsAppDigestConfigSchema } from "@/lib/validations";
 import { z } from "zod";
@@ -67,5 +67,7 @@ export async function sendDigestManual(raw: z.infer<typeof sendDigestSchema>) {
     return { ok: false as const, status: 503, error: "Set a WhatsApp number in Settings first" };
   }
   const url = await buildWhatsAppDigestLink(period, config.phone);
+  // A manual send opens the wa.me draft — record it as the last WhatsApp send.
+  await recordWhatsAppDigestSent(period);
   return { ok: true as const, url, period };
 }

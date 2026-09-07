@@ -14,13 +14,14 @@ import { OfflineEntriesManager } from "@/components/settings/offline-entries-man
 import { PushSetup } from "@/components/pwa/push-setup";
 import { DigestSettingsCard } from "@/components/digest/digest-card";
 import { getWhatsAppDigestConfig, getDigestDayContext } from "@/lib/whatsapp-digest";
+import { formatSentAtLabel, getRecentDigestSends } from "@/lib/digest";
 import { todayInIST } from "@/lib/dates";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills, whatsappConfig, digestToday] = await Promise.all([
+  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills, whatsappConfig, digestToday, recentSends] = await Promise.all([
     getMembers(),
     getCategories(),
     getTemplates(),
@@ -28,6 +29,7 @@ export default async function SettingsPage() {
     getExcludeBillsEnabled(db),
     getWhatsAppDigestConfig(),
     getDigestDayContext(todayInIST()),
+    getRecentDigestSends(),
   ]);
   const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
 
@@ -155,6 +157,7 @@ export default async function SettingsPage() {
             whatsappPhone={whatsappConfig.phone}
             whatsappEnabled={whatsappConfig.enabled}
             digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
+            lastSends={recentSends.map((s) => ({ channel: s.channel, label: s.label, sentAtLabel: formatSentAtLabel(s.sentAt) }))}
             months={months}
           />
         </CardContent>

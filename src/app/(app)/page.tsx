@@ -16,6 +16,7 @@ import { computeInsights } from "@/lib/insights";
 import { cn } from "@/lib/utils";
 import { DigestDashboardCard } from "@/components/digest/digest-card";
 import { getWhatsAppDigestConfig, getDigestDayContext } from "@/lib/whatsapp-digest";
+import { formatSentAtLabel, getRecentDigestSends } from "@/lib/digest";
 import { MonthPicker } from "@/components/dashboard/month-picker";
 import { BudgetCard } from "@/components/dashboard/budget-card";
 import { BudgetBar } from "@/components/dashboard/budget-bar";
@@ -381,9 +382,10 @@ export default async function DashboardPage({
   // one-tap WhatsApp send; the wa.me link is built server-side. Computed
   // outside the unstable_cache (it depends on today + app_settings, and the
   // cron revalidates the page after a send).
-  const [whatsappConfig, digestToday] = await Promise.all([
+  const [whatsappConfig, digestToday, recentSends] = await Promise.all([
     getWhatsAppDigestConfig(),
     getDigestDayContext(todayKey),
+    getRecentDigestSends(),
   ]);
   const telegramConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID);
 
@@ -492,6 +494,7 @@ export default async function DashboardPage({
         telegramConfigured={telegramConfigured}
         whatsappPhone={whatsappConfig.phone}
         digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
+        lastSends={recentSends.map((s) => ({ channel: s.channel, label: s.label, sentAtLabel: formatSentAtLabel(s.sentAt) }))}
       />
 
       {/* §2.4 — mined recurring-bill suggestions as one-tap template prompts */}

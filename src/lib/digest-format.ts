@@ -41,12 +41,31 @@ export interface DigestData {
   members: { name: string; paise: number }[];
 }
 
-/** "1–7 Sep" style label for a date range. */
+/** Compact "1–7 Sep" style label for a date range (month shown once when it spans within a month). */
 function shortRangeLabel(start: string, end: string): string {
-  return `${format(parse(`${start}T00:00:00`, "yyyy-MM-dd'T'HH:mm:ss", new Date()), "d MMM")}–${format(parse(`${end}T00:00:00`, "yyyy-MM-dd'T'HH:mm:ss", new Date()), "d MMM")}`;
+  const s = parse(`${start}T00:00:00`, "yyyy-MM-dd'T'HH:mm:ss", new Date());
+  const e = parse(`${end}T00:00:00`, "yyyy-MM-dd'T'HH:mm:ss", new Date());
+  if (format(s, "yyyy-MM") === format(e, "yyyy-MM")) return `${format(s, "d")}–${format(e, "d MMM")}`;
+  if (format(s, "yyyy") === format(e, "yyyy")) return `${format(s, "d MMM")}–${format(e, "d MMM")}`;
+  return `${format(s, "d MMM yyyy")}–${format(e, "d MMM yyyy")}`;
 }
 
 /** Full month label, e.g. "September 2026". */
+
+/**
+ * Reconstruct a display label from a stored `${start}..${end}` period key.
+ * Full-month spans render as "September 2026", everything else as a short
+ * range ("1–7 Sep"). Falls back to the raw key when it doesn't parse.
+ */
+export function periodKeyLabel(key: string): string {
+  const [start, end] = key.split("..");
+  if (!start || !end || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !/^\d{4}-\d{2}-\d{2}$/.test(end)) return key;
+  const monthKey = start.slice(0, 7);
+  const [y, m] = monthKey.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const isFullMonth = start === `${monthKey}-01` && end === `${monthKey}-${String(lastDay).padStart(2, "0")}`;
+  return isFullMonth ? monthLabel(monthKey) : shortRangeLabel(start, end);
+}
 function monthLabel(monthKey: string): string {
   return format(parse(`${monthKey}-01T00:00:00`, "yyyy-MM-dd'T'HH:mm:ss", new Date()), "MMMM yyyy");
 }

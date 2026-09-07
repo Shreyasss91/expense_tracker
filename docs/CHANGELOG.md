@@ -7,6 +7,23 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Digest last-sent history — 7 September 2026 (owner follow-up)
+
+The digest cards now show **when each channel last sent a digest and for which
+period**. The per-(channel, period) idempotency marker was unified into a single
+`digest_sent:<channel>:<start>..<end>` record (ISO timestamp) written on EVERY
+successful send — cron AND manual — so the automatic gate and the displayed
+history can never disagree. Telegram writes it in `sendTelegramDigest`;
+WhatsApp writes it in the manual action (`recordWhatsAppDigestSent`) and in the
+cron's ping (its former ping gate). `getRecentDigestSends()` returns the latest
+send per channel; `periodKeyLabel()` reconstructs the display label
+("1–7 Sep", "September 2026") from the stored key — compact range labels
+(day–day + month) landed in the digest headers too. Settings shows a "Last
+sent" block per channel; the dashboard card shows a compact one-line summary.
+`test:digest` grew to 39 checks (label reconstruction + compact ranges).
+
+---
+
 ## Weekly + monthly digest on Telegram and WhatsApp — 7 September 2026
 
 Owner request: send a **weekly digest** to a WhatsApp number configured in Settings, plus a manual

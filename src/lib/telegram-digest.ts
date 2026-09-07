@@ -2,7 +2,7 @@ import "server-only";
 
 import { db } from "@/db";
 import { getAppSetting, setAppSetting } from "@/db/app-settings-mutations";
-import { buildTelegramDigestMessage, getDigestData, type DigestPeriod } from "@/lib/digest";
+import { buildTelegramDigestMessage, DIGEST_SENT_KEY_PREFIX, getDigestData, type DigestPeriod } from "@/lib/digest";
 
 /**
  * §17 (Amendments 17/19) — Telegram delivery for the shared digest engine.
@@ -11,11 +11,15 @@ import { buildTelegramDigestMessage, getDigestData, type DigestPeriod } from "@/
  * pattern as the old monthly digest and the backup job) and one plain path for
  * manual "send now" clicks (user-initiated = always allowed to re-send).
  *
+ * The marker key doubles as the last-sent history record for the digest
+ * cards: `digest_sent:telegram:<period.key>` → ISO timestamp, written on
+ * EVERY successful send (cron and manual alike).
+ *
  * Env-gated like the backup delivery: TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID,
  * or the whole feature degrades to a clear "not configured" 503.
  */
 
-const SENT_KEY_PREFIX = "telegram_digest_sent:";
+const SENT_KEY_PREFIX = `${DIGEST_SENT_KEY_PREFIX}telegram:`;
 
 export type TelegramSendResult =
   | { ok: true; sent: boolean; reason?: "already_sent"; period: DigestPeriod }
@@ -40,6 +44,9 @@ export async function sendTelegramDigest(period: DigestPeriod): Promise<Telegram
   if (!response.ok || body?.ok !== true) {
     return { ok: false as const, status: 502, error: `Telegram returned HTTP ${response.status}` };
   }
+
+  // Record the send — this marker is also the idempotency gate for the cron.
+  await setAppSetting(db, `${SENT_KEY_PREFIX}${period.key}`, new Date().toISOString());
   return { ok: true as const, sent: true, period };
 }
 
@@ -49,9 +56,6 @@ export async function sendTelegramDigestIdempotent(period: DigestPeriod): Promis
   if (await getAppSetting(db, sentKey)) {
     return { ok: true as const, sent: false, reason: "already_sent" as const, period };
   }
-  const result = await sendTelegramDigest(period);
-  if (result.ok) {
-    await setAppSetting(db, sentKey, new Date().toISOString());
-  }
-  return result;
+  // sendTelegramDigest writes the marker itself on success.
+  return sendTelegramDigest(period);
 }
