@@ -26,6 +26,7 @@
     "test:xlsx": "tsx src/lib/xlsx-test.ts",
     "test:export-format": "tsx src/lib/export-format-test.ts",
     "test:web-push": "tsx src/lib/web-push-test.ts",
+    "test:digest": "tsx src/lib/digest-test.ts",
     "generate:vapid": "node scripts/generate-vapid.mjs",
     "test:validation": "tsx src/lib/validation-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",

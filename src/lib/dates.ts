@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { addMonths, format, parse } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import { APP_TIMEZONE } from "./constants";
 
@@ -26,6 +26,14 @@ export function monthEndInIST(date: Date = new Date()): string {
 /** "yyyy-MM" for the month containing `date`. */
 export function monthKeyInIST(date: Date = new Date()): string {
   return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM");
+}
+
+/** "yyyy-MM" for the month BEFORE the one containing `date` — the monthly
+ * backup's target month (delivered on the 1st). Moved here from the digest
+ * module so backup delivery doesn't depend on the digest engine. */
+export function previousMonthInIST(date: Date = new Date()): string {
+  const current = monthKeyInIST(date);
+  return format(addMonths(parse(`${current}-01`, "yyyy-MM-dd", new Date()), -1), "yyyy-MM");
 }
 
 /**

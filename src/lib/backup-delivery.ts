@@ -35,7 +35,7 @@ import {
 } from "@/lib/export-format";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { monthKeySchema } from "@/lib/validations";
-import { previousMonthInIST } from "@/lib/telegram-digest";
+import { previousMonthInIST } from "@/lib/dates";
 
 const SENT_KEY_PREFIX = "backup_sent:";
 
