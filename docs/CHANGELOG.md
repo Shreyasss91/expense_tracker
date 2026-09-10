@@ -7,6 +7,34 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Collapsible settings sections + Expand all / Collapse all — 10 September 2026 (owner follow-up)
+
+Owner request: *"the whole page is too long"* — the Settings page now renders every
+card behind a **collapsible header** (title + description + chevron), so the page is
+nothing but compact headers until a section is opened. Follow-ups added page-level
+Expand all / Collapse all controls and a smooth height animation.
+
+- **`src/components/ui/collapsible.tsx`** (new): shadcn-style wrapper around the
+  `radix-ui` Collapsible primitive; its content animates height via the
+  `tw-animate-css` `collapsible-down`/`collapsible-up` keyframes (driven by the
+  height Radix measures on the content element) instead of popping.
+- **`src/components/settings/settings-section.tsx`** (new): a collapsible card whose
+  whole header is the toggle (keyboard-accessible button). Each section remembers
+  its open/closed state per device in `localStorage` (`settings:section:<id>`), and
+  a URL hash like `#whatsapp-digest` / `#offline-entries` opens that section on load
+  so deep links still land on the content.
+- **Every settings card is now a section** — Members, Templates, Categories,
+  Budgets, History, WhatsApp & Telegram digest (first pass), then Offline entries,
+  Notifications and Password (follow-up). All default to collapsed; the two
+  deep-link ids are preserved on their cards.
+- **`src/components/settings/settings-section-controls.tsx`** (new): **Expand all**
+  and **Collapse all** outline buttons beside the Settings heading. Each section
+  listens for the broadcast window events and persists the result like a manual
+  toggle.
+- Verified: `tsc --noEmit`, eslint (no new warnings) and a full `next build` green.
+
+---
+
 ## Digest last-sent history — 7 September 2026 (owner follow-up)
 
 The digest cards now show **when each channel last sent a digest and for which
