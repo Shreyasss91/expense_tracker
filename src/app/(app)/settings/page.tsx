@@ -4,7 +4,6 @@ import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
 import { budgets } from "@/db/schema";
 import { getCategories, getMembers, getTemplates } from "@/lib/meta";
 import { monthKeyInIST } from "@/lib/dates";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { ActivityHistory } from "@/components/settings/activity-history";
@@ -99,18 +98,13 @@ export default async function SettingsPage() {
         <ActivityHistory />
       </SettingsSection>
 
-      <Card id="offline-entries">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Offline entries</CardTitle>
-          <CardDescription className="text-xs">
-            Expenses added while offline wait on this device until they sync. Discard any you decided
-            against; everything else syncs automatically when you&apos;re back online.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OfflineEntriesManager members={memberOptions} />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="offline-entries"
+        title="Offline entries"
+        description="Expenses added while offline wait on this device until they sync. Discard any you decided against; everything else syncs automatically when you&apos;re back online."
+      >
+        <OfflineEntriesManager members={memberOptions} />
+      </SettingsSection>
 
       <SettingsSection
         id="whatsapp-digest"
@@ -127,30 +121,21 @@ export default async function SettingsPage() {
         />
       </SettingsSection>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Notifications</CardTitle>
-          <CardDescription className="text-xs">
-            Get a push when a budget hits 80% of its limit (with the days left) and when entries are waiting
-            to be reviewed. Needs the PWA installed (or at least the service worker registered) and a
-            notification permission — and the server&apos;s VAPID keys set on the deployment platform.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <PushSetup />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="notifications"
+        title="Notifications"
+        description="Get a push when a budget hits 80% of its limit (with the days left) and when entries are waiting to be reviewed. Needs the PWA installed (or at least the service worker registered) and a notification permission — and the server&apos;s VAPID keys set on the deployment platform."
+      >
+        <PushSetup />
+      </SettingsSection>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Password</CardTitle>
-          <CardDescription className="text-xs">
-            The family password comes from the environment variable{" "}
-            <code className="rounded bg-muted px-1">FAMILY_MASTER_PASSWORD</code> and is managed on the
-            deployment platform — it can&apos;t be changed from inside the app.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <SettingsSection id="password" title="Password">
+        <p className="text-xs text-muted-foreground">
+          The family password comes from the environment variable{" "}
+          <code className="rounded bg-muted px-1">FAMILY_MASTER_PASSWORD</code> and is managed on the
+          deployment platform — it can&apos;t be changed from inside the app.
+        </p>
+      </SettingsSection>
     </div>
   );
 }
