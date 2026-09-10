@@ -5,6 +5,7 @@ import { budgets } from "@/db/schema";
 import { getCategories, getMembers, getTemplates } from "@/lib/meta";
 import { monthKeyInIST } from "@/lib/dates";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SettingsSection } from "@/components/settings/settings-section";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { ActivityHistory } from "@/components/settings/activity-history";
 import { MembersManager } from "@/components/settings/members-manager";
@@ -62,71 +63,41 @@ export default async function SettingsPage() {
     <div className="space-y-6">
       <h1 className="text-lg font-semibold">Settings</h1>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Members</CardTitle>
-          <CardDescription className="text-xs">
-            Edit names, emoji, colours and order. Old transactions keep pointing at the right member.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <MembersManager members={memberOptions} />
-        </CardContent>
-      </Card>
+      <SettingsSection id="members" title="Members" description="Edit names, emoji, colours and order. Old transactions keep pointing at the right member.">
+        <MembersManager members={memberOptions} />
+      </SettingsSection>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Templates</CardTitle>
-          <CardDescription className="text-xs">
-            Save recurring expenses for one-tap prefills in Quick Add. Set an auto-add day (1–28) and the
-            daily cron stamps the entry automatically — the member picker decides whose ledger it lands in.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <TemplatesManager templates={templateRows} categories={categoryOptions} members={memberOptions} />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="templates"
+        title="Templates"
+        description="Save recurring expenses for one-tap prefills in Quick Add. Set an auto-add day (1–28) and the daily cron stamps the entry automatically — the member picker decides whose ledger it lands in."
+      >
+        <TemplatesManager templates={templateRows} categories={categoryOptions} members={memberOptions} />
+      </SettingsSection>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Categories</CardTitle>
-          <CardDescription className="text-xs">
-            Categories live in groups — pick a group in the ledger filter or tap one open in the picker.
-            Rename, re-emoji, reorder, move categories between groups, add new ones per group. Only
-            categories (never groups) are picked for transactions; deletion is not available.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CategoriesManager categories={categoryOptions} />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="categories"
+        title="Categories"
+        description="Categories live in groups — pick a group in the ledger filter or tap one open in the picker. Rename, re-emoji, reorder, move categories between groups, add new ones per group. Only categories (never groups) are picked for transactions; deletion is not available."
+      >
+        <CategoriesManager categories={categoryOptions} />
+      </SettingsSection>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">Budgets</CardTitle>
-          <CardDescription className="text-xs">
-            Set a monthly spending limit — a total for the whole month, per category, and/or per group
-            (§2.1). Each month can have its own budget; the &ldquo;Every month&rdquo; default is used for
-            months without their own. Categories created in Quick Add appear here automatically.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} excludeBills={excludeBills} />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="budgets"
+        title="Budgets"
+        description="Set a monthly spending limit — a total for the whole month, per category, and/or per group (§2.1). Each month can have its own budget; the &ldquo;Every month&rdquo; default is used for months without their own. Categories created in Quick Add appear here automatically."
+      >
+        <BudgetManager categories={categoryOptions} months={months} initialBudgets={budgetRows} excludeBills={excludeBills} />
+      </SettingsSection>
 
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">History</CardTitle>
-          <CardDescription className="text-xs">
-            Every delete and merge, with who and when. Deleted expenses can be restored — merges are
-            listed for reference.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ActivityHistory />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="history"
+        title="History"
+        description="Every delete and merge, with who and when. Deleted expenses can be restored — merges are listed for reference."
+      >
+        <ActivityHistory />
+      </SettingsSection>
 
       <Card id="offline-entries">
         <CardHeader className="pb-3">
@@ -141,27 +112,20 @@ export default async function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card id="whatsapp-digest">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm">WhatsApp &amp; Telegram digest</CardTitle>
-          <CardDescription className="text-xs">
-            A weekly digest (7th, 14th, 21st, 28th) and a monthly one (last day of the month) arrive at
-            10 PM. Telegram delivers automatically when its env vars are set; WhatsApp uses Click-to-Chat
-            — the app opens WhatsApp with the digest pre-filled and you tap Send. Manual sends for any
-            month, or this month so far, are below.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DigestSettingsCard
-            telegramConfigured={telegramConfigured}
-            whatsappPhone={whatsappConfig.phone}
-            whatsappEnabled={whatsappConfig.enabled}
-            digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
-            lastSends={recentSends.map((s) => ({ channel: s.channel, label: s.label, sentAtLabel: formatSentAtLabel(s.sentAt) }))}
-            months={months}
-          />
-        </CardContent>
-      </Card>
+      <SettingsSection
+        id="whatsapp-digest"
+        title="WhatsApp &amp; Telegram digest"
+        description="A weekly digest (7th, 14th, 21st, 28th) and a monthly one (last day of the month) arrive at 10 PM. Telegram delivers automatically when its env vars are set; WhatsApp uses Click-to-Chat — the app opens WhatsApp with the digest pre-filled and you tap Send. Manual sends for any month, or this month so far, are below."
+      >
+        <DigestSettingsCard
+          telegramConfigured={telegramConfigured}
+          whatsappPhone={whatsappConfig.phone}
+          whatsappEnabled={whatsappConfig.enabled}
+          digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
+          lastSends={recentSends.map((s) => ({ channel: s.channel, label: s.label, sentAtLabel: formatSentAtLabel(s.sentAt) }))}
+          months={months}
+        />
+      </SettingsSection>
 
       <Card>
         <CardHeader className="pb-3">
