@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 const STORAGE_PREFIX = "settings:section:";
+
+/** Window events for the page-level "Expand all" / "Collapse all" controls. */
+export const SETTINGS_EXPAND_ALL_EVENT = "settings:expand-all";
+export const SETTINGS_COLLAPSE_ALL_EVENT = "settings:collapse-all";
 
 /**
  * A collapsible settings card. The header (title + description) is the toggle —
@@ -38,14 +42,37 @@ export function SettingsSection({
     }
   }, [id]);
 
-  function handleOpenChange(v: boolean) {
-    setOpen(v);
+  const persist = useCallback((v: boolean) => {
     try {
       window.localStorage.setItem(STORAGE_PREFIX + id, v ? "1" : "0");
     } catch {
       // best-effort persistence
     }
+  }, [id]);
+
+  function handleOpenChange(v: boolean) {
+    setOpen(v);
+    persist(v);
   }
+
+  // Page-level Expand all / Collapse all — each section flips itself and
+  // persists the result like a manual toggle.
+  useEffect(() => {
+    function handleExpandAll() {
+      setOpen(true);
+      persist(true);
+    }
+    function handleCollapseAll() {
+      setOpen(false);
+      persist(false);
+    }
+    window.addEventListener(SETTINGS_EXPAND_ALL_EVENT, handleExpandAll);
+    window.addEventListener(SETTINGS_COLLAPSE_ALL_EVENT, handleCollapseAll);
+    return () => {
+      window.removeEventListener(SETTINGS_EXPAND_ALL_EVENT, handleExpandAll);
+      window.removeEventListener(SETTINGS_COLLAPSE_ALL_EVENT, handleCollapseAll);
+    };
+  }, [persist]);
 
   return (
     <Card id={id}>

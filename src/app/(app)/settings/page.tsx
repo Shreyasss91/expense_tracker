@@ -5,6 +5,7 @@ import { budgets } from "@/db/schema";
 import { getCategories, getMembers, getTemplates } from "@/lib/meta";
 import { monthKeyInIST } from "@/lib/dates";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsSectionControls } from "@/components/settings/settings-section-controls";
 import { CategoriesManager } from "@/components/settings/categories-manager";
 import { ActivityHistory } from "@/components/settings/activity-history";
 import { MembersManager } from "@/components/settings/members-manager";
@@ -60,7 +61,10 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-lg font-semibold">Settings</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-lg font-semibold">Settings</h1>
+        <SettingsSectionControls />
+      </div>
 
       <SettingsSection id="members" title="Members" description="Edit names, emoji, colours and order. Old transactions keep pointing at the right member.">
         <MembersManager members={memberOptions} />
