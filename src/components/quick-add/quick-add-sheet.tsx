@@ -20,7 +20,7 @@ import { APP_TIMEZONE, TRANSACTION_TAGS } from "@/lib/constants";
 import type { TransactionListRow } from "@/lib/query";
 import type { MemberOption, TemplateOption } from "./types";
 import { AmountTagRow, DateTimeField, type TransactionTag } from "@/components/transactions/transaction-fields";
-import { SharedExpenseToggle } from "@/components/transactions/shared-toggle";
+import { MemberAssignmentPicker } from "@/components/transactions/member-assignment";
 import { ReceiptAttachments } from "@/components/transactions/receipt-attachments";
 import { uploadReceipt } from "@/lib/receipt-client";
 
@@ -131,9 +131,9 @@ export function QuickAddSheet({
   const [justAdded, setJustAdded] = useState(false);
   const [addedCount, setAddedCount] = useState(0);
   const [lastAddedPaise, setLastAddedPaise] = useState(0);
-  // §2.2 — per-expense shared ownership
-  const [shared, setShared] = useState(false);
-  const [splitWith, setSplitWith] = useState<string[]>([]);
+  // §2.2 — optional "who is this expense for?" assignment; [] = not assigned.
+  // Independent of the active member, who is only *entering* the expense.
+  const [assignedMemberIds, setAssignedMemberIds] = useState<string[]>([]);
   // §2.9 — receipts staged before the transaction exists; uploaded against the
   // real id as soon as the create action returns it.
   const [pendingReceipts, setPendingReceipts] = useState<File[]>([]);
@@ -173,8 +173,7 @@ export function QuickAddSheet({
     setTime(formatInTimeZone(new Date(), APP_TIMEZONE, "HH:mm"));
     setShowDatePicker(false);
     setSubmitAttempted(false);
-    setShared(false);
-    setSplitWith([]);
+    setAssignedMemberIds([]);
     setPendingReceipts([]);
   }
 
@@ -231,8 +230,8 @@ export function QuickAddSheet({
       time: `${time}:00`,
       createdAt: new Date().toISOString(),
       reviewedAt: null,
-      shared,
-      splitWith,
+      shared: assignedMemberIds.length > 0,
+      splitWith: assignedMemberIds,
       receiptCount: pendingReceipts.length,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: null,
@@ -254,8 +253,7 @@ export function QuickAddSheet({
           time,
           note: note || null,
           tag,
-          shared,
-          splitWith,
+          splitWith: assignedMemberIds,
         },
         createdAt: Date.now(),
       });
@@ -293,8 +291,7 @@ export function QuickAddSheet({
         time,
         note: note || null,
         tag,
-        shared,
-        splitWith,
+        splitWith: assignedMemberIds,
       });
     } catch {
       emitLedgerMutation({ kind: "create-revert", tempId });
@@ -495,14 +492,10 @@ export function QuickAddSheet({
             label="Receipt"
           />
 
-          <SharedExpenseToggle
-            shared={shared}
-            splitWith={splitWith}
+          <MemberAssignmentPicker
+            memberIds={assignedMemberIds}
             members={members}
-            onChange={(n) => {
-              setShared(n.shared);
-              setSplitWith(n.splitWith);
-            }}
+            onChange={setAssignedMemberIds}
           />
 
           {/* Amendment 20 — no category picker here. Categorize later in the

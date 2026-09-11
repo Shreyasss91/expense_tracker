@@ -4,7 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Pencil, Paperclip, Trash2 } from "lucide-react";
 import { formatINR, rupeesToPaise } from "@/lib/money";
 import { displayTime } from "@/lib/dates";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { TransactionListRow } from "@/lib/query";
+import type { MemberOption } from "@/components/quick-add/types";
 import { cn } from "@/lib/utils";
 
 const DELETE_REVEAL = -80;
@@ -27,6 +36,8 @@ export function TransactionItem({
   selected = false,
   onSelectToggle,
   onLongPress,
+  members,
+  onAssignMembers,
 }: {
   row: TransactionListRow;
   onEdit: (row: TransactionListRow) => void;
@@ -35,6 +46,10 @@ export function TransactionItem({
   selected?: boolean;
   onSelectToggle?: (row: TransactionListRow) => void;
   onLongPress?: (row: TransactionListRow) => void;
+  /** §2.2 — members available for the inline "who is this for?" chip. */
+  members?: MemberOption[];
+  /** §2.2 — commit a new assignment from the row chip (empty = unassigned). */
+  onAssignMembers?: (row: TransactionListRow, memberIds: string[]) => void;
 }) {
   const [dx, setDx] = useState(0);
   const [swiped, setSwiped] = useState(false);
@@ -58,6 +73,11 @@ export function TransactionItem({
 
   const paise = rupeesToPaise(row.amount);
   const cat = row.category;
+  // §2.2 — who the expense is *for*, independent of who entered it. Absent
+  // on surfaces that don't pass `members` (the chip simply isn't rendered).
+  const assignedMemberIds = row.splitWith ?? [];
+  const assignedMembers = members ? members.filter((m) => assignedMemberIds.includes(m.id)) : [];
+  const showAssignment = Boolean(members && onAssignMembers) && !selectionMode;
 
   function clearPressTimer() {
     if (pressTimer.current !== null) {
@@ -246,6 +266,74 @@ export function TransactionItem({
               <>
                 <span aria-hidden>·</span>
                 <span className="capitalize">{row.tag}</span>
+              </>
+            )}
+            {showAssignment && (
+              <>
+                <span aria-hidden>·</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      onTouchStart={(e) => e.stopPropagation()}
+                      onTouchEnd={(e) => e.stopPropagation()}
+                      title={
+                        assignedMembers.length > 0
+                          ? `For ${assignedMembers.map((m) => m.name).join(", ")}`
+                          : "Not assigned — tap to choose who this expense is for"
+                      }
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-0.5 rounded-full border px-1.5 py-px text-[10px] font-medium transition-colors",
+                        assignedMembers.length > 0
+                          ? "border-transparent bg-primary/10 text-foreground"
+                          : "border-dashed border-muted-foreground/40 text-muted-foreground hover:bg-muted",
+                      )}
+                    >
+                      {assignedMembers.length > 0 ? (
+                        <span aria-hidden>{assignedMembers.map((m) => m.emoji).join("")}</span>
+                      ) : (
+                        <span>For?</span>
+                      )}
+                      <span className="sr-only">
+                        {assignedMembers.length > 0
+                          ? `For ${assignedMembers.map((m) => m.name).join(", ")}`
+                          : "Not assigned"}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48">
+                    <DropdownMenuLabel>Who is this for?</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {members!.map((m) => {
+                      const on = assignedMemberIds.includes(m.id);
+                      return (
+                        <DropdownMenuItem
+                          key={m.id}
+                          className="gap-2"
+                          onSelect={(e) => {
+                            e.preventDefault();
+                            onAssignMembers!(
+                              row,
+                              on ? assignedMemberIds.filter((x) => x !== m.id) : [...assignedMemberIds, m.id],
+                            );
+                          }}
+                        >
+                          <span className="text-base">{m.emoji}</span>
+                          <span className="flex-1">{m.name}</span>
+                          {on && <Check className="h-4 w-4 text-primary" />}
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {assignedMemberIds.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onSelect={() => onAssignMembers!(row, [])}>Not assigned</DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             )}
           </span>

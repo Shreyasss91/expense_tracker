@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Check, CheckCheck, ChevronDown, X } from "lucide-react";
 import { getReviewPage, type ReviewItem } from "@/actions/review";
-import { acknowledgeTransactionsReview, acknowledgeTransactionReview, assignCategory, deleteTransaction, deleteTransactions } from "@/actions/transactions";
+import { acknowledgeTransactionsReview, acknowledgeTransactionReview, assignCategory, deleteTransaction, deleteTransactions, setTransactionAssignment } from "@/actions/transactions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { BulkActionBar, SelectModeButton } from "@/components/shared/bulk-action-bar";
@@ -93,6 +93,25 @@ export function ReviewQueueCard({
       next.delete(id);
       return next;
     });
+  }, []);
+
+  /** §2.2 — inline "who is this for?" from a review row, optimistic. */
+  const handleAssignMembers = useCallback(async (row: ReviewItem, memberIds: string[]) => {
+    const next: ReviewItem = { ...row, splitWith: memberIds, shared: memberIds.length > 0 };
+    setRows((prev) => prev.map((r) => (r.id === row.id ? next : r)));
+    emitLedgerMutation({ kind: "update", id: row.id, row: next });
+    try {
+      const res = await setTransactionAssignment(row.id, memberIds);
+      if (!res.ok) {
+        setRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
+        emitLedgerMutation({ kind: "update", id: row.id, row });
+        toast.error(res.error ?? "Could not assign");
+      }
+    } catch {
+      setRows((prev) => prev.map((r) => (r.id === row.id ? row : r)));
+      emitLedgerMutation({ kind: "update", id: row.id, row });
+      toast.error("Could not assign");
+    }
   }, []);
 
   const handleAcknowledge = useCallback(
@@ -404,6 +423,8 @@ export function ReviewQueueCard({
                               })
                             }
                             onLongPress={enterSelection}
+                            members={members}
+                            onAssignMembers={handleAssignMembers}
                           />
                         </div>
                         {!selectionMode && (

@@ -41,9 +41,9 @@ export const transactionBaseSchema = z.object({
   date: dateSchema,
   /** HH:MM; the server appends :00 (§5.6). */
   time: timeSchema,
-  // §2.2 — per-expense shared ownership. `shared` flags a household expense;
-  // `splitWith` names the members to split among (empty = everyone).
-  shared: z.boolean().optional().default(false),
+  // §2.2 — optional "who is this expense for?" assignment. `splitWith` names
+  // the members the expense is for (empty = not assigned). `shared` is derived
+  // from this list server-side and is deliberately not client input.
   splitWith: z.array(z.string().uuid()).max(20).optional().default([]),
 });
 

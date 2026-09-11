@@ -22,7 +22,7 @@ import { emitLedgerMutation } from "@/lib/events";
 import type { TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { AmountTagRow, CategoryGrid, DateTimeField, type TransactionTag } from "./transaction-fields";
-import { SharedExpenseToggle } from "./shared-toggle";
+import { MemberAssignmentPicker } from "./member-assignment";
 import { ReceiptAttachments } from "./receipt-attachments";
 import type { UploadedReceipt } from "@/lib/receipt-client";
 
@@ -79,9 +79,9 @@ export function TransactionEditDialog({
   const [splitting, setSplitting] = useState(false);
   const [splits, setSplits] = useState<SplitPart[]>([]);
   const [splitSaving, setSplitSaving] = useState(false);
-  // §2.2 — per-expense shared ownership
-  const [shared, setShared] = useState(false);
-  const [splitWith, setSplitWith] = useState<string[]>([]);
+  // §2.2 — optional "who is this expense for?" assignment; [] = not assigned.
+  // Independent of `memberId`, which only records who *entered* the expense.
+  const [assignedMemberIds, setAssignedMemberIds] = useState<string[]>([]);
   // §2.3 — split can be assigned by raw amount or by percentage of the total
   const [splitMode, setSplitMode] = useState<"amount" | "percent">("amount");
   // §2.9 — receipts attached to this row; loaded per-row, never carried over
@@ -129,8 +129,7 @@ export function TransactionEditDialog({
     setSplitting(false);
     setSplits([]);
     setSplitMode("amount");
-    setShared(row.shared ?? false);
-    setSplitWith(row.splitWith ?? []);
+    setAssignedMemberIds(row.splitWith ?? []);
     setReceipts([]);
   }
 
@@ -187,8 +186,7 @@ export function TransactionEditDialog({
       date,
       time,
       note: trimmedNote,
-      shared,
-      splitWith,
+      splitWith: assignedMemberIds,
       tag: tag as "one_time" | "recurring" | "lifestyle",
     };
     if (!row) return { payload, category, changes: [] as string[], count: 0 };
@@ -203,11 +201,10 @@ export function TransactionEditDialog({
     if (date !== row.date) changes.push("date");
     if (time !== row.time.slice(0, 5)) changes.push("time");
     if (trimmedNote !== (row.note ?? null)) changes.push("note");
-    if (shared !== (row.shared ?? false)) changes.push("shared");
     const prevSplit = [...(row.splitWith ?? [])].sort().join(",");
-    if ([...splitWith].sort().join(",") !== prevSplit) changes.push("split");
+    if ([...assignedMemberIds].sort().join(",") !== prevSplit) changes.push("assignment");
     return { payload, category, changes, count: changes.length };
-  }, [row, categoryId, cats, memberId, paise, date, time, note, shared, splitWith, tag]);
+  }, [row, categoryId, cats, memberId, paise, date, time, note, assignedMemberIds, tag]);
 
   // ── Split mode ───────────────────────────────────────────────────────────
   const SPLIT_MAX = 6;
@@ -302,8 +299,8 @@ export function TransactionEditDialog({
           time: `${time}:00`,
           createdAt: new Date().toISOString(),
           reviewedAt: null,
-          shared: false,
-          splitWith: [],
+          shared: assignedMemberIds.length > 0,
+          splitWith: assignedMemberIds,
           receiptCount: 0,
           member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
           category: category
@@ -326,8 +323,7 @@ export function TransactionEditDialog({
           time,
           note: s.note || null,
           tag: tag as "one_time" | "recurring" | "lifestyle",
-          shared: false,
-          splitWith: [],
+          splitWith: assignedMemberIds,
         });
         if (res.ok) createdIds.push(res.id);
         else {
@@ -372,7 +368,6 @@ export function TransactionEditDialog({
               time,
               note: row.note,
               tag: tag as "one_time" | "recurring" | "lifestyle",
-              shared: row.shared,
               splitWith: row.splitWith,
             });
             if (restore.ok) await deleteTransactions(createdIds);
@@ -451,7 +446,7 @@ export function TransactionEditDialog({
       note: pending.payload.note,
       date: pending.payload.date,
       time: `${pending.payload.time}:00`,
-      shared: pending.payload.shared,
+      shared: pending.payload.splitWith.length > 0,
       splitWith: pending.payload.splitWith,
       member: { name: member.name, emoji: member.emoji, color: member.color, slug: member.slug },
       category: category
@@ -755,15 +750,11 @@ export function TransactionEditDialog({
             recentCategoryIds={recentCategoryIds}
           />
 
-          <SharedExpenseToggle
-            shared={shared}
-            splitWith={splitWith}
+          <MemberAssignmentPicker
+            memberIds={assignedMemberIds}
             members={members}
             disabled={splitting}
-            onChange={(n) => {
-              setShared(n.shared);
-              setSplitWith(n.splitWith);
-            }}
+            onChange={setAssignedMemberIds}
           />
         </div>
         )}

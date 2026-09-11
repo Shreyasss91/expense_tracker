@@ -210,9 +210,9 @@ export interface TransactionListRow {
   time: string;
   createdAt: string;
   reviewedAt: string | null;
-  /** §2.2 — shared across the household, not borne by one member. */
+  /** §2.2 — derived flag (assignment non-empty); kept for export compatibility. */
   shared: boolean;
-  /** §2.2 — member ids to split a shared expense among; [] = everyone. */
+  /** §2.2 — member ids this expense is for; [] = not assigned. */
   splitWith: string[];
   /** §2.9 — receipts attached to this row (count only; the bytes are lazy). */
   receiptCount: number;

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { X } from "lucide-react";
-import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory } from "@/actions/transactions";
+import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory, setTransactionAssignment } from "@/actions/transactions";
 import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
 import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
@@ -340,6 +340,26 @@ export function TransactionsList({
     }
   }
 
+  /**
+   * §2.2 — inline "who is this expense for?" from a ledger row. Optimistic:
+   * the row updates through the mutation bus immediately, then reverts with a
+   * toast if the server rejects the change.
+   */
+  async function handleAssignMembers(row: TransactionListRow, memberIds: string[]) {
+    const next: TransactionListRow = { ...row, splitWith: memberIds, shared: memberIds.length > 0 };
+    emitLedgerMutation({ kind: "update", id: row.id, row: next });
+    try {
+      const res = await setTransactionAssignment(row.id, memberIds);
+      if (!res.ok) {
+        emitLedgerMutation({ kind: "update", id: row.id, row });
+        toast.error(res.error ?? "Could not assign");
+      }
+    } catch {
+      emitLedgerMutation({ kind: "update", id: row.id, row });
+      toast.error("Could not assign");
+    }
+  }
+
   function requestBulkDelete() {
     const targets = selectedRows;
     if (targets.length === 0) return;
@@ -459,6 +479,8 @@ export function TransactionsList({
                   selected={selectedIds.has(r.id)}
                   onSelectToggle={toggleSelected}
                   onLongPress={enableSelection ? enterSelection : undefined}
+                  members={members}
+                  onAssignMembers={handleAssignMembers}
                 />
               ))}
             </div>

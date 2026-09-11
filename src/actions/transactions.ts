@@ -73,8 +73,9 @@ export async function createTransaction(raw: TransactionInput) {
       // `? null : undefined` was a no-op: both branches produced NULL because
       // the column has no default, so real notes were never marked reviewed.
         reviewedAt: isGenericNote(data.note ?? null) ? null : new Date(),
-        // §2.2 — shared ownership attribution
-        shared: data.shared ?? false,
+        // §2.2 — "who is this expense for?" assignment. `shared` is a derived
+        // convenience flag (legacy export column); the ids are the source.
+        shared: (data.splitWith ?? []).length > 0,
         splitWith: data.splitWith ?? [],
       })
       .returning();
@@ -126,8 +127,8 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
       note: data.note ?? null,
       date: data.date,
       time: `${data.time}:00`,
-      // §2.2 — shared ownership attribution (persisted on every edit)
-      shared: data.shared ?? false,
+      // §2.2 — "who is this expense for?" assignment (persisted on every edit)
+      shared: (data.splitWith ?? []).length > 0,
       splitWith: data.splitWith ?? [],
       // Acknowledgement survives ordinary edits, but any note edit explicitly
       // sends the row back through the Review queue (§6.4).
@@ -145,6 +146,45 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
 
   return { ok: true as const, id: row.id, alert };
+}
+
+/**
+ * §2.2 — set (or clear) who a transaction is for, without opening the full
+ * edit sheet. `memberIds` is the complete assignment: an empty array clears it
+ * ("not assigned"). Member existence is validated here for the same
+ * data-integrity reason every other mutation validates it.
+ */
+export async function setTransactionAssignment(
+  id: string,
+  memberIds: string[],
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  const idCheck = idSchema.safeParse(id);
+  if (!idCheck.success) return { ok: false as const, error: "Invalid transaction id" };
+  if (!Array.isArray(memberIds)) return { ok: false as const, error: "Invalid assignment" };
+
+  const unique = [...new Set(memberIds)];
+  if (unique.length > 20) return { ok: false as const, error: "Too many members" };
+  if (unique.some((m) => !idSchema.safeParse(m).success)) {
+    return { ok: false as const, error: "Invalid member id" };
+  }
+  if (unique.length > 0) {
+    const found = await db.select({ id: members.id }).from(members).where(inArray(members.id, unique));
+    if (found.length !== unique.length) return { ok: false as const, error: "Unknown member" };
+  }
+
+  const [row] = await db
+    .update(transactions)
+    .set({ splitWith: unique, shared: unique.length > 0 })
+    .where(eq(transactions.id, idCheck.data))
+    .returning({ id: transactions.id });
+  if (!row) return { ok: false as const, error: "Transaction not found" };
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+  return { ok: true as const };
 }
 
 /** Amendment 20 — max ids per bulk call; the UI pages selection well below this. */

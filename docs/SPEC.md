@@ -171,10 +171,10 @@ The 19 seeded categories became leaves under 7 seeded groups
 `grp-other` — the catch-all for inline-created categories). Category **merge**
 (§2.12) re-points history and deletes the source; groups can never merge.
 
-**Shared ownership (§2.2, 2 Sept 2026):** `transactions.shared` (boolean,
-default false) + `transactions.split_with` (text[] member ids, empty =
-everyone) — an expense can be borne by the household rather than the single
-member who logged it.
+**Expense assignment (§2.2, revised 11 Sept 2026):** `transactions.split_with`
+(text[] member ids, empty = not assigned) — who an expense is *for*, independent
+of the member who entered it. `transactions.shared` is a derived flag
+(`split_with` non-empty) retained for the export/import format.
 
 **Template controls (§2.12, 3 Sept 2026):** `templates.is_paused` (never
 auto-stamps), `templates.is_variable` (manual-only — "amount varies, ask me")
@@ -786,10 +786,14 @@ leaf-with-own-budget → parent-group-budget → month default → every-month d
 Settings edits group limits alongside category limits; the dashboard renders a
 Group-budgets card with the per-leaf split beneath.
 
-**§2.2 Per-expense shared ownership.** An optional `shared` flag + `split_with`
-member list on each transaction (§4.2) lets the Quick Add / edit sheet mark an
-expense as household-borne. The data persists on every write; the dashboard
-attribution card was removed again by owner decision (3 Sept 2026) — attribution
+**§2.2 Who is this expense for? (revision, 11 Sept 2026).** An optional
+`split_with` member list on each transaction (§4.2) records who an expense is
+*for*, wholly independent of `member_id` (who only *entered* it). It is editable
+in Quick Add, the edit sheet, and an inline ledger/Review row chip
+(`setTransactionAssignment`); an empty list means **not assigned**, which is the
+default for all history (migration `0017`). `shared` survives only as a derived
+flag (`split_with` non-empty) for the export/import format. The dashboard
+attribution card was removed by owner decision (3 Sept 2026) — attribution
 remains queryable data, not a dashboard surface.
 
 **§2.3 Split, extended.** The edit dialog's split mode (25 Aug pass) splits by

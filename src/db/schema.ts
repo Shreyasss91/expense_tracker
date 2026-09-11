@@ -72,10 +72,10 @@ export const transactions = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     // Review queue: NULL = pending review if note is generic; set explicitly via acknowledge (§6.4)
     reviewedAt: timestamp("reviewed_at"),
-    // §2.2 — shared ownership: an expense can be borne by the household rather
-    // than the single member who logged it. `shared` flags it; `split_with`
-    // names the members to split among (empty = everyone). Attribution credits
-    // each member their solo spend plus an equal share of each shared expense.
+    // §2.2 — optional "who is this expense for?" assignment, independent of
+    // `member_id` (who only *entered* it). `split_with` holds the assigned
+    // member ids; an empty array means not assigned. `shared` is a derived
+    // flag (assignment non-empty) retained for the export/import format.
     shared: boolean("shared").notNull().default(false),
     splitWith: text("split_with").array().notNull().default([]),
   },

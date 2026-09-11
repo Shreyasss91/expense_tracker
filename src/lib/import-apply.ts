@@ -46,6 +46,8 @@ const INSERT_CHUNK = 500;
 interface Directory {
   memberBySlug: Map<string, string>;
   memberByName: Map<string, string>;
+  /** Every member id, in sort order — used to expand a legacy `shared` flag. */
+  allMemberIds: string[];
   categoryBySlug: Map<string, string>;
   categoryByName: Map<string, string>;
 }
@@ -63,6 +65,7 @@ async function loadDirectory(): Promise<Directory> {
   return {
     memberBySlug: new Map(memberRows.map((m) => [lower(m.slug), m.id])),
     memberByName: new Map(memberRows.map((m) => [lower(m.name), m.id])),
+    allMemberIds: memberRows.map((m) => m.id),
     categoryBySlug: new Map(categoryRows.map((c) => [lower(c.slug), c.id])),
     categoryByName: new Map(categoryRows.map((c) => [lower(c.name), c.id])),
   };
@@ -241,10 +244,16 @@ export async function resolveImport(filename: string, text: string): Promise<Imp
         null)
       : null;
 
-    // split_with stores member ids; the file carries slugs (the portable form).
-    const splitWith = row.shared
-      ? row.splitWith.map((slug) => directory.memberBySlug.get(lower(slug))).filter((id): id is string => Boolean(id))
-      : [];
+    // §2.2 — split_with stores the members the expense is *for*; the file
+    // carries slugs (the portable form). A legacy backup that carried only
+    // `shared = 1` (household-wide) expands to every member; otherwise the
+    // explicit list is the assignment and the flag is derived from it.
+    const assignedSlugs = row.splitWith ?? [];
+    const splitWith = assignedSlugs.length > 0
+      ? assignedSlugs.map((slug) => directory.memberBySlug.get(lower(slug))).filter((id): id is string => Boolean(id))
+      : row.shared
+        ? [...directory.allMemberIds]
+        : [];
 
     insertable.push({
       // A JSON/extended restore keeps its original id, so re-running it is
@@ -259,7 +268,7 @@ export async function resolveImport(filename: string, text: string): Promise<Imp
       date: row.date,
       // §5.6 — HH:MM at the boundary becomes HH:MM:00 at the write edge.
       time: `${row.time}:00`,
-      shared: row.shared,
+      shared: splitWith.length > 0,
       splitWith,
       ...(row.reviewedAt ? { reviewedAt: new Date(row.reviewedAt) } : {}),
     });

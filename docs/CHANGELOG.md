@@ -7,6 +7,35 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Per-expense "who is this for?" assignment — 11 September 2026 (owner request)
+
+Owner request: *"Just because a transaction has been entered by MA, that doesn't
+mean that expense was made for MA. Assigning the expense to a member or a couple
+of members or all three is a separate input."* The §2.2 `shared` toggle is
+replaced by an explicit, optional **multi-member assignment**, wholly
+independent of who entered the expense.
+
+- **`MemberAssignmentPicker`** (`src/components/transactions/member-assignment.tsx`,
+  new) replaces `shared-toggle.tsx`: member chips, no switch, **unassigned by
+default**. Shown in Quick Add and the edit sheet.
+- **Ledger/Review inline chip** (`transaction-item.tsx`): every row carries a
+  compact `For?` chip; tapping it opens a multi-select menu to assign or clear
+  without opening the editor. New `setTransactionAssignment(id, memberIds)`
+  Server Action backs it, applied optimistically in both lists.
+- **Model:** `transactions.split_with` now means "who this expense is for"
+  (empty = not assigned). `shared` survives only as a derived flag
+  (`splitWith.length > 0`) for the export/import format and is no longer client
+  input (`transactionBaseSchema`).
+- **Import:** a legacy backup carrying `shared = 1` with no explicit
+  `split_with` expands to every member; otherwise the explicit list wins.
+- **History:** migration `0017_clear_expense_assignments` clears every existing
+  assignment (`split_with = '{}'`, `shared = false`) — expenses logged before
+  this change start unassigned, as requested.
+- Verified: `tsc --noEmit`, eslint, `test:validation`, `test:export-format` and
+  the migration journal guard green.
+
+---
+
 ## Collapsible settings sections + Expand all / Collapse all — 10 September 2026 (owner follow-up)
 
 Owner request: *"the whole page is too long"* — the Settings page now renders every
