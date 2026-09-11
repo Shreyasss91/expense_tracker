@@ -26,6 +26,7 @@ function sanitizeParams(input: unknown): LedgerFilters {
   if (typeof p.categoryId === "string" && p.categoryId) out.categoryId = p.categoryId;
   if (typeof p.groupId === "string" && p.groupId) out.groupId = p.groupId;
   if (p.uncategorized === true) out.uncategorized = true;
+  if (typeof p.assignee === "string" && p.assignee) out.assignee = p.assignee;
   if (p.tag === "one_time" || p.tag === "recurring" || p.tag === "lifestyle") out.tag = p.tag;
   if (typeof p.from === "string" && p.from) out.from = p.from;
   if (typeof p.to === "string" && p.to) out.to = p.to;

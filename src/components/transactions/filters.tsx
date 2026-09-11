@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TRANSACTION_TAG_LABELS, TRANSACTION_TAGS } from "@/lib/constants";
-import { buildLedgerUrl, UNCATEGORIZED, type LedgerFilters } from "@/lib/ledger-url";
+import { buildLedgerUrl, UNCATEGORIZED, UNASSIGNED, type LedgerFilters } from "@/lib/ledger-url";
 import { updateCategory } from "@/actions/settings";
 import { saveSearch, deleteSavedSearch } from "@/actions/saved-searches";
 import { emitLedgerMutation } from "@/lib/events";
@@ -70,6 +70,8 @@ export function FiltersBar({
   const selectedCat = categories.find((c) => c.id === filters.categoryId);
   const selectedGroup = categories.find((c) => c.id === filters.groupId && c.parentId === null);
   const selectedMemberChip = members.find((m) => m.id === filters.memberId);
+  // §2.2 — assignee is a different axis from memberId (for vs. by)
+  const selectedAssigneeChip = members.find((m) => m.id === filters.assignee);
 
   // Two-level taxonomy — groups with their leaves, ordered by sortOrder.
   const groupRows = [...categories].filter((c) => c.parentId === null).sort((a, b) => a.sortOrder - b.sortOrder);
@@ -325,6 +327,26 @@ export function FiltersBar({
           </SelectContent>
         </Select>
         <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
+        {/* §2.2 — filter by who the expense is FOR, distinct from the member
+            pills above which filter by who ENTERED it. */}
+        <Select
+          value={filters.assignee ?? ""}
+          onValueChange={(v) => push({ ...filters, assignee: v || undefined })}
+        >
+          <SelectTrigger className="h-8 w-32 shrink-0 text-xs" aria-label="Filter by who the expense is for">
+            <SelectValue placeholder="For anyone" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">For anyone</SelectItem>
+            <SelectItem value={UNASSIGNED}>❔ Unassigned</SelectItem>
+            {members.map((m) => (
+              <SelectItem key={m.id} value={m.id} className="text-xs">
+                {m.emoji} {m.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span aria-hidden className="h-5 w-px shrink-0 bg-muted-foreground/20" />
         {/* UX pass — custom date range + amount range entry point (§2.7) */}
         <button
           type="button"
@@ -461,12 +483,20 @@ export function FiltersBar({
       )}
 
       {/* active-filter chips — only rendered while something is set */}
-      {(filters.memberId || filters.tag || filters.categoryId || filters.groupId || filters.uncategorized || filters.from || filters.to || filters.amountMin || filters.amountMax || filters.q?.trim()) && (
+      {(filters.memberId || filters.assignee || filters.tag || filters.categoryId || filters.groupId || filters.uncategorized || filters.from || filters.to || filters.amountMin || filters.amountMax || filters.q?.trim()) && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Active</span>
           {selectedMemberChip && (
             <button type="button" className={pill(false)} onClick={() => push({ ...filters, memberId: undefined })}>
               {selectedMemberChip.emoji} {selectedMemberChip.name} <X className="ml-0.5 inline h-3 w-3" />
+            </button>
+          )}
+          {filters.assignee && (
+            <button type="button" className={pill(false)} onClick={() => push({ ...filters, assignee: undefined })}>
+              {filters.assignee === UNASSIGNED
+                ? "❔ Unassigned"
+                : `For ${selectedAssigneeChip?.emoji ?? ""}${selectedAssigneeChip?.name ?? "member"}`}{" "}
+              <X className="ml-0.5 inline h-3 w-3" />
             </button>
           )}
           {filters.tag && (

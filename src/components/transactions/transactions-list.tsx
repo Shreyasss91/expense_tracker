@@ -13,6 +13,7 @@ import { formatINR, rupeesToPaise } from "@/lib/money";
 import { emptyStateCopy, plural } from "@/lib/copy";
 import { useEscToExit } from "@/lib/use-esc-exit";
 import { BulkActionBar, SelectModeButton } from "@/components/shared/bulk-action-bar";
+import { UNASSIGNED } from "@/lib/ledger-url";
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { TransactionItem } from "./transaction-item";
@@ -56,6 +57,13 @@ function matchesFilters(
   categories: CategoryOption[] = [],
 ): boolean {
   if (f.memberId && row.memberId !== f.memberId) return false;
+  // §2.2 — mirror the server's assignment predicate so optimistic rows only
+  // appear while they still satisfy an active "for whom?" filter.
+  if (f.assignee === UNASSIGNED) {
+    if ((row.splitWith ?? []).length > 0) return false;
+  } else if (f.assignee && !(row.splitWith ?? []).includes(f.assignee)) {
+    return false;
+  }
   if (f.categoryId) {
     if (row.categoryId !== f.categoryId) return false;
   } else if (f.groupId) {
@@ -505,7 +513,7 @@ export function TransactionsList({
           {/* §3.7 — standardised empty-state copy (shared with the review queue) */}
           {(() => {
             const copy = emptyStateCopy(
-              Boolean(filters.memberId || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to),
+              Boolean(filters.memberId || filters.assignee || filters.tag || filters.categoryId || filters.uncategorized || filters.groupId || filters.search?.trim() || filters.month || filters.from || filters.to),
             );
             return (
               <>

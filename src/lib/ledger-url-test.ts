@@ -8,7 +8,7 @@
  * exercises `buildLedgerUrl` and `parseLedgerSearchParams` directly — no DB,
  * no server-only, pure module.
  */
-import { buildLedgerUrl, parseLedgerSearchParams, UNCATEGORIZED, type LedgerFilters } from "./ledger-url";
+import { buildLedgerUrl, parseLedgerSearchParams, UNCATEGORIZED, UNASSIGNED, type LedgerFilters } from "./ledger-url";
 
 let failures = 0;
 function check(cond: boolean, msg: string) {
@@ -144,6 +144,30 @@ function main() {
 
   const dirtyGroup = parseLedgerSearchParams({ group: "not-a-uuid" });
   check(dirtyGroup.filters.groupId === undefined, "invalid group UUID dropped");
+
+  // --- Assignee filter (§2.2): a member id, or the "unassigned" sentinel.
+  const assigneeUrl = buildLedgerUrl({ assignee: UUID_A, month: "2026-08" });
+  const ap = paramsOf(assigneeUrl);
+  check(ap.get("assignee") === UUID_A, "assignee → ?assignee");
+  check(ap.get("month") === "2026-08", "assignee and month serialize together");
+  check(paramsOf(buildLedgerUrl({ assignee: UNASSIGNED })).get("assignee") === UNASSIGNED, "unassigned sentinel serializes");
+
+  const parsedAssignee = parseLedgerSearchParams({ assignee: UUID_A });
+  check(
+    parsedAssignee.filters.assignee === UUID_A && parsedAssignee.ledgerFilters.assignee === UUID_A,
+    "parse: assignee UUID decodes into both filter objects",
+  );
+  const parsedUnassigned = parseLedgerSearchParams({ assignee: UNASSIGNED });
+  check(parsedUnassigned.filters.assignee === UNASSIGNED, "parse: unassigned sentinel survives");
+  check(
+    parseLedgerSearchParams({ assignee: "not-a-uuid" }).filters.assignee === undefined,
+    "invalid assignee dropped",
+  );
+  const assigneeRound = parseLedgerSearchParams(Object.fromEntries(paramsOf(assigneeUrl).entries()));
+  check(
+    assigneeRound.filters.assignee === UUID_A && assigneeRound.filters.month === "2026-08",
+    "parse ∘ buildLedgerUrl round-trips assignee+month",
+  );
 
   if (failures > 0) {
     console.error(`✗ Ledger URL composition FAILED (${failures} check(s) failed)`);

@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { attachments, categories, transactions } from "@/db/schema";
 import { paiseToDbString, rupeesToPaise } from "@/lib/money";
 import { monthKeySchema } from "@/lib/validations";
+import { ASSIGNEE_UNASSIGNED } from "@/lib/constants";
 import { monthEndForKey } from "@/lib/dates";
 
 export const PAGE_SIZE = 50; // §7.3
@@ -21,6 +22,13 @@ export interface TransactionListFilters {
   categoryIds?: string[];
   /** Amendment 20 — `category=uncategorized` in the URL; rows with NULL category_id. */
   uncategorized?: boolean;
+  /**
+   * §2.2 — who the expense is *for*: a member id matches any assignment that
+   * includes them (so a member's view also covers combinations they belong to);
+   * ASSIGNEE_UNASSIGNED matches rows with no assignment at all. Independent of
+   * `memberId`, which filters by who *entered* the expense.
+   */
+  assignee?: string;
   tag?: "one_time" | "recurring" | "lifestyle";
   /** §2.7 — amount range, in paise. Used by the "real query tool" search. */
   amountMin?: number;
@@ -55,6 +63,14 @@ export function buildWhere(filters: TransactionListFilters, cursor: Cursor | nul
     // semantics honest instead of silently widening to "everything".
     conds.push(filters.categoryIds.length > 0 ? inArray(transactions.categoryId, filters.categoryIds) : sql`false`);
   } else if (filters.uncategorized) conds.push(isNull(transactions.categoryId));
+  // §2.2 — assignment filter: array containment for a member, empty array for
+  // "unassigned". split_with is a text[]; the scalar is parameterized by
+  // Drizzle and cast so the comparison stays typed.
+  if (filters.assignee === ASSIGNEE_UNASSIGNED) {
+    conds.push(sql`cardinality(${transactions.splitWith}) = 0`);
+  } else if (filters.assignee) {
+    conds.push(sql`${transactions.splitWith} @> ARRAY[${filters.assignee}]::text[]`);
+  }
   if (filters.tag) conds.push(eq(transactions.tag, filters.tag));
   if (filters.month) {
     const month = monthKeySchema.parse(filters.month);

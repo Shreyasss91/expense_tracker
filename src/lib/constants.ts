@@ -73,6 +73,13 @@ export const SEED_CATEGORIES = [
   { slug: "misc", name: "Misc", emoji: "📦", color: "#78716c", sortOrder: 19 },
 ] as const;
 
+/**
+ * §2.2 — sentinel for the ledger's "who is this for?" filter meaning "no
+ * assignment". Shared by the URL serializer, the SQL predicate and the filter
+ * UI so the literal can never drift between them.
+ */
+export const ASSIGNEE_UNASSIGNED = "unassigned";
+
 export const TRANSACTION_TAGS = ["lifestyle", "recurring", "one_time"] as const;
 export const TRANSACTION_TAG_LABELS: Record<(typeof TRANSACTION_TAGS)[number], string> = {
   one_time: "One-time",

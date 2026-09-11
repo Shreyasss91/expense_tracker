@@ -76,6 +76,7 @@ export default async function TransactionsPage({
   // category param itself is replaced by category=uncategorized).
   const scopeQs = new URLSearchParams();
   if (ledgerFilters.memberId) scopeQs.set("member", ledgerFilters.memberId);
+  if (ledgerFilters.assignee) scopeQs.set("assignee", ledgerFilters.assignee);
   if (ledgerFilters.tag) scopeQs.set("tag", ledgerFilters.tag);
   if (ledgerFilters.month) scopeQs.set("month", ledgerFilters.month);
   if (ledgerFilters.q?.trim()) scopeQs.set("q", ledgerFilters.q.trim());

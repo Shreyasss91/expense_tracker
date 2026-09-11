@@ -4,7 +4,7 @@
 // preservation is normative per §6.4).
 
 import { z } from "zod";
-import { TRANSACTION_TAGS } from "./constants";
+import { ASSIGNEE_UNASSIGNED, TRANSACTION_TAGS } from "./constants";
 import { dateSchema, monthKeySchema } from "./validations";
 import { rupeesToPaise } from "./money";
 import type { TransactionListFilters } from "./query";
@@ -22,6 +22,11 @@ export interface LedgerFilters {
   groupId?: string;
   /** Amendment 20 — serialized as `category=uncategorized`. */
   uncategorized?: boolean;
+  /**
+   * §2.2 — who the expense is *for*: serialized as `assignee=<member id>` or
+   * `assignee=unassigned`. Independent of `memberId` (who entered it).
+   */
+  assignee?: string;
   tag?: "one_time" | "recurring" | "lifestyle";
   month?: string;
   /** UX pass — custom date range (inclusive), YYYY-MM-DD. */
@@ -36,6 +41,9 @@ export interface LedgerFilters {
 /** Sentinel category-filter value selecting rows with no category assigned. */
 export const UNCATEGORIZED = "uncategorized";
 
+/** Sentinel assignee-filter value selecting rows with no member assigned. */
+export const UNASSIGNED = ASSIGNEE_UNASSIGNED;
+
 /** Serialize the filter state into the ledger URL — shared by the filter bar and the month strip. */
 export function buildLedgerUrl(filters: LedgerFilters): string {
   const params = new URLSearchParams();
@@ -43,6 +51,7 @@ export function buildLedgerUrl(filters: LedgerFilters): string {
   if (filters.uncategorized) params.set("category", UNCATEGORIZED);
   else if (filters.categoryId) params.set("category", filters.categoryId);
   else if (filters.groupId) params.set("group", filters.groupId);
+  if (filters.assignee) params.set("assignee", filters.assignee);
   if (filters.tag) params.set("tag", filters.tag);
   if (filters.month) params.set("month", filters.month);
   if (filters.from) params.set("from", filters.from);
@@ -70,6 +79,7 @@ export function parseLedgerSearchParams(
   const rawTag = read(sp.tag);
   const rawCategory = read(sp.category);
   const rawGroup = read(sp.group);
+  const rawAssignee = read(sp.assignee);
   const filters: TransactionListFilters = {
     memberId: (() => {
       const v = read(sp.member);
@@ -80,6 +90,8 @@ export function parseLedgerSearchParams(
     groupId:
       !rawCategory && rawGroup && uuid.safeParse(rawGroup).success ? rawGroup : undefined,
     uncategorized: rawCategory === UNCATEGORIZED,
+    // §2.2 — `unassigned` is a valid sentinel; anything else must be a UUID.
+    assignee: rawAssignee === UNASSIGNED ? UNASSIGNED : rawAssignee && uuid.safeParse(rawAssignee).success ? rawAssignee : undefined,
     tag: rawTag && (TRANSACTION_TAGS as readonly string[]).includes(rawTag) ? (rawTag as TransactionListFilters["tag"]) : undefined,
     month: (() => {
       const v = read(sp.month);
