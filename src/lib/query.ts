@@ -254,6 +254,76 @@ export interface LedgerSummary {
  * Mirrors the dashboard's expense-focused cards: total, lifestyle and the
  * largest single spend in the filtered set.
  */
+export interface AssigneeGroup {
+  /** Member ids this group's expenses are assigned to; [] = unassigned. */
+  memberIds: string[];
+  count: number;
+  paise: number;
+}
+
+export interface AssigneeBreakdown {
+  /** One entry per distinct assignment combination, biggest spend first. */
+  groups: AssigneeGroup[];
+  /**
+   * Per-member totals: every combination that includes the member contributes
+   * its full amount, so shared spend shows up under each member it is for.
+   */
+  perMember: { memberId: string; paise: number; count: number }[];
+  unassigned: { count: number; paise: number };
+  /** Sum across every group — the filtered set's raw total (bills included). */
+  totalPaise: number;
+}
+
+/**
+ * §2.2 — what the filtered set breaks down into by assignment: each distinct
+ * combination (a member, a couple, everyone, unassigned) plus per-member
+ * totals. One GROUP BY over the same buildWhere() as the list, so it describes
+ * exactly the entries on screen, not the visible page.
+ */
+export async function getAssigneeBreakdown(filters: TransactionListFilters): Promise<AssigneeBreakdown> {
+  const where = buildWhere(await expandGroupFilter(filters), null);
+  const rows = await db
+    .select({
+      splitWith: transactions.splitWith,
+      total: sql<string>`COALESCE(SUM(${transactions.amount}), 0)`,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(transactions)
+    .where(where)
+    .groupBy(transactions.splitWith);
+
+  const groups: AssigneeGroup[] = rows
+    .map((r) => ({ memberIds: [...(r.splitWith ?? [])], count: Number(r.count), paise: rupeesToPaise(r.total) }))
+    .sort((a, b) => b.paise - a.paise || b.count - a.count);
+
+  const perMember = new Map<string, { paise: number; count: number }>();
+  const unassigned = { count: 0, paise: 0 };
+  let totalPaise = 0;
+  for (const g of groups) {
+    totalPaise += g.paise;
+    if (g.memberIds.length === 0) {
+      unassigned.count += g.count;
+      unassigned.paise += g.paise;
+      continue;
+    }
+    for (const id of g.memberIds) {
+      const cur = perMember.get(id) ?? { paise: 0, count: 0 };
+      cur.paise += g.paise;
+      cur.count += g.count;
+      perMember.set(id, cur);
+    }
+  }
+
+  return {
+    groups,
+    perMember: [...perMember.entries()]
+      .map(([memberId, v]) => ({ memberId, ...v }))
+      .sort((a, b) => b.paise - a.paise),
+    unassigned,
+    totalPaise,
+  };
+}
+
 export async function getLedgerSummary(
   filters: TransactionListFilters,
   excludeBills = false,

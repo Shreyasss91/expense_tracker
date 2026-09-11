@@ -7,6 +7,28 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Assignment follow-ups — bulk assign, filter & totals — 11 September 2026 (owner follow-up)
+
+Owner follow-up to the per-expense assignment: act on many entries at once,
+query by assignee, and see the split.
+
+- **Bulk assign:** the selection bar's **Assign** button is now a menu
+  (**Category…** / **For members…**); the member sheet applies one assignment
+  to the whole selection via new `setTransactionsAssignment(ids, memberIds)`,
+  optimistically, with per-row undo.
+- **Ledger filter by assignee:** `assignee=<member id>` (or `assignee=unassigned`)
+  flows through the URL, `buildWhere` (`split_with @>` / empty array), saved
+  searches and the filter bar — distinct from the existing "who entered it"
+  member pills.
+- **Assignee totals:** collapsed **For whom?** section in the ledger summary
+  card — spend per assignment combination and **per member** (shared spend
+  counts for each member it is for), via `getAssigneeBreakdown` over the same
+  `WHERE` as the list.
+- Verified: `tsc --noEmit`, eslint and the pure unit tests (ledger-url,
+  validation, export-format, csv, xlsx, web-push, digest) green.
+
+---
+
 ## Per-expense "who is this for?" assignment — 11 September 2026 (owner request)
 
 Owner request: *"Just because a transaction has been entered by MA, that doesn't

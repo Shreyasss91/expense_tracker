@@ -13,7 +13,7 @@ import { LedgerSummaryHeader } from "@/components/transactions/ledger-summary";
 import { ReviewQueueCard } from "@/components/review/review-queue-card";
 import { monthKeyInIST } from "@/lib/dates";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
-import { getLedgerSummary } from "@/lib/query";
+import { getAssigneeBreakdown, getLedgerSummary } from "@/lib/query";
 import { parseLedgerSearchParams } from "@/lib/ledger-url";
 import { getMonthBudgetStatus } from "@/lib/budgets";
 import { getExcludeBillsEnabled } from "@/db/app-settings-mutations";
@@ -52,7 +52,12 @@ export default async function TransactionsPage({
     // §2.7 — saved search presets for the filter bar's one-tap chips
     listSavedSearches(),
   ]);
-  const summary = await getLedgerSummary(filters, excludeBills);
+  // §2.2 — the assignment totals ride alongside the headline summary; both
+  // run the same buildWhere so they describe exactly the filtered set.
+  const [summary, breakdown] = await Promise.all([
+    getLedgerSummary(filters, excludeBills),
+    getAssigneeBreakdown(filters),
+  ]);
 
   const memberOptions: MemberOption[] = memberRows.map((m) => ({
     id: m.id,
@@ -97,7 +102,14 @@ export default async function TransactionsPage({
       <MonthStrip months={stripMonths} selected={filters.month} filters={ledgerFilters} />
       {/* Layout pass — budget bar lives inside the summary card now, so the
           ledger's chrome is one slim strip and rows start higher. */}
-      <LedgerSummaryHeader monthKey={filters.month} summary={summary} filtersQs={filtersQs} monthBudget={filters.month ? monthBudget : null} />
+      <LedgerSummaryHeader
+        monthKey={filters.month}
+        summary={summary}
+        breakdown={breakdown}
+        members={memberOptions}
+        filtersQs={filtersQs}
+        monthBudget={filters.month ? monthBudget : null}
+      />
       {/* Amendment 20 — the Review queue is pinned to the top of the Ledger */}
       {pendingReviewCount > 0 && (
         <ReviewQueueCard

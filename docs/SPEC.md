@@ -608,7 +608,9 @@ The rows above are retained for the record and for any future income-driven surf
   card also carries: the month's **spent-vs-budget bar** (when a total budget exists,
   §6.7) with mid-month pacing for the current month ("≈ ₹X/day safe · N days left"); an
   amber **uncategorized warning** ("N uncategorized · ₹X — review →") deep-linking to
-  `category=uncategorized` whenever the filtered set contains any.
+  `category=uncategorized` whenever the filtered set contains any. A collapsed **For
+  whom?** section (`getAssigneeBreakdown`) lists spend per assignment **combination**
+  and **per member** (shared spend counts for each member it is for) over the same set.
 - **Review queue:** pinned between the summary card and the filters — a collapsible card
   (collapsed = thin amber banner) listing pending-review rows grouped by month, with
   per-row **Done** acknowledgement, **Acknowledge all**, tap-to-edit/categorize, and the
@@ -629,15 +631,19 @@ The rows above are retained for the record and for any future income-driven surf
   instead of a bottom sheet (Layout pass).
 - **Bulk actions (Amendment 20):** long-press a row (or the Select control) arms multi-
   select — checkboxes, count, and a sticky bar with **Assign**, **Delete**, All/Clear,
-  Esc-to-exit. Assign opens the shared category picker ordered by rank-weighted note
-  matches across the selection (with a None option); both operations are single batched
-  Server Actions (`assignCategory`, `deleteTransactions`, ≤500 ids) behind the §6.4.1
-  five-second Undo — assign-undo restores each row's *previous* category.
+  Esc-to-exit. **Assign** is a menu: **Category…** opens the shared category picker ordered
+  by rank-weighted note matches across the selection (with a None option), and **For
+  members…** applies one assignment (§2.2) to the whole selection; the operations are
+  single batched Server Actions (`assignCategory`, `setTransactionsAssignment`,
+  `deleteTransactions`, ≤500 ids) behind the §6.4.1 five-second Undo — undo restores each
+  row's *previous* category or assignment.
 - **Filters:** one scrollable row of Member chips · Tag chips · the Category select
-  (incl. **❔ Uncategorized**) · a Dates control opening an inline From–To panel; active
+  (incl. **❔ Uncategorized**) · an **assignee** select (For anyone / ❔ Unassigned / each
+  member — who the expense is *for*, distinct from the member chips' who *entered* it) ·
+  a Dates control opening an inline From–To panel; active
   filters render as dismissible chips in a second row (with the category-rename pencil
   and Clear-all). Everything is URL-driven
-  (`?member=…&category=…|uncategorized&tag=…&month=…&from=…&to=…&q=…`) — shareable,
+  (`?member=…&category=…|uncategorized&assignee=…|unassigned&tag=…&month=…&from=…&to=…&q=…`) — shareable,
   server-rendered, invalid values dropped silently. **Filtering, sorting and paging all
   execute in SQL** (§7.3), never in the browser.
 - **Paging:** Keyset pagination on the strict total order `date DESC, time DESC,

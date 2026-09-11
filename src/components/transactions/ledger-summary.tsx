@@ -4,7 +4,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BudgetBar, BudgetRemaining } from "@/components/dashboard/budget-bar";
 import { monthEndInIST, todayInIST } from "@/lib/dates";
 import { formatINR } from "@/lib/money";
-import type { LedgerSummary } from "@/lib/query";
+import type { AssigneeBreakdown, LedgerSummary } from "@/lib/query";
+import type { MemberOption } from "@/components/quick-add/types";
 
 /**
  * Ledger summary header — one compact card describing exactly the filtered
@@ -20,17 +21,32 @@ import type { LedgerSummary } from "@/lib/query";
 export function LedgerSummaryHeader({
   monthKey,
   summary,
+  breakdown,
+  members,
   filtersQs = "",
   monthBudget = null,
 }: {
   monthKey?: string;
   summary: LedgerSummary;
+  /** §2.2 — assignment totals (combinations + per member) for the same set. */
+  breakdown: AssigneeBreakdown;
+  /** Household members, used to label the assignment groups. */
+  members: MemberOption[];
   /** Serialized extra filter params (member/tag/q…) preserved on the link. */
   filtersQs?: string;
   /** §6.7 spent-vs-budget for the selected month; null when none/hidden. */
   monthBudget?: { spentPaise: number; budgetPaise: number; billsPaise: number; excludeBills: boolean } | null;
 }) {
   const scope = monthKey ? format(parse(`${monthKey}-01`, "yyyy-MM-dd", new Date()), "MMMM yyyy") : "All time";
+  const memberById = new Map(members.map((m) => [m.id, m]));
+
+  /** Human label for one assignment combination. */
+  function labelFor(ids: string[]): string {
+    if (ids.length === 0) return "❔ Unassigned";
+    const ordered = members.filter((m) => ids.includes(m.id));
+    if (members.length > 0 && ordered.length === members.length) return "👨‍👩‍👧 Everyone";
+    return ordered.map((m) => `${m.emoji} ${m.name}`).join(" + ");
+  }
   return (
     <Card>
       <CardContent className="p-3">
@@ -97,6 +113,49 @@ export function LedgerSummaryHeader({
               );
             })()}
           </div>
+        )}
+        {/* §2.2 — assignment totals for the same filtered set: each distinct
+            combination, then per-member totals (shared spend counts for every
+            member it is for). Collapsed by default to keep the card slim. */}
+        {breakdown.groups.length > 0 && (
+          <details className="mt-2 border-t pt-2">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+              For whom? <span className="font-normal">· combinations &amp; per-member totals</span>
+            </summary>
+            <div className="mt-2 space-y-2">
+              <ul className="space-y-1">
+                {breakdown.groups.map((g) => (
+                  <li key={g.memberIds.join(",") || "unassigned"} className="flex items-center justify-between gap-2 text-xs">
+                    <span className="min-w-0 truncate">{labelFor(g.memberIds)}</span>
+                    <span className="shrink-0 tabular-nums">
+                      {formatINR(g.paise)}
+                      <span className="text-muted-foreground"> · {g.count}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {breakdown.perMember.length > 0 && (
+                <div className="rounded-lg bg-muted/50 p-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">Per member (shared spend counts for each)</p>
+                  <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
+                    {breakdown.perMember.map((p) => {
+                      const m = memberById.get(p.memberId);
+                      return (
+                        <li key={p.memberId} className="text-xs">
+                          {m ? `${m.emoji} ${m.name}` : "Member"}{" "}
+                          <span className="font-semibold tabular-nums">{formatINR(p.paise)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+              <div className="flex items-center justify-between gap-2 border-t pt-1 text-xs font-medium">
+                <span>Total</span>
+                <span className="tabular-nums">{formatINR(breakdown.totalPaise)}</span>
+              </div>
+            </div>
+          </details>
         )}
       </CardContent>
     </Card>
