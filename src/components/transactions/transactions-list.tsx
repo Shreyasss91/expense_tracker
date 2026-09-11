@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { toast } from "sonner";
 import { X } from "lucide-react";
-import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory, setTransactionAssignment } from "@/actions/transactions";
+import { getTransactionsPage, deleteTransaction, deleteTransactions, assignCategory, setTransactionAssignment, setTransactionsAssignment } from "@/actions/transactions";
 import { LEDGER_MUTATION_EVENT, type LedgerMutation } from "@/lib/events";
 import { emitLedgerMutation, emitSelectionMode } from "@/lib/events";
 import { useQuickAdd } from "@/components/quick-add/quick-add-context";
@@ -16,6 +16,7 @@ import { BulkActionBar, SelectModeButton } from "@/components/shared/bulk-action
 import type { Cursor, TransactionListFilters, TransactionListRow } from "@/lib/query";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
 import { TransactionItem } from "./transaction-item";
+import { MemberAssignSheet } from "./member-assign-sheet";
 import { Button } from "@/components/ui/button";
 
 /* §3.8 — the heavy editing stack (edit dialog: split mode, receipts, budget
@@ -99,6 +100,8 @@ export function TransactionsList({
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [pickerOpen, setPickerOpen] = useState(false);
+  // §2.2 — bulk "who are these for?" picker (separate from the category sheet)
+  const [memberPickerOpen, setMemberPickerOpen] = useState(false);
   // UX pass — the empty state's CTA opens the same Quick Add sheet as the FAB
   const { open: openQuickAdd } = useQuickAdd();
 
@@ -265,6 +268,7 @@ export function TransactionsList({
     setSelectionMode(false);
     setSelectedIds(new Set());
     setPickerOpen(false);
+    setMemberPickerOpen(false);
   }
 
   // Broadcast so the bottom nav can tuck the + FAB away while the bulk bar
@@ -356,6 +360,59 @@ export function TransactionsList({
       }
     } catch {
       emitLedgerMutation({ kind: "update", id: row.id, row });
+      toast.error("Could not assign");
+    }
+  }
+
+  /**
+   * §2.2 — apply one assignment to every selected row (the bulk counterpart of
+   * handleAssignMembers). Optimistic like the category bulk assign: patch every
+   * row through the mutation bus, then revert the whole batch if the server
+   * rejects. Undo restores each row's ORIGINAL assignment, which may differ per
+   * row, so it re-issues one call per distinct previous assignment.
+   */
+  async function handleAssignMembersBulk(memberIds: string[]) {
+    const targets = selectedRows;
+    if (targets.length === 0) return;
+    const originals = targets;
+    const apply = (ids: string[]) => {
+      for (const t of originals) {
+        emitLedgerMutation({ kind: "update", id: t.id, row: { ...t, splitWith: ids, shared: ids.length > 0 } });
+      }
+    };
+    apply(memberIds);
+    exitSelection();
+    try {
+      const res = await setTransactionsAssignment(targets.map((t) => t.id), memberIds);
+      if (!res.ok) {
+        for (const o of originals) emitLedgerMutation({ kind: "update", id: o.id, row: o });
+        toast.error(res.error ?? "Could not assign");
+        return;
+      }
+      toast.success(
+        memberIds.length > 0
+          ? `Assigned ${plural(res.updated, "transaction")}`
+          : `Removed assignment from ${plural(res.updated, "transaction")}`,
+        {
+          duration: UNDO_WINDOW_MS,
+          action: {
+            label: "Undo",
+            onClick: () => {
+              for (const o of originals) emitLedgerMutation({ kind: "update", id: o.id, row: o });
+              const groups = new Map<string, string[]>();
+              for (const o of originals) {
+                const key = (o.splitWith ?? []).join(",");
+                const arr = groups.get(key) ?? [];
+                arr.push(o.id);
+                groups.set(key, arr);
+              }
+              for (const [key, ids] of groups) void setTransactionsAssignment(ids, key ? key.split(",") : []);
+            },
+          },
+        },
+      );
+    } catch {
+      for (const o of originals) emitLedgerMutation({ kind: "update", id: o.id, row: o });
       toast.error("Could not assign");
     }
   }
@@ -507,6 +564,7 @@ export function TransactionsList({
           onCancel={exitSelection}
           onDelete={requestBulkDelete}
           onAssign={() => setPickerOpen(true)}
+          onAssignMembers={() => setMemberPickerOpen(true)}
           onSelectAll={toggleSelectAll}
           allSelected={allSelected}
         />
@@ -519,6 +577,14 @@ export function TransactionsList({
         rows={selectedRows}
         onPick={(categoryId) => void handleAssign(categoryId)}
         recentCategoryIds={recentCategoryIds}
+      />
+
+      <MemberAssignSheet
+        open={memberPickerOpen}
+        onOpenChange={setMemberPickerOpen}
+        members={members}
+        selectedCount={selectedIds.size}
+        onApply={(memberIds) => void handleAssignMembersBulk(memberIds)}
       />
 
       <TransactionEditDialog

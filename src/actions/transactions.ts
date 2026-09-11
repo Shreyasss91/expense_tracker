@@ -191,6 +191,46 @@ export async function setTransactionAssignment(
 const BULK_MAX = 500;
 
 /**
+ * §2.2 — set (or clear) who many transactions are for, in one statement.
+ * `memberIds` is the complete assignment applied to every selected row; an
+ * empty array clears it ("not assigned"). Shares setTransactionAssignment's
+ * validation and mirrors assignCategory's batching.
+ */
+export async function setTransactionsAssignment(
+  ids: string[],
+  memberIds: string[],
+): Promise<{ ok: true; updated: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  if (!Array.isArray(ids) || ids.length === 0) return { ok: false as const, error: "Nothing selected" };
+  if (ids.length > BULK_MAX) return { ok: false as const, error: `Select at most ${BULK_MAX} transactions` };
+  const checkedIds = ids.map((id) => idSchema.safeParse(id)).filter((r) => r.success).map((r) => r.data);
+  if (checkedIds.length !== ids.length) return { ok: false as const, error: "Invalid transaction id" };
+  if (!Array.isArray(memberIds)) return { ok: false as const, error: "Invalid assignment" };
+
+  const unique = [...new Set(memberIds)];
+  if (unique.length > 20) return { ok: false as const, error: "Too many members" };
+  if (unique.some((m) => !idSchema.safeParse(m).success)) {
+    return { ok: false as const, error: "Invalid member id" };
+  }
+  if (unique.length > 0) {
+    const found = await db.select({ id: members.id }).from(members).where(inArray(members.id, unique));
+    if (found.length !== unique.length) return { ok: false as const, error: "Unknown member" };
+  }
+
+  const rows = await db
+    .update(transactions)
+    .set({ splitWith: unique, shared: unique.length > 0 })
+    .where(inArray(transactions.id, checkedIds))
+    .returning({ id: transactions.id });
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+  return { ok: true as const, updated: rows.length };
+}
+
+/**
  * Amendment 20 — assign one category to many transactions in a single
  * UPDATE. `categoryId: null` clears the category ("Uncategorized").
  */

@@ -1,7 +1,13 @@
 "use client";
 
-import { ListChecks, Tag, Trash2, X } from "lucide-react";
+import { ChevronDown, ListChecks, Tag, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * §3.7 — the sticky bulk-action bar, shared verbatim by the ledger list and
@@ -13,13 +19,20 @@ export function BulkActionBar({
   onCancel,
   onDelete,
   onAssign,
+  onAssignMembers,
   onSelectAll,
   allSelected,
 }: {
   selectedCount: number;
   onCancel: () => void;
   onDelete: () => void;
+  /** Opens the category picker. */
   onAssign: () => void;
+  /**
+   * §2.2 — when provided, "Assign" becomes a two-choice menu (category /
+   * members). Surfaces without a member picker keep the single button.
+   */
+  onAssignMembers?: () => void;
   onSelectAll?: () => void;
   allSelected?: boolean;
 }) {
@@ -49,15 +62,33 @@ export function BulkActionBar({
         >
           <Trash2 className="h-4 w-4 text-destructive" /> Delete
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          className="gap-1 rounded-full"
-          disabled={selectedCount === 0}
-          onClick={onAssign}
-        >
-          <Tag className="h-4 w-4" /> Assign
-        </Button>
+        {onAssignMembers ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" size="sm" className="gap-1 rounded-full" disabled={selectedCount === 0}>
+                <Tag className="h-4 w-4" /> Assign <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem className="gap-2" onSelect={() => onAssign()}>
+                <Tag className="h-4 w-4" /> Category…
+              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2" onSelect={() => onAssignMembers()}>
+                <Users className="h-4 w-4" /> For members…
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <Button
+            type="button"
+            size="sm"
+            className="gap-1 rounded-full"
+            disabled={selectedCount === 0}
+            onClick={onAssign}
+          >
+            <Tag className="h-4 w-4" /> Assign
+          </Button>
+        )}
       </div>
     </div>
   );
