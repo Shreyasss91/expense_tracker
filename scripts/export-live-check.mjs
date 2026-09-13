@@ -45,7 +45,7 @@ async function main() {
     throw new Error("no family master password — set FAMILY_MASTER_PASSWORD in .env.local");
   }
 
-  const client = await login(BASE);
+  const client = await login(BASE, PASSWORD);
 
   // 1. Stream the canonical CSV from the export route — the same URL the
   //    ledger's "CSV — 7-column" menu item downloads.
