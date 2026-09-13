@@ -5,6 +5,10 @@ const fs = require("fs");
 const { encodeReply } = require("next/dist/compiled/react-server-dom-webpack/cjs/react-server-dom-webpack-client.node.unbundled.development.js");
 
 const [, , actionId, url, argFile] = process.argv;
+if (!actionId || !url || !argFile) {
+  console.error("usage: node scripts/encode-reply.cjs <actionId> <url> <jsonArgFile>");
+  process.exit(1);
+}
 const arg = JSON.parse(fs.readFileSync(argFile, "utf8"));
 
 (async () => {

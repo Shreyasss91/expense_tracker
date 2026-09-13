@@ -1,18 +1,22 @@
 /**
- * `loadLiveEnv` regression test — `npm run test:live-env`.
+ * Live-script guardrail regression test — `npm run test:live`.
  *
- * The guard exists to stop a live script from authenticating against
- * PRODUCTION with a stale shell variable, so the FAILURE path is the point:
- * it must exit non-zero, name the shadowed variables, and print no VALUES —
- * those are secrets.
+ * Both `live.mjs` helpers exist to stop a live script from reaching PRODUCTION
+ * on a bad assumption, so the FAILURE paths are the point:
  *
- * Every case runs in a child process, because `loadLiveEnv` mutates
+ *   - `loadLiveEnv` must refuse to run when the shell shadows `.env.local`,
+ *     naming the variables while printing no VALUES (they are secrets);
+ *   - `login` must reject a missing argument BEFORE any request, instead of
+ *     sending `password=undefined` and reporting it as a wrong password.
+ *
+ * The `loadLiveEnv` cases run in a child process, because it mutates
  * `process.env` and calls `process.exit(1)`; in-process it would end the run
  * and leak state into later cases. The child is this same file re-invoked with
  * a scenario, so the fixture code is real JS rather than an escaped string.
  *
- * The fixture uses its own keys and its own file, so a developer's real
- * `.env.local` and exported secrets are never read or disturbed.
+ * The fixture uses its own keys and its own file, and the `login` cases use an
+ * unresolvable host, so a developer's real `.env.local` is never read and no
+ * request is ever sent.
  */
 import { strict as assert } from "node:assert";
 import { spawnSync } from "node:child_process";
@@ -20,7 +24,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadLiveEnv } from "./live.mjs";
+import { loadLiveEnv, login } from "./live.mjs";
 
 const ALPHA = "LIVEENV_FIXTURE_ALPHA";
 const BETA = "LIVEENV_FIXTURE_BETA";
@@ -36,8 +40,19 @@ function runChildScenario() {
   );
 }
 
-function runParent() {
-  const dir = mkdtempSync(join(tmpdir(), "live-env-test-"));
+async function runParent() {
+  // --- login() argument guards ---------------------------------------------
+  // `.invalid` is reserved and never resolves: if the guard let the call
+  // through, the failure would be a DNS error, so the predicate below proves
+  // the TypeError came from the guard rather than from an attempted request.
+  const guard = (message) => (err) => err instanceof TypeError && message.test(err.message);
+  await assert.rejects(login("https://live.invalid"), guard(/without a password/));
+  await assert.rejects(login("https://live.invalid", ""), guard(/without a password/));
+  await assert.rejects(login("https://live.invalid", undefined), guard(/without a password/));
+  await assert.rejects(login("", "secret"), guard(/without a base URL/));
+  await assert.rejects(login(undefined, "secret"), guard(/without a base URL/));
+
+  const dir = mkdtempSync(join(tmpdir(), "live-test-"));
   const fixture = join(dir, "fixture.env");
   writeFileSync(fixture, `${ALPHA}=${FILE_ALPHA}\n${BETA}=beta-from-file\n`);
 
@@ -96,10 +111,11 @@ function runParent() {
   }
 
   console.log(
-    "loadLiveEnv OK — shadowing aborts naming the variable without printing values, " +
-      "identical values and an absent file pass through, and ALLOW_ENV_OVERRIDE=1 proceeds.",
+    "live.mjs OK — shadowing aborts naming the variable without printing values, " +
+      "identical values and an absent file pass through, ALLOW_ENV_OVERRIDE=1 proceeds, " +
+      "and login() rejects a missing base URL or password before any request.",
   );
 }
 
 if (process.env.LIVEENV_TEST_SCENARIO) runChildScenario();
-else runParent();
+else await runParent();

@@ -68,6 +68,19 @@ export function loadLiveEnv(path = ".env.local") {
 }
 
 export async function login(base, password) {
+  // Fail fast on a missing argument, BEFORE any request. Without this,
+  // `login(BASE)` posts `password=undefined`, NextAuth answers 302, and the
+  // caller reports "wrong master password or missing env?" — which blames
+  // production for a call-site mistake and sends the investigation there.
+  if (typeof base !== "string" || base.length === 0) {
+    throw new TypeError("login(base, password) called without a base URL");
+  }
+  if (typeof password !== "string" || password.length === 0) {
+    throw new TypeError(
+      "login(base, password) called without a password — pass the master password through",
+    );
+  }
+
   const jar = new Map();
 
   function setCookies(res) {

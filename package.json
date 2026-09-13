@@ -23,7 +23,7 @@
     "test:csv-quoting": "tsx src/lib/csv-quoting-test.ts",
     "test:csv-parse": "tsx src/lib/csv-parse-test.ts",
     "test:csv-parser": "node scripts/lib/csv-test.mjs",
-    "test:live-env": "node scripts/lib/live-env-test.mjs",
+    "test:live": "node scripts/lib/live-test.mjs",
     "test:xlsx": "tsx src/lib/xlsx-test.ts",
     "test:export-format": "tsx src/lib/export-format-test.ts",
     "test:web-push": "tsx src/lib/web-push-test.ts",
