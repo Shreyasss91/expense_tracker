@@ -61,7 +61,7 @@ export async function replaceBudgetScope<TSchema extends Record<string, unknown>
     .from(budgets)
     .where(scopeWhere);
 
-  for (const [key, input] of desired) {
+  for (const input of desired.values()) {
     const existing = existingRows.find(
       (r) => (r.categoryId ?? null) === (input.categoryId ?? null) && (r.groupId ?? null) === (input.groupId ?? null),
     );

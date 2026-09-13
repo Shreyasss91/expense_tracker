@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { addDays, addMonths, differenceInCalendarDays, format, parseISO } from "date-fns";
-import { and, asc, eq, gte, sql } from "drizzle-orm";
+import { asc, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, templates, transactions } from "@/db/schema";
 import { rupeesToPaise } from "@/lib/money";
