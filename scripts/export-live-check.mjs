@@ -1,17 +1,33 @@
 /**
  * Live export verification — `npm run verify:export-live`.
  *
- * Proves the deployed app's CSV export reproduces `seed.csv`:
+ * Answers one question about the deployed app: **is the seeded history still
+ * in the export?**
  *
- *   seed.csv ──db:seed──▶ prod DB ──/api/export──▶ CSV ──must equal──▶ seed.csv
+ *   seed.csv ──db:seed──▶ prod DB ──/api/export──▶ CSV ──must still contain──▶ seed.csv rows
  *
  * §2.10 moved export from a Server Action to the streaming GET /api/export
- * route, so the flow is now a plain authenticated fetch of
+ * route, so the flow is a plain authenticated fetch of
  * `/api/export?format=csv&columns=canonical` (the 7-column seed.csv contract,
- * §6.6) — no more locating the action id inside the live client chunks. The
- * response is compared against seed.csv in canonical form (header, 7 columns,
- * HH:MM times, 2-dp amounts, date-ASC ordering, multiset equality) and the
- * truncation header must say the export was complete. Fails loudly on drift.
+ * §6.6) — no more locating the action id inside the live client chunks.
+ *
+ * This is LOSS DETECTION, not reproduction. Exact reproduction against a fresh
+ * seed is already proven in CI by the DB-backed `test:seed-roundtrip`. Prod is
+ * a live ledger: the daily recurring cron stamps bills and the household adds
+ * and edits entries, so the export legitimately grows past seed.csv — the same
+ * reason the smoke test uses a `≥` baseline. What must never happen is a seeded
+ * row DISAPPEARING, so:
+ *
+ *   - the format contract stays exact: canonical header, 7 columns, HH:MM
+ *     times, 2-dp amounts, date-ASC ordering, `x-export-truncated: 0`;
+ *   - every seeded row must be present — verbatim, or modified in a way that
+ *     keeps the transaction's identity: same date, member and amount. Note text
+ *     is user-written, and category NAMES are renameable by design (§5.3: the
+ *     slug is the identity, the name is a label), so neither can be required to
+ *     match;
+ *   - a seeded row with no such counterpart is reported as LOST and fails the
+ *     run, naming the row. Deleted-vs-edited-beyond-recognition cannot be told
+ *     apart from outside the app, so the report says which case it is not.
  *
  * Env:
  *   PROD_URL                 default https://tokenscript.vercel.app
@@ -70,32 +86,88 @@ async function main() {
     "CSV starts with the canonical header",
   );
 
-  // 2. Compare with seed.csv in canonical form (multiset, amounts → 2 dp).
+  // 2. Loss detection against seed.csv — see the header for why this is a
+  //    subset check, not the equality a freshly seeded database would satisfy.
   const seedCsv = readFileSync(join(process.cwd(), "seed_data", "seed.csv"), "utf8");
   const parsedSeed = parseCsv(seedCsv);
   check(parsedSeed.length > 0, "seed.csv contains a header row");
   const seedRows = parsedSeed.slice(1);
   const exportRows = parsedExport.slice(1);
-  check(exportRows.length === seedRows.length, `row count matches seed.csv (${exportRows.length})`);
 
   const canonical = (f) => [...f.slice(0, 4), Number(f[4]).toFixed(2), ...f.slice(5)];
-  const key = (f) => canonical(f).join("\u001F");
-  const seedSorted = seedRows.map((f) => {
-    if (f.length !== 7) throw new Error(`seed row has ${f.length} fields`);
-    return key(f);
-  }).sort();
-  const exportSorted = exportRows.map((f) => {
-    if (f.length !== 7) throw new Error(`export row has ${f.length} fields`);
-    return key(f);
-  }).sort();
-  const same = JSON.stringify(seedSorted) === JSON.stringify(exportSorted);
-  check(same, "export equals seed.csv as a multiset (canonical form)");
-  if (!same) {
-    for (let i = 0; i < Math.max(seedSorted.length, exportSorted.length); i++) {
-      if (seedSorted[i] !== exportSorted[i]) {
-        throw new Error(`mismatch at row ${i + 1}:\n  seed  : ${seedSorted[i] ?? "(missing)"}\n  export: ${exportSorted[i] ?? "(missing)"}`);
-      }
+  const key = (f) => {
+    if (f.length !== 7) throw new Error(`expected 7 fields, got ${f.length}: ${f.join("|")}`);
+    return canonical(f).join("\u001F");
+  };
+  const tally = (rows) => {
+    const counts = new Map();
+    for (const f of rows) counts.set(key(f), (counts.get(key(f)) ?? 0) + 1);
+    return counts;
+  };
+  const seedTally = tally(seedRows);
+  const exportTally = tally(exportRows);
+
+  // Seeded rows no longer present one-for-one, and the exported rows that are
+  // not seed rows and could therefore account for one.
+  const deficits = [];
+  for (const [k, needed] of seedTally) {
+    for (let n = Math.min(needed, exportTally.get(k) ?? 0); n < needed; n += 1) deficits.push(k.split("\u001F"));
+  }
+  const extras = [];
+  for (const [k, found] of exportTally) {
+    for (let n = seedTally.get(k) ?? 0; n < found; n += 1) extras.push(k.split("\u001F"));
+  }
+
+  // A transaction's identity as far as it can be seen from outside the app:
+  // date, member and amount. Matching on nothing else is deliberate — every
+  // remaining field (note, category name, tag, even the time) is editable, and
+  // requiring one would report a legitimate edit as lost history.
+  const identity = (f) => [f[0], f[2], Number(f[4]).toFixed(2)].join("\u001F");
+  const byIdentity = new Map();
+  for (const f of extras) {
+    const id = identity(f);
+    if (!byIdentity.has(id)) byIdentity.set(id, []);
+    byIdentity.get(id).push(f);
+  }
+
+  // One extra row accounts for at most one missing seed row.
+  const spent = new Set();
+  const modified = [];
+  const lost = [];
+  for (const f of deficits) {
+    const match = (byIdentity.get(identity(f)) ?? []).find((c) => !spent.has(c));
+    if (match) {
+      spent.add(match);
+      modified.push({ from: f, to: match });
+    } else {
+      lost.push(f);
     }
+  }
+
+  console.log(
+    `  ⓘ ${seedRows.length} seeded row(s) checked against ${exportRows.length} exported row(s)`,
+  );
+  if (modified.length > 0) {
+    console.log(`  ⓘ ${modified.length} seeded row(s) present but MODIFIED (same date, member and amount):`);
+    for (const { from, to } of modified) {
+      console.log(`      ${from[0]}  ${from[2]}  ₹${from[4]}: "${from[3]}" → "${to[3]}"`);
+    }
+  }
+  const grown = extras.length - modified.length;
+  if (grown > 0) {
+    console.log(
+      `  ⓘ ${grown} row(s) beyond seed.csv — expected: the recurring cron stamps bills and the household adds entries`,
+    );
+  }
+
+  check(
+    lost.length === 0,
+    lost.length === 0
+      ? "every seeded row is still accounted for (verbatim or modified)"
+      : `LOST HISTORY — ${lost.length} seeded row(s) absent with no same-date/member/amount counterpart:`,
+  );
+  for (const f of lost) {
+    console.error(`      ${f[0]}  ${f[1]}  ${f[2]}  ${f[3]}  ₹${f[4]}  ${f[5]}  ${f[6]}`);
   }
 
   // 3. Format spot-checks on the parsed export (dates, times, amounts).
@@ -114,7 +186,10 @@ async function main() {
     console.error(`✗ Live export verification FAILED (${failures} check(s) failed)`);
     process.exitCode = 1;
   } else {
-    console.log(`✓ Live export OK — ${BASE} exported ${exportRows.length} rows matching seed.csv (canonical form).`);
+    console.log(
+      `✓ Live export OK — ${BASE} exported ${exportRows.length} rows and still accounts for all ` +
+        `${seedRows.length} seeded rows (verbatim or modified).`,
+    );
   }
 }
 
