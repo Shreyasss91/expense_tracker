@@ -10,7 +10,9 @@ import type { MemberOption } from "@/components/quick-add/types";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  if (!session) redirect("/login");
+  // `?.user` — not just `!session` — so a session whose master-password
+  // fingerprint went stale (§3.1) is redirected exactly like a logged-out one.
+  if (!session?.user) redirect("/login");
 
   const cookieStore = await cookies();
   const activeMemberId = cookieStore.get("active_member_id")?.value;

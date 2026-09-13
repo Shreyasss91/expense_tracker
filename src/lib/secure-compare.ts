@@ -28,6 +28,47 @@ export function timingSafeStringEqual(a: string, b: string): boolean {
 }
 
 /**
+ * Keyed fingerprint (HMAC-SHA-256) of the family master password.
+ *
+ * §3.1 session revocation: the session cookie is a stateless JWT signed with
+ * AUTH_SECRET, so changing `FAMILY_MASTER_PASSWORD` does not by itself
+ * invalidate an already-issued cookie — the signature still verifies, and
+ * `updateAge` rolls an active holder forward indefinitely (§1.8). The auth
+ * callbacks therefore pin this fingerprint into the token at sign-in and
+ * re-derive it on every request, so a password change retires every session
+ * that predates it.
+ *
+ * AUTH_SECRET is the HMAC key rather than the message: the fingerprint travels
+ * inside the token, so it must not be reversible (or brute-forceable) back to
+ * the password even if a token is ever exposed.
+ *
+ * Same Edge constraint as `timingSafeStringEqual` above — `auth.config.ts` is
+ * bundled for the Edge runtime by `src/middleware.ts`, so this must use Web
+ * Crypto and never `node:crypto`. That makes it async (`subtle` has no sync
+ * API), which both auth callbacks accommodate.
+ */
+export async function masterPasswordFingerprint(): Promise<string> {
+  const key = process.env.AUTH_SECRET;
+  const password = process.env.FAMILY_MASTER_PASSWORD;
+  // Both are required (next-auth refuses to run without AUTH_SECRET, and §3.1
+  // requires the password). An absent one is a deploy misconfiguration: fail
+  // closed to a sentinel rather than throwing — Web Crypto rejects a
+  // zero-length HMAC key with a DataError.
+  if (!key || !password) return "unconfigured";
+
+  const encoder = new TextEncoder();
+  const hmacKey = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(key),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", hmacKey, encoder.encode(password));
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
  * Best-effort in-memory rate limiter.
  *
  * NOTE: serverless cold starts reset the map, so this is defence-in-depth

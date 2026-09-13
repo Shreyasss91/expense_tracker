@@ -29,6 +29,7 @@
     "test:digest": "tsx src/lib/digest-test.ts",
     "generate:vapid": "node scripts/generate-vapid.mjs",
     "test:validation": "tsx src/lib/validation-test.ts",
+    "test:password-session": "tsx src/auth-session-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "verify:export-live": "node scripts/export-live-check.mjs"
   },
