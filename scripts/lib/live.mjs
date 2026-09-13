@@ -1,5 +1,6 @@
 /**
- * Shared helper for the live-site scripts (smoke-prod, export-live-check).
+ * Shared helper for the scripts that reach production — the live-site checks
+ * (smoke-prod, export-live-check) and the live-DB utility (list-nonseed).
  * Logs into the deployed app through the real NextAuth credentials flow and
  * returns a fetch bound to the base URL that carries the session cookie.
  *
@@ -13,15 +14,15 @@ import { parse as parseEnvFile } from "dotenv";
 const timeout = (ms = 60000) => AbortSignal.timeout(ms);
 
 /**
- * Load `.env.local` for the live scripts, refusing to run when the ambient
- * environment shadows it with a different value.
+ * Load `.env.local` for the scripts that touch production, refusing to run when
+ * the ambient environment shadows it with a different value.
  *
  * `dotenv` never overrides an existing variable — deliberate, but it means an
  * exported `FAMILY_MASTER_PASSWORD` silently beats the file. A smoke test then
  * logs in with the WRONG password, gets a bare 302, and reports "wrong master
  * password", pointing the investigation at production instead of at the shell.
- * The inverse is worse: an exported `PROD_URL` or `CRON_SECRET` would run the
- * checks against a different target entirely.
+ * The inverse is worse: an exported `PROD_URL`, `DATABASE_URL` or `CRON_SECRET`
+ * would point the run at a different target entirely.
  *
  * So a difference is fatal, not a warning, and it is detected BEFORE anything
  * is merged — afterwards the two sources are indistinguishable.

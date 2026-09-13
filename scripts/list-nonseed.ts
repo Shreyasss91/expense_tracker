@@ -1,15 +1,20 @@
 /**
  * Dev utility — list rows in `transactions` that are NOT seed rows.
+ * Run with `npx tsx scripts/list-nonseed.ts`.
  * A row is a seed row iff its id equals uuidv5(rawLine + \u001F#occurrence, SEED_NAMESPACE)
  * for some byte-identical line of seed.csv (§8.1).
  */
-import { config } from "dotenv";
-config({ path: ".env.local" });
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { neon } from "@neondatabase/serverless";
 import { v5 as uuidv5 } from "uuid";
 import { SEED_NAMESPACE } from "../src/lib/constants";
+import { loadLiveEnv } from "./lib/live.mjs";
+
+// This reads the LIVE database, so it gets the same guard as the live HTTP
+// scripts: an exported DATABASE_URL that beats .env.local would quietly list
+// rows from a different database. `loadLiveEnv()` aborts instead of guessing.
+loadLiveEnv();
 
 const sql = neon(process.env.DATABASE_URL ?? "");
 const SEED_CSV = join(process.cwd(), "seed_data", "seed.csv");
