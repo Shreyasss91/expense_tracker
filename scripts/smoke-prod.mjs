@@ -11,6 +11,12 @@
  *      EXCEED the baseline (the daily recurring cron auto-stamps bills, and
  *      humans add expenses), but dropping under it means seeded history was
  *      lost, so that fails loudly.
+ *   6. the §3.1 password fingerprint is accepted by BOTH runtimes — the Node
+ *      session endpoint reports `family_admin` and the Edge middleware does
+ *      not bounce an authed page to /login. These resolve
+ *      FAMILY_MASTER_PASSWORD independently, and a disagreement retires every
+ *      session on every request (the household is logged out in a loop), so
+ *      the two must be checked together, not one at a time.
  *
  * Env:
  *   PROD_URL                 default https://tokenscript.vercel.app
@@ -132,6 +138,41 @@ async function main() {
   const client = await login(BASE, PASSWORD);
   const timedFetch = (path) => timed(`GET ${path}`, () => client.fetch(path));
   check(true, "credentials login succeeded (session cookie issued)");
+
+  // ── §3.1 password-fingerprint agreement across runtimes ─────────────────
+  // The fingerprint is derived from FAMILY_MASTER_PASSWORD, and the two
+  // runtimes resolve that variable independently: this endpoint runs in Node,
+  // while page requests are gated by Edge middleware whose bundle inlines
+  // process.env at BUILD time. If they disagree, every request retires the
+  // session — so a fresh login must satisfy both halves, not just one.
+  const sessionRes = await timedFetch("/api/auth/session");
+  const sessionText = await sessionRes.text();
+  let sessionJson = null;
+  try {
+    sessionJson = JSON.parse(sessionText);
+  } catch {
+    // An empty or HTML body here is exactly the regression being guarded.
+  }
+  check(
+    sessionRes.status === 200 && sessionJson?.user?.role === "family_admin",
+    "GET /api/auth/session → family_admin (Node runtime accepts the password fingerprint)",
+  );
+  // A substring probe is meaningless for a very short password (one or two
+  // characters appear by chance), so only assert it where it can mean something.
+  if (PASSWORD.length >= 6) {
+    check(!sessionText.includes(PASSWORD), "session payload never echoes the master password");
+  }
+
+  // `redirect: "manual"` is the point: a session the middleware rejects is a
+  // 307 to /login that a follow-redirect fetch would happily report as 200 from
+  // the login page, hiding the regression.
+  const edgeProbe = await timed("GET / (authed, redirects not followed)", () =>
+    client.fetch("/", { redirect: "manual" }),
+  );
+  check(
+    edgeProbe.status === 200,
+    `authed GET / not bounced to /login (${edgeProbe.status}) — Edge middleware agrees on the fingerprint`,
+  );
 
   const dash = await timedFetch("/");
   const dashText = stripReactComments(await dash.text());
