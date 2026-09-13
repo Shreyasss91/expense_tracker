@@ -182,18 +182,37 @@ async function buildReviewOnly(): Promise<PushNotification[]> {
   ];
 }
 
+/**
+ * Counting contract — the numbers must reconcile, because the whole point of
+ * this response is answering "did push work?". A notification goes to every
+ * device, so the unit of work is a SEND ATTEMPT, not a notification:
+ *
+ *   attempts = devices × notifications = sent + failed + stale
+ *
+ * Every attempt lands in exactly one of those three buckets. `removed` is a
+ * different unit again (subscriptions, not attempts) and is therefore kept
+ * separate rather than folded in.
+ */
 export interface DispatchResult {
   ok: boolean;
   status?: number;
   error?: string;
-  /** Notifications actually attempted (after the daily gate). */
-  attempted: number;
-  /** Total notifications that were due before the gate. */
+  /** Total notifications that were due before the daily gate. */
   due: number;
+  /** Notifications that cleared the daily gate — what each device was sent. */
+  notifications: number;
+  /** Subscribed devices those notifications were addressed to. */
+  devices: number;
+  /** Send attempts performed (devices × notifications). */
+  attempts: number;
+  /** Attempts the push service accepted. */
   sent: number;
+  /** Attempts that errored, including transport failures. */
   failed: number;
-  /** Subscriptions removed because the push service reported them dead. */
+  /** Attempts refused because that device's subscription is dead (404/410). */
   stale: number;
+  /** Distinct subscriptions deleted for being dead (≤ stale). */
+  removed: number;
 }
 
 /**
@@ -212,13 +231,19 @@ export const LAST_DISPATCH_KEY = "push:last_dispatch";
 export interface LastDispatchSummary {
   /** ISO timestamp of the dispatch. */
   at: string;
+  /** Subscribed devices the notifications were addressed to. */
   devices: number;
+  /** Notifications that cleared the daily gate. */
   notifications: number;
-  /** Sends the push service ACCEPTED — not proof a notification was displayed. */
+  /** Send attempts: devices × notifications === sent + failed + stale. */
+  attempts: number;
+  /** Attempts the push service ACCEPTED — not proof a notification was displayed. */
   sent: number;
   failed: number;
-  /** Subscriptions deleted because the push service reported them dead. */
+  /** Attempts refused because that device's subscription is dead (404/410). */
   stale: number;
+  /** Distinct subscriptions deleted for being dead (≤ stale). */
+  removed: number;
 }
 
 /** The last dispatch summary, or null when none has been recorded yet. */
@@ -241,7 +266,17 @@ async function recordDispatch(summary: LastDispatchSummary): Promise<void> {
  * (/api/cron/push) and available to call directly after a deploy.
  */
 export async function dispatchNotifications(): Promise<DispatchResult> {
-  const empty: DispatchResult = { ok: false, attempted: 0, due: 0, sent: 0, failed: 0, stale: 0 };
+  const empty: DispatchResult = {
+    ok: false,
+    due: 0,
+    notifications: 0,
+    devices: 0,
+    attempts: 0,
+    sent: 0,
+    failed: 0,
+    stale: 0,
+    removed: 0,
+  };
 
   if (!isPushConfigured()) {
     return { ...empty, status: 503, error: "Web Push is not configured (set VAPID_* env vars)" };
@@ -251,7 +286,7 @@ export async function dispatchNotifications(): Promise<DispatchResult> {
   if (subs.length === 0) {
     // Recorded too: "the cron ran and no device had subscribed" is exactly the
     // fact that decides whether a delivery bug could have had any impact.
-    await recordDispatch({ at: new Date().toISOString(), devices: 0, notifications: 0, sent: 0, failed: 0, stale: 0 });
+    await recordDispatch({ at: new Date().toISOString(), devices: 0, notifications: 0, attempts: 0, sent: 0, failed: 0, stale: 0, removed: 0 });
     return { ...empty, status: 404, error: "No push subscriptions yet" };
   }
 
@@ -275,7 +310,10 @@ export async function dispatchNotifications(): Promise<DispatchResult> {
 
   let sent = 0;
   let failed = 0;
-  const staleEndpoints: string[] = [];
+  let stale = 0;
+  // A Set, not an array: a dead device is hit once PER NOTIFICATION, so the
+  // endpoints must be deduped before they are counted or deleted.
+  const staleEndpoints = new Set<string>();
 
   for (const sub of subs) {
     const target = { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth };
@@ -288,26 +326,32 @@ export async function dispatchNotifications(): Promise<DispatchResult> {
       }
       if (status === "sent") sent += 1;
       else if (status === "failed") failed += 1;
-      else if (status === "stale") staleEndpoints.push(sub.endpoint);
+      else if (status === "stale") {
+        stale += 1;
+        staleEndpoints.add(sub.endpoint);
+      }
     }
   }
 
   // A dead subscription (app uninstalled, permission revoked) returns 404/410;
   // purge it so we stop paying for POSTs that can never land.
-  if (staleEndpoints.length > 0) {
-    await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, staleEndpoints));
+  if (staleEndpoints.size > 0) {
+    await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, [...staleEndpoints]));
   }
 
   // Record that we fired these keys today, so the next cron is a fresh start.
   await Promise.all(notifications.map((n) => setAppSetting(db, `${n.key}:${today}`, new Date().toISOString())));
 
+  const attempts = subs.length * notifications.length;
   await recordDispatch({
     at: new Date().toISOString(),
     devices: subs.length,
     notifications: notifications.length,
+    attempts,
     sent,
     failed,
-    stale: staleEndpoints.length,
+    stale,
+    removed: staleEndpoints.size,
   });
 
   const ok = sent > 0 || failed === 0;
@@ -315,10 +359,13 @@ export async function dispatchNotifications(): Promise<DispatchResult> {
     ...empty,
     ok,
     status: ok ? 200 : 502,
-    attempted: notifications.length,
     due: due.length,
+    notifications: notifications.length,
+    devices: subs.length,
+    attempts,
     sent,
     failed,
-    stale: staleEndpoints.length,
+    stale,
+    removed: staleEndpoints.size,
   };
 }
