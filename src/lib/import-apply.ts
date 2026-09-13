@@ -82,7 +82,6 @@ async function loadDirectory(): Promise<Directory> {
  */
 async function findExisting(
   rows: ImportDraftRow[],
-  directory: Directory,
   memberIdOf: (row: ImportDraftRow) => string | null,
 ): Promise<Set<number>> {
   const present = new Set<number>();
@@ -222,7 +221,7 @@ export async function resolveImport(filename: string, text: string): Promise<Imp
     }
   });
 
-  const existing = await findExisting(parsed.rows, directory, memberIdOf);
+  const existing = await findExisting(parsed.rows, memberIdOf);
 
   const insertable: NewTransaction[] = [];
   let duplicate = 0;
