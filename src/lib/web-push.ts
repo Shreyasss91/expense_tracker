@@ -9,9 +9,12 @@
  * API that Node 18+ and every browser already ship. So:
  *
  *   - VAPID authentication  → an ES256 JWT signed with the VAPID private key.
- *   - Payload confidentiality → draft-ietf-webpush-encryption: ECDH (P-256)
- *     between an ephemeral sender key and the subscription's `p256dh`, HKDF
- *     to derive a 128-bit AES-GCM key + nonce, then AES-128-GCM.
+ *   - Payload confidentiality → RFC 8291 (message encryption for Web Push)
+ *     over RFC 8188 `aes128gcm`: ECDH (P-256) between an ephemeral sender key
+ *     and the subscription's `p256dh`, HKDF to derive a 128-bit AES-GCM key +
+ *     nonce, then AES-128-GCM. The sender's ephemeral public key travels in
+ *     the content-coding header's `keyid` field (RFC 8291 §3.1, §4) and the
+ *     salt in that header's first 16 octets — both INSIDE the body.
  *
  * No dependency, no native bindings, fully testable: src/lib/web-push-test.ts
  * signs a JWT and round-trips the encryption with no network at all.
@@ -54,6 +57,27 @@ function concat(...parts: Uint8Array<ArrayBuffer>[]): Uint8Array<ArrayBuffer> {
   }
   return out;
 }
+
+const utf8 = (value: string): Uint8Array<ArrayBuffer> => new TextEncoder().encode(value) as Uint8Array<ArrayBuffer>;
+
+const u8 = (value: number): Uint8Array<ArrayBuffer> => new Uint8Array([value]) as Uint8Array<ArrayBuffer>;
+
+/** Unsigned 32-bit big endian — how the `aes128gcm` `rs` parameter is encoded. */
+function u32be(value: number): Uint8Array<ArrayBuffer> {
+  const out = new Uint8Array(4);
+  new DataView(out.buffer).setUint32(0, value, false);
+  return out;
+}
+
+/**
+ * RFC 8291 §4 — a push message is exactly ONE aes128gcm record, `rs` must
+ * exceed plaintext + delimiter + tag, and a push service need only accept 4096
+ * octets of body. That fixes the payload cap by the body's own framing: 4096
+ * − 86 (header: salt 16 + rs 4 + idlen 1 + keyid 65) − 1 (padding delimiter)
+ * − 16 (GCM tag).
+ */
+const RECORD_SIZE = 4096;
+const MAX_PAYLOAD_OCTETS = RECORD_SIZE - 86 - 1 - 16;
 
 /* ----------------------------------------------------------------- HKDF ---- */
 
@@ -134,37 +158,49 @@ export async function encryptPayload(
   payload: string,
   p256dh: string,
   auth: string,
-): Promise<{ body: Uint8Array<ArrayBuffer>; salt: Uint8Array<ArrayBuffer>; ephemeralPublic: Uint8Array<ArrayBuffer> }> {
+): Promise<{ body: Uint8Array<ArrayBuffer>; ephemeralPublic: Uint8Array<ArrayBuffer> }> {
   const receiverRaw = b64urlToBytes(p256dh);
   const authSecret = b64urlToBytes(auth);
   const salt = crypto.getRandomValues(new Uint8Array(16)) as Uint8Array<ArrayBuffer>;
 
   const { ephemeralPublic, shared } = await deriveSharedSecret(receiverRaw);
 
-  // The subscription's auth secret is mixed into the IKM so a stolen ECDH
-  // point alone can't derive the content key — draft-ietf-webpush-encryption.
-  const authInfo = concat(new TextEncoder().encode("WebPush: info") as Uint8Array<ArrayBuffer>, new Uint8Array([0]) as Uint8Array<ArrayBuffer>, receiverRaw, ephemeralPublic);
-  const prk = await hkdfExpand(
-    await hmacSha256(authSecret, shared),
-    authInfo,
-    32,
-  );
+  // RFC 8291 §3.3–3.4, in order: the auth secret is the HKDF salt for the
+  // first extract and mixes the ECDH secret into the IKM, so a stolen ECDH
+  // point alone can't derive the content key. key_info carries the key
+  // context — the cek/nonce info strings below deliberately do NOT.
+  const keyInfo = concat(utf8("WebPush: info"), u8(0), receiverRaw, ephemeralPublic);
+  const ikm = await hkdfExpand(await hmacSha256(authSecret, shared), keyInfo, 32);
+  // RFC 8188 §2.2 — the salt from the content-coding header is the extract
+  // salt for the content key. Omitting this step is what left every payload
+  // this module produced undecryptable by a conformant receiver.
+  const prk = await hmacSha256(salt, ikm);
+  const cek = await hkdfExpand(prk, concat(utf8("Content-Encoding: aes128gcm"), u8(0)), 16);
+  // §2.3 — single record, so the nonce needs no XOR with a sequence number.
+  const nonce = await hkdfExpand(prk, concat(utf8("Content-Encoding: nonce"), u8(0)), 12);
 
-  const cekInfo = concat(new TextEncoder().encode("Content-Encoding: aes128gcm") as Uint8Array<ArrayBuffer>, new Uint8Array([0]) as Uint8Array<ArrayBuffer>, receiverRaw, ephemeralPublic);
-  const nonceInfo = concat(new TextEncoder().encode("Content-Encoding: nonce") as Uint8Array<ArrayBuffer>, new Uint8Array([0]) as Uint8Array<ArrayBuffer>, receiverRaw, ephemeralPublic);
-  const cek = await hkdfExpand(prk, cekInfo, 16);
-  const nonce = await hkdfExpand(prk, nonceInfo, 12);
-
+  const plain = utf8(payload);
+  if (plain.length > MAX_PAYLOAD_OCTETS) {
+    throw new Error(
+      `push payload is ${plain.length} octets, over the ${MAX_PAYLOAD_OCTETS}-octet single-record limit (RFC 8291 §4)`,
+    );
+  }
+  // §4 — the final record's plaintext ends with the padding delimiter 0x02,
+  // which the receiver MUST check.
   const aesKey = await crypto.subtle.importKey("raw", cek, { name: "AES-GCM", length: 128 }, false, ["encrypt"]);
   const ciphertext = new Uint8Array(
     await crypto.subtle.encrypt(
       { name: "AES-GCM", iv: nonce, additionalData: new Uint8Array(0) as Uint8Array<ArrayBuffer> },
       aesKey,
-      new TextEncoder().encode(payload) as Uint8Array<ArrayBuffer>,
+      concat(plain, u8(0x02)),
     ),
   );
 
-  return { body: ciphertext, salt, ephemeralPublic };
+  // RFC 8188 §2.1 — salt(16) | rs(4) | idlen(1) | keyid. The keyid IS the
+  // sender's ephemeral public key (RFC 8291 §3.1), which is how the receiver
+  // finds it: no `Encryption` or `Crypto-Key: dh=` header is involved.
+  const header = concat(salt, u32be(RECORD_SIZE), u8(ephemeralPublic.length), ephemeralPublic);
+  return { body: concat(header, ciphertext), ephemeralPublic };
 }
 
 /* -------------------------------------------------------------- send ---- */
@@ -185,17 +221,20 @@ export type SendStatus = "sent" | "stale" | "failed";
 export async function sendWebPush(target: PushTarget, notification: { title: string; body: string; url: string }): Promise<SendStatus> {
   if (!isPushConfigured()) return "failed";
 
-  const { body, salt, ephemeralPublic } = await encryptPayload(JSON.stringify(notification), target.p256dh, target.auth);
+  const { body } = await encryptPayload(JSON.stringify(notification), target.p256dh, target.auth);
   const jwt = await signVapidJwt(new URL(target.endpoint).origin);
 
-  const cryptoKeyHeader = `keyid=p256dh;dh=${bytesToB64url(ephemeralPublic)},p256ecdsa=${bytesToB64url(vapidPublicRaw())}`;
+  // Under aes128gcm the salt and the sender's key ride INSIDE `body`, so the
+  // only key material left for a header is the VAPID public key. The legacy
+  // `keyid=p256dh;dh=` pair belongs to draft-04 `aesgcm` and must not be sent
+  // alongside it.
+  const cryptoKeyHeader = `p256ecdsa=${bytesToB64url(vapidPublicRaw())}`;
 
   try {
     const response = await fetch(target.endpoint, {
       method: "POST",
       headers: {
         "content-encoding": "aes128gcm",
-        encryption: `salt=${bytesToB64url(salt)}`,
         "crypto-key": cryptoKeyHeader,
         authorization: `WebPush ${jwt}`,
         // 24h — these are non-urgent; a missed budget nudge isn't a crisis.
