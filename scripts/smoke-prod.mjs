@@ -21,14 +21,18 @@
  * Env:
  *   PROD_URL                 default https://tokenscript.vercel.app
  *   FAMILY_MASTER_PASSWORD   production login password
+ *
+ * `.env.local` is loaded by `loadLiveEnv()`, which ABORTS when the shell already
+ * exports one of its variables with a different value: a stale exported
+ * password otherwise surfaces as a login failure blamed on production.
  */
-import { config } from "dotenv";
-config({ path: ".env.local" });
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import { login } from "./lib/live.mjs";
+import { loadLiveEnv, login } from "./lib/live.mjs";
 import { parseCsv } from "./lib/csv.mjs";
+
+loadLiveEnv();
 
 const BASE = process.env.PROD_URL ?? "https://tokenscript.vercel.app";
 const PASSWORD = process.env.FAMILY_MASTER_PASSWORD ?? "";
