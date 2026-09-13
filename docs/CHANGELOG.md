@@ -7,6 +7,34 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Master-password change retires existing sessions — 13 September 2026 (owner request)
+
+Owner report: after changing `FAMILY_MASTER_PASSWORD` on the deployment platform
+and redeploying, an already-signed-in device still opened the app straight to the
+homepage instead of being asked for the password again.
+
+- **Cause:** the session is a **stateless JWT signed with `AUTH_SECRET`** (§1.8).
+The password was read *only* in `authorize()`, so changing it did not alter the
+signing key — the old cookie kept verifying until `maxAge`, and `updateAge`
+rolled an active holder forward indefinitely.
+- **§3.1 point 5 added (normative):** the `jwt` callback pins an HMAC-SHA-256
+fingerprint of `FAMILY_MASTER_PASSWORD` — keyed by `AUTH_SECRET`, via
+`masterPasswordFingerprint()` in `src/lib/secure-compare.ts` — into the token at
+sign-in, and re-derives it on every request; on mismatch the `session` callback
+drops `user`, so middleware redirects to `/login` and every `!session?.user`
+Server Action / route-handler guard fails closed. Env var + redeploy remains the
+whole mechanism: no credentials table, no in-app password change and no
+deployment-control architecture (§6.5). §6.5 now states the revocation
+consequence explicitly.
+- `src/app/(app)/layout.tsx` tightened from `!session` to `!session?.user` so the
+layout redirects a retired session exactly like a logged-out one.
+- **Upgrade effect:** tokens issued before this change carry no fingerprint and
+are treated as signed out, so the first deploy signs every device out once.
+- Verified: `tsc --noEmit`, eslint and `npm run test:password-session` (15
+assertions over the real `jwt` / `session` / `authorized` callbacks) green.
+
+---
+
 ## Assignment follow-ups — bulk assign, filter & totals — 11 September 2026 (owner follow-up)
 
 Owner follow-up to the per-expense assignment: act on many entries at once,
