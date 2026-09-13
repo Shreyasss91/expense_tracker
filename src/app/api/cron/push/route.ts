@@ -10,8 +10,11 @@ export const dynamic = "force-dynamic";
  * queue. The dispatch function itself enforces the once-per-day-per-key gate,
  * so even a mis-set schedule that fires twice in a day won't double-ping.
  *
- * `?dryRun=1` reports what would be sent without contacting any push service
- * — handy for a manual smoke test that doesn't need real subscriptions.
+ * `?dryRun=1` reports what would be sent AND the last real dispatch summary,
+ * without contacting any push service or writing anything — handy for a manual
+ * smoke test that doesn't need real subscriptions, and the only way to ask
+ * "is push actually delivering?" after the fact (§2.11: a push service accepts
+ * opaque ciphertext, so nothing else in the system can answer it).
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -23,9 +26,9 @@ export async function GET(request: Request) {
 
   const dryRun = new URL(request.url).searchParams.get("dryRun") === "1";
   if (dryRun) {
-    const { computeNotifications } = await import("@/lib/notifications");
+    const { computeNotifications, getLastDispatch } = await import("@/lib/notifications");
     const due = await computeNotifications();
-    return NextResponse.json({ ok: true, dryRun: true, due });
+    return NextResponse.json({ ok: true, dryRun: true, due, lastDispatch: await getLastDispatch() });
   }
 
   try {

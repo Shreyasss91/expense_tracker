@@ -197,6 +197,46 @@ export interface DispatchResult {
 }
 
 /**
+ * §2.11 — the last real dispatch, kept so "is push actually working?" has an
+ * answer.
+ *
+ * Nothing else records it. A push service accepts opaque ciphertext, so its 2xx
+ * says nothing about whether a browser could decrypt; a subscription that goes
+ * dead is simply deleted; and the send counts otherwise live only in a runtime
+ * log line. Storing the outcome in `app_settings` — already the store the daily
+ * gate above uses, so no migration — makes it readable, and the cron's
+ * `?dryRun=1` returns it while sending nothing.
+ */
+export const LAST_DISPATCH_KEY = "push:last_dispatch";
+
+export interface LastDispatchSummary {
+  /** ISO timestamp of the dispatch. */
+  at: string;
+  devices: number;
+  notifications: number;
+  /** Sends the push service ACCEPTED — not proof a notification was displayed. */
+  sent: number;
+  failed: number;
+  /** Subscriptions deleted because the push service reported them dead. */
+  stale: number;
+}
+
+/** The last dispatch summary, or null when none has been recorded yet. */
+export async function getLastDispatch(): Promise<LastDispatchSummary | null> {
+  const raw = await getAppSetting(db, LAST_DISPATCH_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as LastDispatchSummary;
+  } catch {
+    return null; // a hand-edited value must not break the status probe
+  }
+}
+
+async function recordDispatch(summary: LastDispatchSummary): Promise<void> {
+  await setAppSetting(db, LAST_DISPATCH_KEY, JSON.stringify(summary));
+}
+
+/**
  * Send everything currently due, once per day per key. Used by the daily cron
  * (/api/cron/push) and available to call directly after a deploy.
  */
@@ -209,6 +249,9 @@ export async function dispatchNotifications(): Promise<DispatchResult> {
 
   const subs = await db.select().from(pushSubscriptions);
   if (subs.length === 0) {
+    // Recorded too: "the cron ran and no device had subscribed" is exactly the
+    // fact that decides whether a delivery bug could have had any impact.
+    await recordDispatch({ at: new Date().toISOString(), devices: 0, notifications: 0, sent: 0, failed: 0, stale: 0 });
     return { ...empty, status: 404, error: "No push subscriptions yet" };
   }
 
@@ -257,6 +300,15 @@ export async function dispatchNotifications(): Promise<DispatchResult> {
 
   // Record that we fired these keys today, so the next cron is a fresh start.
   await Promise.all(notifications.map((n) => setAppSetting(db, `${n.key}:${today}`, new Date().toISOString())));
+
+  await recordDispatch({
+    at: new Date().toISOString(),
+    devices: subs.length,
+    notifications: notifications.length,
+    sent,
+    failed,
+    stale: staleEndpoints.length,
+  });
 
   const ok = sent > 0 || failed === 0;
   return {
