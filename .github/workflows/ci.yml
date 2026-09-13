@@ -39,6 +39,10 @@ jobs:
         run: npm run test:ledger-url
       - name: Semantic validation (DB-free date/time/month regression)
         run: npm run test:validation
+      # §3.1 — a master-password change must retire the sessions it predates.
+      # Sets its own AUTH_SECRET / FAMILY_MASTER_PASSWORD, so it needs no secret.
+      - name: Master-password session revocation (DB-free auth callback regression)
+        run: npm run test:password-session
 
   # §1.4 — the committed migration chain MUST replay from scratch on every
   # push: the 0004/0005 collision went unnoticed precisely because the only
