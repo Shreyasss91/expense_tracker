@@ -2,8 +2,11 @@ name: Prod smoke
 
 # Runs after every push to main (the same event that triggers the Vercel
 # deployment), waits for Vercel's status on the exact commit to report success,
-# then smoke-tests the live app: boots, logs in, renders the exact seeded
-# totals, and stays within the response-time budget.
+# then smoke-tests the live app: boots, logs in, holds at least the seeded
+# totals, and stays within the response-time budget. A second step checks the
+# live CSV export still ACCOUNTS FOR every seeded row — the smoke baseline only
+# bounds the totals from below, so a single lost row would be hidden under the
+# recurring cron's additions, and only `verify:export-live` catches that.
 #
 # Steps are gated on HAS_PASSWORD because `secrets` is not valid in `if:` —
 # only in `env:`, so the presence check happens there. Requires the canonical
@@ -57,3 +60,11 @@ jobs:
         env:
           FAMILY_MASTER_PASSWORD: ${{ secrets.FAMILY_MASTER_PASSWORD }}
         run: npm run smoke:prod
+      # Seeded-history loss check. `.env.local` is gitignored and absent here, so
+      # `loadLiveEnv()` has nothing to conflict with and the job's PROD_URL plus
+      # the secret are the only sources.
+      - name: Live export check (every seeded row still accounted for)
+        if: ${{ env.HAS_PASSWORD == 'true' }}
+        env:
+          FAMILY_MASTER_PASSWORD: ${{ secrets.FAMILY_MASTER_PASSWORD }}
+        run: npm run verify:export-live
