@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.3 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `CHANGELOG.md`), and 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `CHANGELOG.md` and `AUDIT-2026-09-01.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `CHANGELOG.md`), 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `CHANGELOG.md` and `AUDIT-2026-09-01.md`), and 5–17 September 2026 (owner-requested: tag-only Quick Add memory, weekly/monthly Telegram + WhatsApp digest with last-sent history, collapsible Settings, assignment bulk/filter/totals, push dispatch record, September-audit hardening; see `CHANGELOG.md` and `AUDIT-2026-09-17.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -294,8 +294,12 @@ export const templates = pgTable('templates', {
 
 **`app_settings`** is a tiny key-value store for global application settings. It holds
 `exclude_bills_from_budget` (`'1'`/`'0'` — the global "exclude bills from the total
-budget" toggle, §6.7), the Telegram digest and monthly-backup idempotency markers
-(`telegram_digest_sent_<month>`, `backup_sent_<month>`), and any future single-key
+budget" toggle, §6.7), the digest idempotency/history markers
+(`digest_sent:<channel>:<start>..<end>` → ISO timestamp, written on every
+successful Telegram/WhatsApp send, §6.8), the monthly-backup marker
+(`backup_sent_<month>`), the WhatsApp digest config (`whatsapp_digest_phone`
+E.164 digits, `whatsapp_digest_enabled`), the push dispatch record
+(`push:last_dispatch`, §6.8), and any future single-key
 toggles. Read/written via `src/db/app-settings-mutations.ts` (plain statements;
 upsert on conflict). No row for a key = off.
 
@@ -513,7 +517,14 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
 3. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“, or „Yesterday · 14:32“, or „12 Aug 2026 · 14:32“ once the date is more than a day away, with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. **The collapsed/expanded choice no longer persists (Amendment 11, 19 Aug 2026)** — every open of the sheet starts collapsed on today's date and the current time, on every device; tapping it open keeps it expanded only for the rest of that tab's session. *(Superseded: the choice previously persisted per device in `localStorage` — see `CHANGELOG.md`.)*
 4. **Amount + Tag row (Amendment 10, 19 Aug 2026):** the Amount input and the Tag selector share one `flex` row rather than stacking. **Amount** is a ₹-prefixed text input (`flex-1`, mobile decimal keypad) that sanitizes on every keystroke to a value that always fits `NUMERIC(12,2)` — digits and at most one decimal separator, at most 2 decimal digits, at most 10 integer digits — and is captured as integer paise (§5.8). **Tag** is a compact 2×2 cluster beside it: the currently selected tag renders large in the left column (spanning both rows, defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills), with the other two tags stacked as small tap-to-swap buttons in the right column — tapping one swaps it into the selected slot. A live `≈ ₹` preview (or "Enter a valid amount" once a submit was attempted with none) renders under the row.
 4a. **Template strip (Amendment 17, 19 Aug 2026):** rendered only when ≥ 1 template exists — a horizontal scrollable row of chips between the Date/Time row and the Amount+Tag row. Each chip shows `name · ₹whole` (e.g. "ICICI Term Insurance · ₹2,500"). Tap → **prefills** amount, category, tag, note from the template; date/time stay at their IST defaults (§5.7); every field remains editable; commit still only via the Add button. Prefill **overrides** last-entry memory for that open; a successful commit still updates last-entry memory (§6.2). Templates carry no member — the currently active member is stamped at commit time (§3.2).
-5. **Note (optional):** a single-line text input, 140 characters max — remembers the last committed note, so repeat entries (recharges, EMIs, rent) start with both the tag and note already filled in; the remembered tag/note live per-device in `localStorage` and are updated only on a successful commit (amount and date/time are never remembered). While the field is empty, up to **five recent distinct notes** render as one-tap chips beneath it (per-device `quick-add:recent-notes`, UX pass 24 Aug 2026).
+5. **Note (optional):** a single-line text input, 140 characters max — it **opens
+   empty on every open** (owner decision, 5 Sept 2026: the remembered note used to
+   prefill unrelated entries with a previous entry's text, so last-entry memory is
+   now **tag-only**). The remembered tag lives per-device in `localStorage` and is
+   updated only on a successful commit (amount, date/time and note are never
+   remembered). While the field is empty, up to **five recent distinct notes**
+   render as one-tap chips beneath it (per-device `quick-add:recent-notes`, UX pass
+   24 Aug 2026).
 6. **Category — none (Amendment 20, 24 Aug 2026).** Quick Add deliberately has **no
    category surface**: entries commit without one (`category_id` NULL = *uncategorized*,
    a transaction state, never a placeholder category row), and categories are assigned
@@ -570,6 +581,10 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
   persists on transactions, but no dashboard attribution card exists.)*
 - The month's transaction panel closes the page (full ledger rows: tap to edit,
   swipe-delete, bulk assign/delete).
+- **Digest card (compact variant, 7 Sept 2026, §6.8):** a due-today "Send on
+  WhatsApp" one-tap banner when a digest is due, quick this-month sends, a
+  one-line last-sent summary per channel, and a Configure link to the Settings
+  digest card.
 
 All figures come from SQL aggregates (§7.2), never from client-side reduction over a fetched table.
 
@@ -665,12 +680,20 @@ Swipe-left delete on a device that gets handed between family members makes acci
 **No soft delete.** No `deleted_at` column, no tombstones, no restore UI, no filtering of deleted rows from queries. The undo window lives entirely in client state before the write, which is precisely why it costs no schema, no query complexity, and no scope growth.
 
 ### 6.5 Settings
+
+Every card sits behind a **collapsible header** (title + description + chevron;
+10 Sept 2026) so the page scans instead of scrolling — all sections default to
+collapsed, with **Expand all / Collapse all** controls beside the heading and a
+smooth height animation. A URL hash (`#whatsapp-digest`, `#offline-entries`, …)
+opens and scrolls to that section on load, which is also how deep-links from
+toasts and the dashboard land.
 - Manage categories: **create (inline from the edit dialog; the bulk picker and Quick Add do not create), rename, emoji, reorder, move-between-groups, merge** (§6.8). The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered** — **merge** (§2.12) is the sanctioned way to retire a leaf. New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; the "inline from Quick Add" wording by Amendment 20 — see `CHANGELOG.md`.)*
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized. **Changing the password signs out every existing session** — env var plus redeploy is the entire mechanism (see §3.1 point 5).
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
 - **Templates (Amendment 17 + §6.8):** a Templates card edits recurring prefills — name, amount, category, tag, note, auto-add day (1–28), auto-add member — plus per-template **Paused**, **Amount varies** and **Skip this month** controls. Deletion is permitted.
 - **Budgets (owner amendment, 16 Aug 2026 + §2.1):** a Budgets card edits monthly limits — total, per-leaf-category **and per-group** (§6.8), scoped to one month or to "Every month" as the default (§6.7). The card also carries the global **"Exclude bills from budgets"** switch — recurring-tagged spend is then ignored by the total monthly limit (§6.7).
 - **Offline entries (25 Aug pass):** lists this device's queued offline Quick Adds with a per-entry Discard; everything else syncs automatically when connectivity returns.
+- **WhatsApp & Telegram digest (full variant, 7 Sept 2026, §6.8):** WhatsApp number input + save, automatic-digest toggle, due-today banner, manual sends (36-month picker + "This month (1st → today)", each with Telegram and WhatsApp buttons), and a per-channel "Last sent" block.
 - **Notifications (§2.11):** per-device Web Push opt-in for budget pacing + review reminders; reports "not configured" when VAPID keys are absent (§9.1).
 - **History (§2.12):** the activity log surface — every delete and merge with who/when; deleted transactions carry a **Restore** action. Attribution is advisory only (§3.2.1).
 
@@ -848,7 +871,11 @@ Telegram and/or email.
 **§2.11 Web Push notifications.** Budget pacing (80% of a limit, days left) and
 review-reminder pushes for every opted-in device (`push_subscriptions`, §4.2;
 `/api/cron/push`). Requires the PWA/service worker and VAPID keys on the
-platform; per-device opt-in from Settings → Notifications.
+platform; per-device opt-in from Settings → Notifications. **Dispatch record
+(13 Sept 2026):** every daily run writes its outcome to `app_settings` under
+`push:last_dispatch` (sent / skipped / failed counts plus timestamp), and
+`/api/cron/push?dryRun=1` returns that record while sending nothing — delivery
+is answerable instead of living only in a runtime log line.
 
 **§2.12 Household operations.** Templates gain **pause / skip-this-month /
 amount-varies** controls (§4.2 columns; the cron honors all three). Categories
@@ -857,6 +884,48 @@ leaf-only). The dashboard gains a **category × month compare matrix**
 ("is fuel creeping up?"). The 5-second undo toast is backed by the persistent
 **activity log** (§4.2) with a Settings → History surface and **Restore** for
 deleted transactions.
+
+**§2.13 Weekly + monthly digest on Telegram and WhatsApp (owner request,
+7 Sept 2026; see `CHANGELOG.md`).** One shared engine serves both channels:
+`src/lib/digest-format.ts` (pure, DB-free — period math, Telegram HTML and
+WhatsApp `*markdown*` formatters, phone normalization to E.164 digits, wa.me
+link builder) plus `src/lib/digest.ts` (`getDigestData(start, end)` — totals,
+per-tag split, top 5 categories, per-member spend over any range). **Schedule:**
+the 7th, 14th, 21st, 28th (weekly, month-anchored ranges 1–7 / 8–14 / 15–21 /
+22–28) and the last day of the month (monthly), at 10:00 PM IST; when a date is
+both (e.g. 28 February) the monthly digest wins. **WhatsApp = Click-to-Chat
+(wa.me), not the Cloud API** — no Meta account, no template approval, no
+per-message cost; "sending" opens WhatsApp with the digest pre-filled and the
+household taps Send. **Cron** `/api/cron/digest` runs daily at 16:30 UTC
+(22:00 IST) and checks the IST day-of-month in code; on a digest day it
+auto-sends Telegram (idempotent) and, when WhatsApp is enabled + configured,
+pings opted-in devices via Web Push ("digest ready — tap to send on WhatsApp",
+idempotent per period). `?date=YYYY-MM-DD` backfills, `?dryRun=1` reports
+without sending; the old `/api/cron/telegram-digest` route is deleted.
+**Surfaces:** the Settings digest card (full variant) and the dashboard digest
+card (compact variant, §6.3); manual sends are zod-validated Server Actions
+(`saveWhatsAppDigest`, `sendDigestManual`) that bypass idempotency by design.
+**Last-sent history (owner follow-up, 7 Sept 2026):** every successful send —
+cron AND manual, either channel — writes a `digest_sent:<channel>:<start>..<end>`
+record (ISO timestamp) to `app_settings`, so the automatic gate and the
+displayed history can never disagree; `getRecentDigestSends()` plus
+`periodKeyLabel()` render the per-channel "Last sent" blocks.
+
+**September-audit hardening (17 Sept 2026, see `AUDIT-2026-09-17.md`).**
+Offline replay is idempotent: `createTransaction` accepts the queue entry's
+stable `clientId` and derives a deterministic transaction id
+(`offlineTransactionId`), with a pre-write existence check plus
+`ON CONFLICT DO NOTHING` — a lost response or a second tab replaying the same
+entry collapses onto one row. A saved expense is never reported as a failure:
+the budget-alert computation runs after the insert commits, in its own guard,
+so an alert-query error still returns success with `alert: null`. Recurring
+auto-entries stamp a deterministic per-(template, month) id
+(`recurringTransactionId`) with `ON CONFLICT DO NOTHING` — concurrent cron runs
+or a crash between insert and marker update cannot double-stamp; a conflict
+self-heals the `last_auto_key` marker. CSV restore matches occurrences
+one-for-one (`matchOccurrences`): each existing row excuses exactly one import
+row, so legitimate duplicate copies in a backup are restored instead of
+silently dropped.
 
 **Security & integrity hardening shipped in the same pass** (audit §1.5, §1.8,
 §1.10): `auth()` session guards in every Server Action; constant-time secret
@@ -876,10 +945,16 @@ being present.
 No traditional REST API routes for mutations. Use Next.js **Server Actions**.
 
 ### 7.1 Core Server Actions
-- `createTransaction(data: z.infer<typeof transactionSchema>)`
+- `createTransaction(data: z.infer<typeof transactionSchema>, clientId?: string)` —
+  offline replay passes the queue entry's stable `clientId` for an idempotent,
+  deterministically-identified insert (§6.8)
 - `updateTransaction(id: string, data: ...)`
 - `deleteTransaction(id: string)` / `deleteTransactions(ids[])` (bulk, ≤500)
 - `assignCategory(ids[], categoryId|null)` (bulk categorize)
+- `setTransactionAssignment(id, memberIds[])` / `setTransactionsAssignment(ids[], memberIds[])`
+  (per-expense "who is this for", single + bulk ≤500, §6.8)
+- `saveWhatsAppDigest(config)` / `sendDigestManual(params)` (digest number config +
+  manual Telegram/WhatsApp sends, §6.8)
 - `acknowledgeTransactionReview(id)` / `acknowledgeTransactionsReview(ids[])`
 - `updateActiveMember(memberId: string)`
 - Templates: `createTemplate` / `updateTemplate` / `deleteTemplate` /
@@ -901,7 +976,7 @@ No traditional REST API routes for mutations. Use Next.js **Server Actions**.
 **API routes that exist alongside the actions** (read streams and crons, not
 mutations): `GET /api/export` (§6.8), `POST /api/import` (§6.8), attachment
 upload/serve routes (§2.9), and the CRON_SECRET-protected `/api/cron/*` routes
-(`recurring` daily auto-stamp, `telegram-digest` monthly, `backup` monthly,
+(`recurring` daily auto-stamp, `digest` daily digest gate, `backup` monthly,
 `push` reminders).
 
 ### 7.2 Data Fetching & Aggregation — Normative
@@ -1167,7 +1242,7 @@ If a secret is ever observed in conversation, in a terminal, or in a file, it mu
 - ~~Receipt photo attachments~~ *(removed 2 Sept 2026 — §2.9 receipts via Vercel Blob)*
 - Multi-currency support
 - ~~Budget limits + over-budget alerts~~ *(removed from the exclusion list by owner amendment on 16 Aug 2026 — budgets are a permitted v1.2 feature, §6.7)*
-- ~~Telegram/email monthly digest~~ *(removed 19 Aug 2026 — Amendment 19 Telegram digest; monthly email/Telegram CSV backup added 2 Sept 2026, §6.8)*
+- ~~Telegram/email monthly digest~~ *(removed 19 Aug 2026 — Amendment 19 Telegram digest; monthly email/Telegram CSV backup added 2 Sept 2026, §6.8; weekly/monthly Telegram + WhatsApp digest added 7 Sept 2026, §6.8)*
 - Merchant auto-categorization *(note-based category *suggestions* shipped 18 Aug 2026, Amendment 8 — suggestions never auto-assign)*
 - Voice input
 
