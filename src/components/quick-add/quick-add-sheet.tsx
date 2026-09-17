@@ -243,7 +243,8 @@ export function QuickAddSheet({
     // the same action when connectivity returns (and after reloads, since the
     // queue lives in IndexedDB).
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      await enqueuePendingAdd({
+      setSaving(true);
+      const saved = await enqueuePendingAdd({
         clientId: crypto.randomUUID(),
         payload: {
           memberId: localActiveMemberId,
@@ -257,6 +258,12 @@ export function QuickAddSheet({
         },
         createdAt: Date.now(),
       });
+      setSaving(false);
+      if (!saved) {
+        emitLedgerMutation({ kind: "create-revert", tempId });
+        toast.error("Could not save offline — your entry is still in the form. Try again when online.");
+        return;
+      }
       // same memory/multi-entry flow as an online save — capture stays friction-free
       lastEntryRef.current = { tag };
       saveLastEntry(lastEntryRef.current);

@@ -11,8 +11,8 @@ import type { TransactionInput } from "@/lib/validations";
  *
  * IndexedDB (not localStorage): survives reloads like localStorage but holds
  * structured objects without JSON round-trips, and won't blow up on quota
- * the way a big localStorage blob might. All helpers are no-ops that resolve
- * gracefully when storage is unavailable (private mode, quota errors).
+ * the way a big localStorage blob might. Writes report whether storage
+ * committed successfully; unavailable reads return empty results.
  */
 
 export interface PendingAdd {
@@ -57,7 +57,9 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
     return await new Promise<T | null>((resolve) => {
       const tx = db!.transaction(STORE, mode);
       const req = fn(tx.objectStore(STORE));
-      req.onsuccess = () => resolve(req.result as T);
+      tx.oncomplete = () => resolve(req.result as T);
+      tx.onabort = () => resolve(null);
+      tx.onerror = () => resolve(null);
       req.onerror = () => resolve(null);
     });
   } catch {
@@ -67,9 +69,11 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
   }
 }
 
-export async function enqueuePendingAdd(entry: PendingAdd): Promise<void> {
-  await withStore("readwrite", (store) => store.put(entry));
+export async function enqueuePendingAdd(entry: PendingAdd): Promise<boolean> {
+  const result = await withStore("readwrite", (store) => store.put(entry));
+  if (result === null) return false;
   emitPendingSync();
+  return true;
 }
 
 export async function listPendingAdds(): Promise<PendingAdd[]> {
