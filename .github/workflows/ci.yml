@@ -27,6 +27,7 @@ jobs:
       - run: npm run test:offline-queue
       - run: npm run test:transaction-identity
       - run: npm run test:recurring-identity
+      - run: npm run test:import-dedup
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build

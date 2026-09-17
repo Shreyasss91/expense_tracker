@@ -30,6 +30,7 @@ import {
   parseImportFile,
   type ImportDraftRow,
 } from "@/lib/ledger-import";
+import { matchOccurrences } from "./import-dedup";
 import type { ImportIssue, ImportSource, ImportSummary } from "./import-types";
 
 export type { ImportIssue, ImportSource, ImportSummary } from "./import-types";
@@ -116,25 +117,27 @@ async function findExisting(
     .from(transactions)
     .where(and(gte(transactions.date, start), lte(transactions.date, end)));
 
-  const seen = new Set(
-    existing.map((r) =>
-      importFingerprint({
-        date: r.date,
-        // The exporter writes HH:MM; the column stores HH:MM:SS.
-        time: r.time.slice(0, 5),
-        memberId: r.memberId,
-        amount: r.amount,
-        note: r.note,
-      }),
-    ),
+  // Occurrence-aware matching: each existing row excuses exactly one import
+  // row. A Set would excuse every identical import row after a single match
+  // and silently drop legitimate duplicate copies of a backup.
+  const existingFingerprints = existing.map((r) =>
+    importFingerprint({
+      date: r.date,
+      // The exporter writes HH:MM; the column stores HH:MM:SS.
+      time: r.time.slice(0, 5),
+      memberId: r.memberId,
+      amount: r.amount,
+      note: r.note,
+    }),
   );
-
-  for (const { row, index } of needFingerprint) {
+  const wanted = needFingerprint.map(({ row }) => {
     const memberId = memberIdOf(row);
-    if (!memberId) continue;
-    if (seen.has(importFingerprint({ date: row.date, time: row.time, memberId, amount: row.amount, note: row.note }))) {
-      present.add(index);
-    }
+    if (!memberId) return null;
+    return importFingerprint({ date: row.date, time: row.time, memberId, amount: row.amount, note: row.note });
+  });
+
+  for (const position of matchOccurrences(existingFingerprints, wanted)) {
+    present.add(needFingerprint[position].index);
   }
 
   return present;
