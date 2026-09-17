@@ -16,14 +16,23 @@ import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
 import { isGenericNote } from "@/lib/generic-notes";
 import { pendingReviewWhere } from "@/lib/review-where";
+import { offlineTransactionId } from "@/lib/transaction-identity";
 
-export async function createTransaction(raw: TransactionInput) {
+export async function createTransaction(raw: TransactionInput, clientId?: string) {
   const session = await auth();
   if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  if (clientId !== undefined && !idSchema.safeParse(clientId).success) {
+    return { ok: false as const, error: "Invalid offline transaction id" };
+  }
   const parsed = transactionSchema.safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid transaction data" };
 
   const data = parsed.data;
+  const transactionId = clientId === undefined ? randomUUID() : offlineTransactionId(clientId);
+  if (clientId !== undefined) {
+    const existing = await db.query.transactions.findFirst({ where: eq(transactions.id, transactionId) });
+    if (existing) return { ok: true as const, id: existing.id, alert: null };
+  }
   // Member resolution: the payload's memberId wins when it names a real
   // member — offline Quick Add replays queued entries later, possibly under
   // a different active_member_id cookie, and the entry must land under the
@@ -60,7 +69,7 @@ export async function createTransaction(raw: TransactionInput) {
     const [row] = await db
       .insert(transactions)
       .values({
-        id: randomUUID(),
+        id: transactionId,
         memberId,
         categoryId: data.categoryId ?? null,
         tag: data.tag,
@@ -78,9 +87,13 @@ export async function createTransaction(raw: TransactionInput) {
         shared: (data.splitWith ?? []).length > 0,
         splitWith: data.splitWith ?? [],
       })
+      .onConflictDoNothing({ target: transactions.id })
       .returning();
 
-    if (!row) return { ok: false as const, error: "Failed to create transaction" };
+    if (!row) {
+      if (clientId !== undefined) return { ok: true as const, id: transactionId, alert: null };
+      return { ok: false as const, error: "Failed to create transaction" };
+    }
 
     revalidatePath("/");
     revalidatePath("/transactions");

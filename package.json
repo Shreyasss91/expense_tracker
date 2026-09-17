@@ -32,6 +32,7 @@
     "test:validation": "tsx src/lib/validation-test.ts",
     "test:password-session": "tsx src/auth-session-test.ts",
     "test:offline-queue": "tsx src/lib/offline-queue-test.ts",
+    "test:transaction-identity": "tsx src/lib/transaction-identity-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "verify:export-live": "node scripts/export-live-check.mjs"
   },

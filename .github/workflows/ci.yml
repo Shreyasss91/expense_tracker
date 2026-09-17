@@ -25,6 +25,7 @@ jobs:
       - name: Service worker JavaScript syntax
         run: node --check public/sw.js
       - run: npm run test:offline-queue
+      - run: npm run test:transaction-identity
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build

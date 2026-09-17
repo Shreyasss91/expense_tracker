@@ -40,7 +40,7 @@ async function runSync() {
   let blocked = 0;
   for (const item of items) {
     try {
-      const res = await createTransaction(item.payload);
+      const res = await createTransaction(item.payload, item.clientId);
       if (res.ok) {
         await removePendingAdd(item.clientId);
         synced++;
