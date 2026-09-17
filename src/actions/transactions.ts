@@ -64,7 +64,10 @@ export async function createTransaction(raw: TransactionInput, clientId?: string
 
   // §1.10 — guard the whole mutation so a DB error becomes a typed error
   // response instead of an unhandled throw, and so row.id can never be read
-  // off an undefined insert result.
+  // off an undefined insert result. The budget alert is advisory: it is
+  // computed AFTER the insert commits (outside this try) so a failing
+  // alert query can never report a saved expense as "Could not save".
+  let rowId: string;
   try {
     const [row] = await db
       .insert(transactions)
@@ -94,18 +97,24 @@ export async function createTransaction(raw: TransactionInput, clientId?: string
       if (clientId !== undefined) return { ok: true as const, id: transactionId, alert: null };
       return { ok: false as const, error: "Failed to create transaction" };
     }
-
-    revalidatePath("/");
-    revalidatePath("/transactions");
-    revalidateTag("transactions");
-
-    const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
-
-    return { ok: true as const, id: row.id, alert };
+    rowId = row.id;
   } catch (error) {
     console.error("createTransaction failed", error);
     return { ok: false as const, error: "Could not save the transaction" };
   }
+
+  revalidatePath("/");
+  revalidatePath("/transactions");
+  revalidateTag("transactions");
+
+  let alert: BudgetAlert | null = null;
+  try {
+    alert = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
+  } catch (error) {
+    console.error("createTransaction budget alert failed", error);
+  }
+
+  return { ok: true as const, id: rowId, alert };
 }
 
 export async function updateTransaction(id: string, raw: TransactionInput) {
@@ -156,7 +165,14 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
   revalidatePath("/transactions");
   revalidateTag("transactions");
 
-  const alert: BudgetAlert | null = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
+  // Advisory like createTransaction: a failing alert query must not fail an
+  // edit that already committed.
+  let alert: BudgetAlert | null = null;
+  try {
+    alert = await getBudgetAlert(db, data.date.slice(0, 7), data.categoryId ?? null);
+  } catch (error) {
+    console.error("updateTransaction budget alert failed", error);
+  }
 
   return { ok: true as const, id: row.id, alert };
 }
