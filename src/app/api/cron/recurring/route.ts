@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { and, asc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { format, parse } from "date-fns";
-import { randomUUID } from "node:crypto";
 import { db } from "@/db";
 import { members, templates, transactions } from "@/db/schema";
 import { isGenericNote } from "@/lib/generic-notes";
+import { recurringTransactionId } from "@/lib/recurring-identity";
 import { nowTimeInIST, todayInIST } from "@/lib/dates";
 import { timingSafeStringEqual } from "@/lib/secure-compare";
 
@@ -18,10 +18,12 @@ export const dynamic = "force-dynamic";
  * been stamped for the current month yet (last_auto_key marker). Days 1–28
  * only, so short months can neither skip nor double-fire.
  *
- * Idempotency: the marker is written right after each insert. The neon-http
- * driver has no transactions, so a crash between insert and marker could
- * double-stamp — the same accepted non-atomic window the budgets path
- * documents (§6.7). The daily schedule makes the window minutes wide.
+ * Idempotency: every (template, month) stamps one deterministic transaction
+ * id, inserted with onConflictDoNothing on the primary key. The
+ * last_auto_key marker is still written after each insert, but it is only a
+ * cursor now — concurrent executions, or a crash between the insert and the
+ * marker update, collapse onto the same row instead of double-stamping. A
+ * conflicting insert self-heals by bringing a stale marker up to date.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -97,7 +99,7 @@ export async function GET(request: Request) {
       const [row] = await db
         .insert(transactions)
         .values({
-          id: randomUUID(),
+          id: recurringTransactionId(t.id, monthKey),
           memberId,
           categoryId: t.categoryId,
           tag: t.tag,
@@ -111,6 +113,7 @@ export async function GET(request: Request) {
           // were never marked reviewed.
           reviewedAt: isGenericNote(t.note) ? null : new Date(),
         })
+        .onConflictDoNothing({ target: transactions.id })
         .returning({ id: transactions.id });
 
       if (row) {
@@ -120,6 +123,13 @@ export async function GET(request: Request) {
           .set({ lastAutoKey: monthKey, updatedAt: new Date() })
           .where(eq(templates.id, t.id));
       } else {
+        // The month's entry already exists (concurrent run, or a retry after
+        // a crash between insert and marker) — bring a stale marker up to
+        // date so the template stops looking due, without counting a copy.
+        await db
+          .update(templates)
+          .set({ lastAutoKey: monthKey, updatedAt: new Date() })
+          .where(eq(templates.id, t.id));
         skipped.push(t.id);
       }
     }

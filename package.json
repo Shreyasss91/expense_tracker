@@ -33,6 +33,7 @@
     "test:password-session": "tsx src/auth-session-test.ts",
     "test:offline-queue": "tsx src/lib/offline-queue-test.ts",
     "test:transaction-identity": "tsx src/lib/transaction-identity-test.ts",
+    "test:recurring-identity": "tsx src/lib/recurring-identity-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
     "verify:export-live": "node scripts/export-live-check.mjs"
   },
