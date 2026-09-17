@@ -120,7 +120,7 @@ self.addEventListener("push", (event) => {
 });
 
 self.addEventListener("notificationclick", (event) => {
-  const target = (event.notification?.data?.url as string) || "/";
+  const target = event.notification?.data?.url || "/";
   event.notification.close();
 
   event.waitUntil(
@@ -132,7 +132,7 @@ self.addEventListener("notificationclick", (event) => {
         if ("focus" in client) {
           await client.focus();
           // navigate() exists on WindowClient; guards for older impls.
-          if ("navigate" in client) await (client as WindowClient).navigate(target);
+          if ("navigate" in client) await client.navigate(target);
           return;
         }
       }

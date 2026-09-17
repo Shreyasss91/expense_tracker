@@ -22,6 +22,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Service worker JavaScript syntax
+        run: node --check public/sw.js
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run build
