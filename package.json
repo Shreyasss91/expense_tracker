@@ -37,7 +37,8 @@
     "test:recurring-identity": "tsx src/lib/recurring-identity-test.ts",
     "test:import-dedup": "tsx src/lib/import-dedup-test.ts",
     "smoke:prod": "node scripts/smoke-prod.mjs",
-    "verify:export-live": "node scripts/export-live-check.mjs"
+    "verify:export-live": "node scripts/export-live-check.mjs",
+    "verify:digest-feed": "node scripts/digest-feed-check.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

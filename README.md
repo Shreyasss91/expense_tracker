@@ -60,6 +60,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run test:xlsx` | Prove the hand-rolled .xlsx writer emits a valid, complete OPC package (§2.10) |
 | `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, renders the exact seeded totals, and checks every request is within the response-time budget (default 8s; `SMOKE_MAX_MS` overrides) |
 | `npm run verify:export-live` | Call the deployed app's `/api/export` route and prove the canonical CSV reproduces `seed.csv` |
+| `npm run verify:digest-feed` | Verify the deployed daily ledger feed over real HTTP: auth (401), the 22:00 IST window recomputed independently at pinned `?at=` instants, freshness, and the message contract. Needs `DIGEST_AGENT_TOKEN` in `.env.local` ([spec](docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md)) |
 
 ## Architecture notes (spec highlights)
 
