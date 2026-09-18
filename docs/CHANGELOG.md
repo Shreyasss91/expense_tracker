@@ -48,8 +48,15 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   lives on the server and the poster holds no formatting logic; POST records the confirmed
   send.
 - **New env var `DIGEST_AGENT_TOKEN`.**
-- **`.env.example` gains a `DIGEST_AGENT_TOKEN` placeholder** — §9.1 requires every optional
-  feature variable to be recorded there and to fail loudly when absent.
+- **Secret path hardened ahead of implementation (done 18 Sept 2026).** `.env.example` now
+  carries a `DIGEST_AGENT_TOKEN` placeholder with a per-feature comment — §9.1 requires every
+  optional variable to be recorded there and to fail loudly when absent — and that file's
+  stale note claiming *"WhatsApp digest needs NO env vars"* was corrected: it is true of the
+  weekly/monthly Click-to-Chat digest, but not of this daily feed, which is the one WhatsApp
+  surface that does need a secret. `.gitignore` now excludes
+  `tools/whatsapp-agent/config.json`, `tools/whatsapp-agent/auth/` and
+  `tools/whatsapp-agent/sent/`, so the bearer token and a live WhatsApp linked-device session
+  cannot be committed by accident.
 - **New cron job** `/api/cron/digest-fallback` at `45 16 * * *` (22:15 IST) — a web-push
   safety net that fires only when no send is recorded for the window. It is a **separate job
   rather than a second run of `/api/cron/digest`**, because Vercel's Hobby plan permits at

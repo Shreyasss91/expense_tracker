@@ -224,7 +224,7 @@ export interface FeedWindow {
   key: string;
   /** Human label, e.g. "Wed 17 Sep 22:00 → Thu 18 Sep 22:00". */
   label: string;
-  /** True when the window ended more than STALE_AFTER_MS before `now`. */
+  /** True when the window ended more than FEED_GRACE_MS before `now`. */
   stale: boolean;
 }
 
@@ -953,18 +953,22 @@ A small long-running Node script on Dad's Android phone that:
 tools/whatsapp-agent/
 ├── README.md            # the one-time setup, verbatim, for a human
 ├── agent.mjs            # the agent
+├── package.json         # dependencies (baileys + a logger)
 ├── config.example.json  # committed template (no secrets)
 ├── config.json          # gitignored — real token + group JID
 ├── start.sh             # wake-lock + restart loop
 ├── boot/termux-boot.sh  # copy of the Termux:Boot script (survive a reboot)
 ├── auth/                # gitignored — Baileys multi-file session state
-└── sent/                # gitignored — local anti-double-post markers
+├── sent/                # gitignored — local anti-double-post markers
+└── agent.log            # gitignored — rotating run log
 ```
 
-> **Mandatory:** add `tools/whatsapp-agent/{config.json,auth/,sent/,agent.log}` to
-> `.gitignore`. The auth directory contains credentials equivalent to a logged-in WhatsApp
-> session; committing them would be a serious leak. Verify with `git status` before any
-> commit that touches this directory.
+> **Already done — 18 September 2026.** `.gitignore` excludes
+> `tools/whatsapp-agent/config.json`, `tools/whatsapp-agent/auth/` and
+> `tools/whatsapp-agent/sent/` (the pre-existing `*.log` rule covers `agent.log` and
+> `boot.log`). `auth/` holds credentials equivalent to a logged-in WhatsApp session and
+> `config.json` holds the bearer token, so **still verify with `git status`** that neither is
+> staged before any commit that touches this directory.
 
 ### 6.3 Config contract
 
@@ -1108,9 +1112,15 @@ Existing and unchanged for this feature: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`
 `VAPID_SUBJECT` (web push), `DATABASE_URL`, `AUTH_SECRET`, `FAMILY_MASTER_PASSWORD`.
 
 > **Normative — required by SPEC §9.1**, which says every optional feature variable must fail
-> loudly when absent and points at `.env.example` as the record: **`.env.example` must gain a
-> `DIGEST_AGENT_TOKEN` placeholder**, with a comment in the file's existing per-feature style
-> explaining that it guards `/api/digest/day` and that without it the route answers `503`.
+> loudly when absent and points at `.env.example` as the record.
+>
+> **Done — 18 September 2026.** `.env.example` carries a `DIGEST_AGENT_TOKEN` placeholder with
+> a comment in the file's existing per-feature style: it states that the variable guards
+> `GET`/`POST /api/digest/day` and that without it the route answers `503`. That file's stale
+> note claiming *"WhatsApp digest needs NO env vars"* was corrected in the same change — true
+> of the weekly/monthly Click-to-Chat digest, but **not** of this daily feed, which is the one
+> WhatsApp surface that does need a secret.
+>
 > Placeholders only — never a real value (§9.2).
 
 The agent's copy of `DIGEST_AGENT_TOKEN` lives only in the phone's `config.json`.
@@ -1276,7 +1286,10 @@ Therefore, as part of this work:
    with the owner rather than amending the frozen document.
 3. **Update `tools/whatsapp-agent/README.md`** with the verbatim one-time setup (§6.4) — it is
    the only place a human will look.
-4. **Add the `DIGEST_AGENT_TOKEN` placeholder to `.env.example`** (§7, SPEC §9.1).
+4. ~~Add the `DIGEST_AGENT_TOKEN` placeholder to `.env.example`~~ — **done 18 September 2026**
+   (§7, SPEC §9.1), together with the `tools/whatsapp-agent/{config.json,auth/,sent/}`
+   `.gitignore` entries. Both landed ahead of the implementation so the credential path was
+   never momentarily exposed.
 5. Verify, as the existing entries do, and record it in the entry:
    `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`, `npm run test:digest`.
 
@@ -1325,7 +1338,8 @@ Therefore, as part of this work:
 **Phase 7 — the agent**
 
 - [ ] `tools/whatsapp-agent/` (agent, config template, start.sh, README).
-- [ ] `.gitignore` entries — **verify with `git status`**.
+- [x] `.gitignore` entries for `config.json`, `auth/`, `sent/` — **done 18 September 2026**.
+      Still **verify with `git status`** before any commit that touches that directory.
 - [ ] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5**.
 - [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →

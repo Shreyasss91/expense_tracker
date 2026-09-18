@@ -14,8 +14,8 @@
 > *device*: app installs, Samsung's background-killer settings, the agent's module structure,
 > the group-JID discovery run, the 22:00 scheduler, and the failure runbook.
 >
-> **Nothing here changes the app side.** Part A of the companion spec ships independently of
-> anything in this document.
+> **Nothing here changes the app side.** The app-side half of the companion spec (§5, its
+> "Part A") ships independently of anything in this document.
 
 ---
 
@@ -77,7 +77,7 @@ tools/whatsapp-agent/
 ├── package.json         # dependencies
 ├── config.example.json  # committed template — placeholders only
 ├── start.sh             # wake-lock + crash-restart wrapper
-└── boot/termux-boot.sh  # copy of the Termux:Boot script (§3.10)
+└── boot/termux-boot.sh  # copy of the Termux:Boot script (§3.8)
 ```
 
 ### 2.2 Present on the phone only — **never committed**
@@ -96,16 +96,16 @@ tools/whatsapp-agent/
 
 ---
 
-## 3. Part A — One-Time Phone Setup
+## 3. One-Time Phone Setup
 
-Do these in order. Steps 3.2 (Samsung battery) and 3.10 (boot) are the ones that decide
+Do these in order. Steps 3.2 (Samsung battery) and 3.8 (boot) are the ones that decide
 whether this runs for months or dies on day three.
 
 ### 3.1 Install the apps
 
 1. **Termux** — from **F-Droid** or the GitHub releases page. **Not** the Play Store build:
    it is deprecated and will not install a current Node.
-2. **Termux:Boot** — also from F-Droid (see §3.10). Termux:Boot only works when it is
+2. **Termux:Boot** — also from F-Droid (see §3.8). Termux:Boot only works when it is
    installed from the *same* source as Termux, so install both from F-Droid.
 
 ### 3.2 Samsung (One UI) background-killer settings — **do not skip**
@@ -228,9 +228,7 @@ WhatsApp's Linked devices list, exactly as a WhatsApp Web session would.
 - **One-time only.** The session persists in `auth/` across restarts. There is no need to
   re-link after a reboot, a Termux restart, or a config edit.
 
-### 3.8 …3.9 See §4 (group discovery) and §5 (the agent) — then:
-
-### 3.10 Install the boot hook
+### 3.8 Install the boot hook
 
 ```sh
 mkdir -p ~/.termux/boot
@@ -245,7 +243,7 @@ launches the wrapper:
 #!/data/data/com.termux/files/usr/bin/sh
 termux-wake-lock
 cd "$HOME/expense_tracker/tools/whatsapp-agent"
-setsid ./start.sh >> boot.log 2>&1 &
+nohup ./start.sh >> boot.log 2>&1 &
 ```
 
 Then open **Termux:Boot once** (launch it from the app drawer after installing) — the app does
@@ -255,7 +253,7 @@ boot hook silently does nothing.
 > **Test it, do not assume it.** Reboot the phone, wait two minutes, and confirm the process is
 > alive (§7, Test 7). An untested boot hook is not a feature.
 
-### 3.11 Start it
+### 3.9 Start it
 
 ```sh
 cd ~/expense_tracker/tools/whatsapp-agent
@@ -264,7 +262,7 @@ cd ~/expense_tracker/tools/whatsapp-agent
 
 ---
 
-## 4. Part C — The Group-JID Discovery Run
+## 4. The Group-JID Discovery Run
 
 The agent addresses the group by **JID**, not by phone number. A group JID looks like
 `1203630xxxxxxxxx@g.us`. It must be discovered from the linked account — there is no formula
@@ -322,7 +320,7 @@ A match means the configured JID exists and the account is a participant.
 
 ---
 
-## 5. Part B — The Agent
+## 5. The Agent
 
 ### 5.1 Module breakdown — `agent.mjs`
 
@@ -438,9 +436,28 @@ the ledger into the family group.
 [2026-09-18 22:00:05 IST] INFO confirmed window=2026-09-17..2026-09-18
 ```
 
+### 5.8 Process exit codes — normative
+
+`start.sh` restarts the agent after a crash, but must **not** restart a state that only a human
+can fix. Distinct codes make that decision mechanical instead of a judgement call.
+
+| Code | Meaning | `start.sh` action |
+|---|---|---|
+| `0` | Clean finish (one-shot modes). The scheduler itself does not exit between ticks | Restart the process |
+| `1` | Generic fatal — crash, unexpected state, or a transient failure whose retry ladder is exhausted | Restart after 30 s |
+| `2` | `config.json` missing, unreadable, or invalid | **No restart** — a human must fix the file |
+| `3` | **RE-LINK REQUIRED** — WhatsApp returned 401 on the socket | **No restart** — re-run `--link` |
+| `4` | API auth failure — `/api/digest/day` returned 401 or 503 | **No restart** — fix the token |
+| `5`–`9` | Reserved | — |
+
+Codes `2`, `3` and `4` all mean the same thing operationally: **the agent cannot heal
+itself.** Restarting them produces a log that looks busy and healthy while nothing is ever
+delivered — the worst failure mode available to this component. The non-restart branches in
+§6.5 exist specifically to make that impossible.
+
 ---
 
-## 6. Part D — The 22:00 IST Scheduler
+## 6. The 22:00 IST Scheduler
 
 ### 6.1 The algorithm
 
@@ -559,18 +576,24 @@ trap 'termux-wake-unlock' EXIT
 while true; do
   node agent.mjs >> agent.log 2>&1
   code=$?
-  # 401 means WhatsApp unlinked the device — looping cannot fix that.
-  if [ "$code" -eq 1 ]; then
-    echo "[$(date)] agent exited 1 (re-link required) — not restarting" >> agent.log
-    termux-wake-unlock
-    exit 1
-  fi
+
+  # 2, 3 and 4 mean "a human must act" — restarting them only produces a
+  # busy-looking log with no delivery. See §5.8.
+  case "$code" in
+    2|3|4)
+      echo "[$(date)] fatal exit $code — not restarting" >> agent.log
+      termux-wake-unlock
+      exit "$code"
+      ;;
+  esac
+
+  echo "[$(date)] agent exited $code — restarting in 30s" >> agent.log
   sleep 30
 done
 ```
 
-The `exit 1` guard exists so a revoked session does not produce an infinite restart loop that
-looks like a healthy agent in `ps`. Give the 401 path its own distinct exit code.
+The `case` guard exists so a revoked session or a bad token does not produce an infinite
+restart loop that looks like a healthy agent in `ps`. The full code table is §5.8.
 
 ### 6.6 Battery reality check
 
@@ -580,7 +603,7 @@ this is a non-issue; it is documented so it is not later mistaken for a bug.
 
 ---
 
-## 7. Part E — Verification & Acceptance Tests
+## 7. Verification & Acceptance Tests
 
 Run these **before** trusting the agent. Several use `--dry-run` so the family group is not
 spammed during setup.
@@ -593,7 +616,7 @@ spammed during setup.
 | 4 | Render only | `node agent.mjs --now --dry-run` | Prints the rendered message; group receives **nothing** |
 | 5 | Real send | `node agent.mjs --now` on a day with known changes | Message appears in the group; `sent/<key>.json` written |
 | 6 | Idempotency | Immediately run `node agent.mjs --now` again | Logs "already sent"; group receives **no** second message |
-| 7 | Reboot survival | Reboot the phone; wait 2 min; `pgrep -f agent.mjs` | A live process — this is the Termux:Boot test (§3.10) |
+| 7 | Reboot survival | Reboot the phone; wait 2 min; `pgrep -f agent.mjs` | A live process — this is the Termux:Boot test (§3.8) |
 | 8 | Empty window | `curl ... "?at=<a quiet past day>"` | `empty: true`, `text: null`; a `--now --dry-run` posts nothing |
 | 9 | Stale window | `curl ... "?at=<now + 40h>"` | `stale: true`; a `--now --dry-run` logs "stale, not posting" |
 | 10 | Bad token | Run once with a deliberately wrong token | `401` handling: loud log, non-zero exit, **no retry loop** |
@@ -608,7 +631,7 @@ spammed during setup.
 
 ---
 
-## 8. Part H — Go-Live Sequence
+## 8. Go-Live Sequence
 
 The two halves are independent; the app side must exist before the agent can do anything.
 
@@ -622,15 +645,15 @@ The two halves are independent; the app side must exist before the agent can do 
 7. Create the group from Dad's phone (§3.6).
 8. Link with the pairing code (§3.7).
 9. Discover and paste the group JID (§4).
-10. Install and **test** the boot hook (§3.10, Test 7).
-11. Start `./start.sh` (§3.11).
+10. Install and **test** the boot hook (§3.8, Test 7).
+11. Start `./start.sh` (§3.9).
 12. Run tests 4–6 and 10 from §7.
 13. **Watch the first real night.** At 22:00 confirm the group message; at 22:15 confirm **no**
     fallback push arrived (a push means the post did not record — investigate).
 
 ---
 
-## 9. Part F — Failure-Mode Runbook
+## 9. Failure-Mode Runbook
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
@@ -649,7 +672,7 @@ The two halves are independent; the app side must exist before the agent can do 
 
 ---
 
-## 10. Part G — Security Hygiene
+## 10. Security Hygiene
 
 1. `config.json` → `chmod 600`; gitignored. It holds the bearer token.
 2. `auth/` → gitignored. It holds WhatsApp session credentials.

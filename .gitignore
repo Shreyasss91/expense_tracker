@@ -94,6 +94,15 @@ drizzle/migrations/
 # snapshots in git, `db:generate` diffs against a stale snapshot and bundles
 # unrelated drift into every new migration (see 0005).
 
+# WhatsApp sender agent (tools/whatsapp-agent) — device-local secrets and state.
+# config.json holds DIGEST_AGENT_TOKEN; auth/ holds a live WhatsApp
+# linked-device session (credentials equivalent to a logged-in WhatsApp Web).
+# Neither may ever be committed. sent/ is the anti-double-post marker directory.
+# (*.log above already covers agent.log and boot.log.)
+tools/whatsapp-agent/config.json
+tools/whatsapp-agent/auth/
+tools/whatsapp-agent/sent/
+
 # Next.js
 .next/
 out/
