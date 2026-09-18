@@ -426,6 +426,12 @@ undo:**
 inverting an assertion and confirming exit `1`, because a suite that always passes is worth
 nothing.
 
+**And the push was verified the way the incident above demands** — by deployment state, not by a
+local build: commit `5317d24` reached `READY`, and `npm run verify:digest-feed` passed against
+production immediately afterwards. That is not incidental here: the new `tools/**` TypeScript is
+inside the build's `tsc` scope, so a broken test file would have failed the deploy rather than
+failing only on this machine.
+
 **Status — built, and honestly not yet working.** Nothing in this section has touched a phone.
 `--link`, `--groups`, delivery, the socket 401 path and the boot hook all need a real linked
 WhatsApp session, so the plan's §7 acceptance tests remain the only procedure that can promote
