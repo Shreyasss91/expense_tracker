@@ -1,0 +1,20 @@
+{
+  "name": "whatsapp-agent",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Posts the daily ledger-change feed to a private family WhatsApp group, from Dad's phone. See docs/PLAN_WHATSAPP_AGENT_TERMUX.md.",
+  "type": "module",
+  "main": "agent.mjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "preinstall": "node -e \"if (+process.versions.node.split('.')[0] < 20) { console.error('Node 20 or newer is required — found ' + process.versions.node + '. In Termux: pkg install nodejs-lts'); process.exit(1); }\"",
+    "start": "node agent.mjs",
+    "link": "node agent.mjs --link",
+    "groups": "node agent.mjs --groups"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.24"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "apiUrl": "https://your-deployment.vercel.app",
+  "token": "",
+  "phone": "",
+  "groupJid": "",
+  "sendAt": "22:00",
+  "timezone": "Asia/Kolkata"
+}
