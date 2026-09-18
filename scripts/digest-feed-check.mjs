@@ -21,7 +21,12 @@
  *      two-day-old window from being posted as if it were tonight's.
  *   4. Message shape — the header, the balanced `*` markdown, the section
  *      presence rules and the additions-only total.
- *   5. POST argument handling — the paths that write nothing.
+ *   5. POST argument handling — the paths that write nothing, including the
+ *      semantic `windowKey` rejections (an impossible date, a range that is not
+ *      24 h, a window that has not ended yet). Those probes deliberately use
+ *      `status: "failed"`, the one status that records nothing, so running this
+ *      against a build that predates the hardening cannot leave a junk marker
+ *      behind.
  *
  * **What this deliberately does NOT do: POST `status: "sent"`.** That call is
  * the real confirmation path, and against a live window it would write the send
@@ -80,6 +85,11 @@ function check(cond, msg) {
 
 function note(msg) {
   console.log(`  ⓘ ${msg}`);
+}
+
+/** A response body for a failure message: whitespace collapsed, tags stripped, capped. */
+function snippet(text) {
+  return text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160);
 }
 
 /* ---------------------------------------------------- the independent math --- */
@@ -317,6 +327,19 @@ async function main() {
   /* 1 — auth ------------------------------------------------------------- */
   console.log("Auth");
   const anonymous = await get("/api/digest/day", { token: "" });
+  // 404 is its own failure, and the likeliest one right after a push: the route
+  // exists in the repo but the running deployment predates it. Without this
+  // branch the run reported "got 404" four times and then dumped a page of
+  // minified HTML at the reader, which buries the one useful fact.
+  if (anonymous.status === 404) {
+    check(false, "GET with no Authorization → 401 (got 404)");
+    throw new Error(
+      `${BASE} does not serve /api/digest/day (404). The route is missing from the running ` +
+        "deployment, so it predates the commit that added this feature — the token cannot be " +
+        "judged until it is deployed. Check the Vercel deployment for the latest commit " +
+        "(`npm run build` proves the route compiles locally) and re-run.",
+    );
+  }
   check(anonymous.status === 401, `GET with no Authorization → 401 (got ${anonymous.status})`);
 
   const wrongToken = await get("/api/digest/day", { token: "not-the-token" });
@@ -333,7 +356,7 @@ async function main() {
     throw new Error("the deployment is not configured");
   }
   check(live.status === 200, `GET with the token → 200 (got ${live.status})`);
-  if (live.status !== 200) throw new Error(`unexpected GET response: ${live.raw.slice(0, 200)}`);
+  if (live.status !== 200) throw new Error(`unexpected GET response (http ${live.status}): ${snippet(live.raw)}`);
 
   // Shape only for the live window: it is derived from the server's own clock,
   // and pinning it would make this run flaky in the seconds around 22:00.
@@ -400,10 +423,31 @@ async function main() {
 
   /* 5 — POST argument handling (nothing is written) ---------------------- */
   console.log("\nPOST (write-free paths only)");
-  const realKey = live.body?.window?.key ?? freshRun.body?.window?.key;
+  // The key every writing-path probe targets. It comes from the server's own
+  // current window — client-computed only as a fallback — so it is guaranteed
+  // to have ENDED. A hard-coded date would be a future window on the day this
+  // runs, and the hardened validator would reject it for the wrong reason.
+  const realKey = live.body?.window?.key ?? expectedWindow(Date.now()).key;
 
   const badKey = await post({ windowKey: "not-a-window-key", status: "sent" });
   check(badKey.status === 400, `POST with a malformed windowKey → 400 (got ${badKey.status})`);
+
+  // Semantic key checks. Sent with `status: "failed"` on purpose: against a
+  // deployment that predates the hardening these keys would be ACCEPTED, and
+  // "failed" is the one status that records nothing — so probing an old build
+  // cannot leave a junk marker behind. A `sent` probe could.
+  const impossibleDate = await post({ windowKey: "9999-99-99..9999-99-99", status: "failed" });
+  check(impossibleDate.status === 400, `POST with an impossible date → 400 (got ${impossibleDate.status})`);
+
+  const nonAdjacent = await post({ windowKey: "2026-01-01..2026-12-31", status: "failed" });
+  check(nonAdjacent.status === 400, `POST with a range that is not 24 h → 400 (got ${nonAdjacent.status})`);
+
+  // Derived, not hard-coded, so this stays a future window however long the
+  // script lives. Marking a window that has not ended would suppress that
+  // night's post AND its fallback, because both treat a marker as "handled".
+  const futureKey = expectedWindow(Date.now() + 48 * 60 * 60 * 1000).key;
+  const future = await post({ windowKey: futureKey, status: "failed" });
+  check(future.status === 400, `POST with a window that has not ended (${futureKey}) → 400 (got ${future.status})`);
 
   const badStatus = await post({ windowKey: realKey, status: "bogus" });
   check(badStatus.status === 400, `POST with an unknown status → 400 (got ${badStatus.status})`);
@@ -411,9 +455,11 @@ async function main() {
   const badJson = await post("{not json");
   check(badJson.status === 400, `POST with a non-JSON body → 400 (got ${badJson.status})`);
 
-  const before = await get(`/api/digest/day?${atQuery("2026-09-18T16:30:00.000Z")}`);
+  // Read and re-read the SAME window the failed POST targets, so the no-write
+  // assertion below is about the window that was actually touched.
+  const before = await get("/api/digest/day");
   const failed = await post({
-    windowKey: "2026-09-17..2026-09-18",
+    windowKey: realKey,
     status: "failed",
     // Lands in the deployment's log next to the route's own warn line.
     detail: "verify:digest-feed — intentional, not a real send failure",
@@ -422,7 +468,11 @@ async function main() {
   check(failed.body?.recorded === false, "POST status=failed records nothing");
   check(failed.body?.sentAt === null, "POST status=failed returns sentAt: null");
 
-  const after = await get(`/api/digest/day?${atQuery("2026-09-18T16:30:00.000Z")}`);
+  const after = await get("/api/digest/day");
+  check(
+    after.body?.window?.key === before.body?.window?.key,
+    "the window did not roll over between the two reads",
+  );
   check(
     after.body?.alreadySent === before.body?.alreadySent && after.body?.sentAt === before.body?.sentAt,
     "a failed send leaves the window unmarked — which is what lets the fallback push fire",
