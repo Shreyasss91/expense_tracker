@@ -9,10 +9,11 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ## Daily ledger-change feed to a private WhatsApp group — 18 September 2026 (owner request)
 
-**Status — app side IMPLEMENTED and verified 18 September 2026; phone side pending.** The
-service half of the contract below is built (see the implementation block at the end of this
-entry). The Termux + Baileys agent on Dad's phone is **not** — see
-`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`. The complete hand-off specification is
+**Status — app side IMPLEMENTED and verified in production; phone-agent code built but not yet
+run on a device (18 September 2026).** The service half of the contract below is built and
+verified against the live deployment. The Termux + Baileys agent is **written, committed and
+unit-tested** — see the phone-agent block at the end of this entry — but has never touched a
+phone, so linking and delivery are still unproven. The complete hand-off specification is
 **`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`**; this entry is its summary.
 
 Owner request: every night at **10 PM IST**, post one message into a **new private WhatsApp
@@ -358,6 +359,81 @@ correct header and italic label.
 The check count is **not** fixed: 154 against an empty-window stub, 163 live, because the message
 assertions run once more whenever the live window has changes. **0 failures and exit 0** are the
 invariant; the count is not — the spec's §8 expectation was corrected to say so.
+
+### Phone agent built — 18 September 2026 (Phase 7; the last piece of requirement 4)
+
+**The agent now exists in the repository.** `tools/whatsapp-agent/` holds the Termux + Baileys
+sender that posts the rendered feed to the family group at 22:00 IST — the phone half of the
+contract, per `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`.
+
+| File | Role |
+|---|---|
+| `agent.mjs` | The agent: scheduler, fetch, gate, retry ladder, lock, logging, CLI |
+| `agent-test.ts` | Repo-side contract test — `npm run test:whatsapp-agent` (**51 assertions**) |
+| `package.json` | `@whiskeysockets/baileys@^6.7.24`, Node ≥ 20 enforced by a `preinstall` check |
+| `.npmrc` | `legacy-peer-deps` — see below; **a deliverable, not a convenience** |
+| `config.example.json` | Committed template, placeholders only. `phone` present and normative |
+| `start.sh` | Wake-lock + crash-restart wrapper; restarts `0`/`1`, refuses `2`/`3`/`4`/`7` |
+| `boot/termux-boot.sh` | Termux:Boot hook, with the "wrong path fails only on reboot" guard |
+| `README.md` | The human-facing setup, distilled from the plan's §3 |
+
+**Design decisions worth recording, because they are the ones a future change could quietly
+undo:**
+
+1. **The boundary maths is the whole idempotency contract, so it is exported and cross-checked,
+   not re-implemented.** `windowKeyFor(lastBoundary(t))` must equal the server's
+   `feedWindowForInstant(t).key` byte-for-byte — if the two halves ever disagree, the marker never
+   matches and the family group gets the ledger twice. `agent-test.ts` therefore imports the
+   **server's real implementation** and compares against it at hand-picked edge instants (the
+   boundary, one millisecond either side, month and year rollovers, leap days) and over 400
+   seeded random instants — rather than re-asserting the agent's arithmetic against a copy of
+   itself, which would pass no matter which side drifted.
+2. **Exhaustion is a state, never an exit.** The retry ladder is persisted to
+   `sent/retry-state.json`, and once exhausted the agent **stays alive and makes zero network
+   calls** until the window rolls over. That is what makes `start.sh`'s restart safe: a
+   crash-restart reloads a *consumed* ladder instead of re-arming it. `start.sh` restarts on `0`
+   and `1` only — `2`/`3`/`4`/`7` are states a human must fix, and restarting them produces a log
+   that looks busy and healthy while nothing is ever delivered.
+3. **`.npmrc` keeps `sharp` out of the install.** Baileys declares `sharp` as a peer dependency
+   that is **not** marked optional, so a plain `npm install` resolves the entire `sharp` platform
+   matrix — a native module, and exactly what breaks an install on Termux. The agent sends plain
+   text, so no peer dependency is imported at runtime. Verified against the registry: with
+   `legacy-peer-deps` the tree is **84 packages and contains no `sharp`**; without it, the whole
+   matrix is installed. Deleting that file converts the documented setup into a native build
+   failure on the phone.
+4. **No logging dependency.** The agent writes its own ~20-line `[IST] LEVEL message` lines with
+   rotation at ~1 MB. Adding a framework for one file on a phone buys nothing.
+
+**Three real problems the verification caught, all now fixed:**
+
+- **My own test asserted something false.** It required the scheduler boundary to land on a
+  *whole-day UTC instant* — but 22:00 IST is **16:30 UTC**, so the assertion could only have
+  passed in a world where IST were UTC. The invariant is 16:30:00.000 UTC, and the comment now
+  says why, since getting this wrong is precisely how the agent would fire when the server's
+  window is still open.
+- **Two dead helpers** (`boundaryForIstDate`, `previousIsoDate`) were carried over from the
+  verifier script, where they *are* used. Removed rather than left to rot behind a lint warning.
+- **A false-positive lint error on Baileys' own API name.** `useMultiFileAuthState` trips
+  `react-hooks/rules-of-hooks` in a repo that lints `.mjs`. Silenced **at the call site** with a
+  comment, deliberately not by exempting `tools/**` from linting — the directory also holds a
+  real TypeScript test worth linting. Alongside it, `agent-test.ts` needed explicit
+  `ParsedArgs`/`AgentState` types: `agent.mjs` is plain JS and is not itself type-checked, so
+  TypeScript pins its nullable fields to `null` and the harness could not be typed through them.
+
+**Verified:** `npm run typecheck`, `npm run lint`,
+`npm run test:whatsapp-agent` (**51/51**), `npm run test:ledger-feed` (85/85) and
+`npm run test:digest` (38/38) all green. The test exits non-zero on failure — checked by
+inverting an assertion and confirming exit `1`, because a suite that always passes is worth
+nothing.
+
+**Status — built, and honestly not yet working.** Nothing in this section has touched a phone.
+`--link`, `--groups`, delivery, the socket 401 path and the boot hook all need a real linked
+WhatsApp session, so the plan's §7 acceptance tests remain the only procedure that can promote
+this from *builds and is self-consistent* to *works*. What remains is one sitting on Dad's
+phone: Termux + Termux:Boot from F-Droid, the Samsung background-killer settings, Node, then the
+plan's §3 steps in order. The plan (§2.1, §7, §11) and the feature spec (§6.2, §12, §13) were
+updated to say exactly that rather than leaving Phase 7 reading "not started" or, worse,
+implying it was verified.
 
 ---
 

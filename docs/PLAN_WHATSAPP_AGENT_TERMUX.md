@@ -71,15 +71,30 @@ Restating the companion spec's §6.6, because it is the most likely thing to get
 
 ### 2.1 Committed to the repository
 
+**Built 18 September 2026.** These files exist in the repository; nothing in this section is
+still to be written.
+
 ```text
 tools/whatsapp-agent/
 ├── README.md            # the human-facing setup, distilled from §3 below
 ├── agent.mjs            # the agent (§5)
-├── package.json         # dependencies
+├── agent-test.ts        # repo-side contract test — `npm run test:whatsapp-agent` (§7)
+├── package.json         # dependencies: baileys, and deliberately nothing else
+├── .npmrc               # `legacy-peer-deps` — keeps `sharp` out of the install (§3.4)
 ├── config.example.json  # committed template — placeholders only
 ├── start.sh             # wake-lock + crash-restart wrapper
 └── boot/termux-boot.sh  # copy of the Termux:Boot script (§3.8)
 ```
+
+`.npmrc` is a **deliverable, not a convenience.** Baileys declares `sharp` as a *non-optional*
+peer dependency, so a plain `npm install` resolves the entire `sharp` platform matrix — a native
+module, and precisely the class of dependency that breaks an install on Termux. The agent sends
+plain text, so no peer dependency is ever imported at runtime. Removing that file turns the
+documented `npm install` into a native build failure on the phone.
+
+`agent-test.ts` sits in the agent's directory but runs from the **repository root** and is not
+shipped to the phone — it imports the server's real window implementation to pin the two halves
+together (§7).
 
 ### 2.2 Present on the phone only — **never committed**
 
@@ -851,6 +866,27 @@ note below), `--dry-run` so the family group is not spammed, and every mode take
 single-instance lock (§5.9) — so **stop the scheduler first** using §5.9's *Stopping the agent*
 procedure.
 
+**First, and needing no phone at all — the contract test:**
+
+```sh
+npm run test:whatsapp-agent     # from the REPOSITORY ROOT, not from this directory
+```
+
+**51 assertions, green as of 18 September 2026.** It covers the one thing a mistake in would be
+invisible until it silently double-posted a night: `windowKeyFor(lastBoundary(t))` must be
+byte-identical to the server's `feedWindowForInstant(t).key`, checked at hand-picked edge
+instants (the boundary, one millisecond either side of it, month and year rollovers, leap days)
+and across 400 seeded random instants — comparing the agent against the server's **real**
+implementation rather than against a copy of its own arithmetic. It also covers the retry
+ladder (including exhaustion and window roll-over), the pre-network gate, config validation and
+CLI parsing, all of which were factored out of `agent.mjs` to be testable without files, sockets
+or a device.
+
+It is not a substitute for the table below. It cannot reach linking, sending, the socket 401
+path, the boot hook, or anything about WhatsApp itself — only these acceptance tests can.
+
+#### Acceptance tests
+
 | # | Test | How | Expected |
 |---|---|---|---|
 | 1 | Config validation | Rename `config.json` temporarily, run the agent | Clear "missing config" error, exit `2`, no stack-trace dump |
@@ -950,6 +986,13 @@ The two halves are independent; the app side must exist before the agent can do 
 ---
 
 ## 11. Open Items
+
+> **Where this stands, 18 September 2026.** The **code is written, committed and green** —
+> `agent.mjs`, the repo-side contract test (51 assertions), `start.sh`, the boot hook, the
+> config template and the README are all in the repository. What remains is **device work that
+> no agent in a terminal can perform**: §3's one-time setup, the two runs that need a linked
+> WhatsApp session (`--link`, `--groups`), and the acceptance tests in §7. Everything up to the
+> first `./start.sh` is one sitting on Dad's phone.
 
 | Item | Status |
 |---|---|

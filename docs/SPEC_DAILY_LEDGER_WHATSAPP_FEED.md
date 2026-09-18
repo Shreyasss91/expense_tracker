@@ -1035,7 +1035,12 @@ A small long-running Node script on Dad's Android phone that:
 tools/whatsapp-agent/
 ├── README.md            # the one-time setup, verbatim, for a human
 ├── agent.mjs            # the agent
-├── package.json         # dependencies (baileys + a logger)
+├── agent-test.ts        # repo-side contract test — npm run test:whatsapp-agent (from the
+│                        #   repo root; not shipped to the phone)
+├── package.json         # dependencies — baileys, and deliberately nothing else. The logger
+│                        #   is ~20 lines in agent.mjs; no logging dependency is needed
+├── .npmrc               # legacy-peer-deps — a DELIVERABLE, not a convenience: it keeps
+│                        #   baileys' non-optional `sharp` peer out of the install
 ├── config.example.json  # committed template (no secrets)
 ├── config.json          # gitignored — real token + group JID
 ├── start.sh             # wake-lock + restart loop
@@ -1046,6 +1051,12 @@ tools/whatsapp-agent/
 │                        #   the single-instance lock (agent.lock)
 └── agent.log            # gitignored — rotating run log
 ```
+
+> **Built 18 September 2026.** Every committed file above exists (§13 Phase 7 for what that
+> does and does not mean). `.npmrc` is load-bearing on Android — `sharp` is a native module,
+> and baileys declares it as a peer dependency that is *not* marked optional, so without that
+> file the documented `npm install` pulls the whole `sharp` platform matrix and fails on
+> Termux. The agent sends plain text only, so no peer dependency is imported at runtime.
 
 > **Already done — 18 September 2026.** `.gitignore` excludes
 > `tools/whatsapp-agent/config.json`, `tools/whatsapp-agent/auth/` and
@@ -1473,13 +1484,15 @@ Therefore, as part of this work:
    and **authorized by the owner on 18 September 2026** (§15.1) — the record lives in
    `docs/CHANGELOG.md`; the frozen spec itself is untouched.
 3. **Update `tools/whatsapp-agent/README.md`** with the verbatim one-time setup (§6.4) — it is
-   the only place a human will look.
+   the only place a human will look. **Done 18 September 2026**, and stated to defer to
+   `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` wherever the two could disagree.
 4. ~~Add the `DIGEST_AGENT_TOKEN` placeholder to `.env.example`~~ — **done 18 September 2026**
    (§7, SPEC §9.1), together with the `tools/whatsapp-agent/{config.json,auth/,sent/}`
    `.gitignore` entries. Both landed ahead of the implementation so the credential path was
    never momentarily exposed.
 5. Verify, as the existing entries do, and record it in the entry:
-   `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`, `npm run test:digest`.
+   `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`, `npm run test:digest`,
+   `npm run test:whatsapp-agent` (the phone-agent contract test, §13 Phase 7).
 
 ---
 
@@ -1535,15 +1548,23 @@ Therefore, as part of this work:
 - [x] **Extension (second pass, 18 September 2026):** the master switch became editable from
       Settings, closing the gap where §5.6/E18 described a state nothing could reach — see §5.6.2.
 
-**Phase 7 — the agent** — ⬜ **not started** (phone side only)
+**Phase 7 — the agent** — 🟡 **code done 18 September 2026; the device steps are the only
+work left**
 
-- [ ] `tools/whatsapp-agent/` (agent, config template, start.sh, README).
+- [x] `tools/whatsapp-agent/` (agent, config template, `.npmrc`, start.sh, README) — **done**.
 - [x] `.gitignore` entries for `config.json`, `auth/`, `sent/` — **done 18 September 2026**.
       Still **verify with `git status`** before any commit that touches that directory.
-- [ ] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5**.
+- [x] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5** — **done**, including the
+      repo-side contract test (`npm run test:whatsapp-agent`, **51 assertions**, green).
 - [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →
       JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`.
+
+> Phase 7's code is complete but **unverified on a device**, and no amount of local testing can
+> change that: `--link`, `--groups`, delivery, the socket 401 path and the boot hook all need a
+> real linked WhatsApp session. The plan's §7 acceptance tests are the procedure, and its §8
+> go-live order is the sequence. Until those run, the honest status of this phase is *built*,
+> not *working*.
 
 **Phase 8 — documentation** — ✅ **done 18 September 2026**
 
