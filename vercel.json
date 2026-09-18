@@ -7,7 +7,6 @@
       "schedule": "30 16 * * *"
     },
     {
-      "comment": "22:15 IST — the daily ledger feed's fallback: pings only when no post is recorded (16:45 UTC)",
       "path": "/api/cron/digest-fallback",
       "schedule": "45 16 * * *"
     },
