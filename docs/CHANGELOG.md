@@ -209,6 +209,11 @@ Three implementation decisions worth recording:
 redeployed — without it `GET`/`POST /api/digest/day` answer `503` by design ("not
 configured" is deliberately a different diagnosis from `401` "wrong token").
 
+> **Resolved 18 September 2026.** The variable is set on Vercel and the deployment is live; the
+> routes answer `401` to anonymous callers and `200` with the token. What stood in the way was
+> not the secret at all — it was a `vercel.json` config error that failed every deployment, see
+> *Incident + hardening* below.
+
 **Verified:** `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed` (68/68) and
 `npm run test:digest` (38/38) — all green. The DB-backed paths (netting, the SQL total, the
 fallback gates) are exercised by the spec's §8 curl commands against a real deployment.
@@ -265,6 +270,10 @@ libuv assertion on Windows (`UV_HANDLE_CLOSING`), aborting with exit 127 instead
 **Still outstanding:** a deployment that actually contains the routes (see the next section — the
 verifier cannot even reach the token check yet) and the phone agent
 (`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`).
+
+> **Resolved 18 September 2026** by the `vercel.json` fix below: the deployment went `READY` and
+> the verifier then passed against production — see the end of the *Incident + hardening*
+> section. The phone agent is still pending.
 
 ### Incident + hardening — 18 September 2026
 
@@ -326,7 +335,7 @@ only effect is a confusing card row, and rejecting a legitimately late post is t
 and `npm run test:ledger-feed` (**85 checks**, up from 68 — 17 for the new validation) all green.
 The verifier was re-run against a stub built on the app's real `parseFeedKey`/`feedKeyHasEnded`:
 **154 checks pass, 0 failures**, while the same script against a 404 stub stops with the clear
-deployment diagnosis. A live production run must follow the deploy.
+deployment diagnosis. A live production run has since passed against the real deployment — see the end of this section.
 
 **Reviewed at the same time and still open** (recorded so they are decisions, not oversights):
 no throttling on the token endpoint though `RateLimiter` exists for the password login; the auth
@@ -334,6 +343,21 @@ scheme is matched case-sensitively, so `bearer <token>` is refused; a `503` befo
 whether the secret is configured (intended, and how this incident was diagnosed); the POST
 `detail` string reaches `console.warn` unvalidated and unbounded; and the token reads **any**
 24-hour window through `at`, so it is a read capability over all history rather than "today".
+
+**The deployment is live and verified — 18 September 2026.** With the config fixed, commit
+`7ac570d` deployed `READY` — the first successful deployment since `ee082c5` — and
+`npm run verify:digest-feed` then passed **against production**: **163 checks, 0 failures, exit
+0**. That is the first end-to-end evidence the service half works, and it is not a build check:
+it proves the token on Vercel matches the local one (`401` anonymous and wrong-token, `200` with
+it), that the live 22:00 IST boundaries agree with an independently reimplemented check at all
+six pinned instants, that the hardened rules reject `9999-99-99..9999-99-99` and a non-24-hour
+range and a window that has not ended, and that the route renders a real message from real data
+— the live window happened to hold 2 additions and produced a 215-character message with the
+correct header and italic label.
+
+The check count is **not** fixed: 154 against an empty-window stub, 163 live, because the message
+assertions run once more whenever the live window has changes. **0 failures and exit 0** are the
+invariant; the count is not — the spec's §8 expectation was corrected to say so.
 
 ---
 

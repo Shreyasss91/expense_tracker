@@ -1324,18 +1324,25 @@ Add to `package.json`:
 > exercise makes the deployment log one line, carrying a detail string that says it was
 > intentional.
 >
-> Expected result on a correctly configured deployment: **154 checks, 0 failures, exit 0**. It
-> was validated against a faithful stub — built on the app's real `feedWindowForInstant`,
-> `parseFeedKey` and `feedKeyHasEnded`, so the validator and the probes are exercised against the
-> shipping logic rather than a paraphrase of it — where all 154 pass. Stubs with a shifted
-> window, an unbalanced markdown marker and no configured token each fail with exit 1 and the
-> offending check named.
+> Expected result on a correctly configured deployment: **0 failures and `exit 0`**. The check
+> *count* varies and is not the thing to compare — 154 with an empty live window, 163 when the
+> live window has changes, because the message assertions then run for it as well as for the
+> pinned window.
 >
-> **Against production it currently stops at the first call.** That is not a bug in the script:
-> the live deployment predates the routes (`404`), because an invalid `vercel.json` failed every
-> deployment *before* the build ran — see the incident recorded in `docs/CHANGELOG.md`. Set
-> `DIGEST_AGENT_TOKEN` **and** deploy a commit that actually contains the route, then re-run; a
-> `503` at that point means the variable is still missing on Vercel.
+> **It passed against production on 18 September 2026, 163/163.** The live window happened to
+> hold two additions, so the route rendered a real 215-character message with the correct header
+> and italic label. Before that it was validated against a faithful stub — built on the app's
+> real `feedWindowForInstant`, `parseFeedKey` and `feedKeyHasEnded`, so the validator and the
+> probes are exercised against the shipping logic rather than a paraphrase of it — where all 154
+> pass; stubs with a shifted window, an unbalanced markdown marker and no configured token each
+> fail with exit 1 and the offending check named.
+>
+> **If it stops at the first call with a `404`**, the running deployment predates the routes.
+> That is not a script bug: Vercel validates `vercel.json` *before* the build, so an invalid
+> config fails the deployment and the previous one keeps serving — exactly what happened on
+> 18 September 2026 (see *Incident + hardening* in `docs/CHANGELOG.md`). A `503` instead means
+> the deployment has no `DIGEST_AGENT_TOKEN`; a `401` on the token check means the local token
+> and the Vercel one differ.
 
 The equivalent one-off checks, kept for a manual look:
 
