@@ -48,6 +48,8 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   lives on the server and the poster holds no formatting logic; POST records the confirmed
   send.
 - **New env var `DIGEST_AGENT_TOKEN`.**
+- **`.env.example` gains a `DIGEST_AGENT_TOKEN` placeholder** — §9.1 requires every optional
+  feature variable to be recorded there and to fail loudly when absent.
 - **New cron job** `/api/cron/digest-fallback` at `45 16 * * *` (22:15 IST) — a web-push
   safety net that fires only when no send is recorded for the window. It is a **separate job
   rather than a second run of `/api/cron/digest`**, because Vercel's Hobby plan permits at
@@ -59,6 +61,23 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   "WhatsApp feed" — so `getRecentDigestSends()` (§6.8) must test that prefix **before**
   `whatsapp:`, and the two channel ternaries in `src/components/digest/digest-card.tsx`
   become a channel→label map.
+- **Settings → History is deliberately left unchanged.** `listActivity()` **filters
+  `update_transaction` out**, so §6.5's surface — *"every delete and merge with who/when"* —
+  stays literally true instead of silently widening to every action. `restoreActivityEntry`
+  already refuses any action other than the two delete actions, so Restore is unaffected.
+- **No new table and no new column.** `activity_log.payload` is already `jsonb`; the only
+  schema-adjacent change is a new *value* for an existing `text` column.
+- **No §11 conflict.** The digest bullet in the exclusion list was already struck out, and
+  nothing in the remaining list applies — **§11 needs no amendment**.
+- **One recorded deviation from §7, requiring owner authorization under the standing
+  directive:** `POST /api/digest/day` is a **mutating route handler**, while §7 describes the
+  routes alongside the Server Actions as *"read streams and crons, **not mutations**"*. A
+  Server Action is impossible here — the poster is an external, non-browser client holding no
+  NextAuth session cookie — and the pattern matches the existing bearer-authenticated
+  `/api/cron/*` routes (and `POST /api/import`, which is itself a mutation). Without the POST
+  a confirmed send could not be recorded, which would also make the 22:15 fallback ping fire
+  every night even after a successful post. Full clause-by-clause analysis in
+  `docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md` §15.
 - **Transport is a decision, not an implementation detail.** No free official route into a
   WhatsApp group exists: Meta's Groups API requires an **Official Business Account**, caps
   groups at 8 participants and exposes no add-participant endpoint; and Vercel's serverless

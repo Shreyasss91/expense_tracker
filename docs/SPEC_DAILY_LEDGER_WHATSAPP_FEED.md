@@ -12,7 +12,9 @@
 > **Read this first.** `docs/SPEC.md` is **FROZEN**. Do not edit it. Every deviation this
 > feature introduces is recorded in `docs/CHANGELOG.md`, per that file's stated governance
 > rule ("the spec is frozen; entries below exist only because the user explicitly authorized
-> each change"). See [§12 Documentation Obligations](#12--documentation-obligations).
+> each change"). See [§12 Documentation Obligations](#12--documentation-obligations), and
+> [§15 Conflicts](#15-frozen-specmd-conflict-report) for the clause-by-clause comparison and
+> the **one deviation that needs owner sign-off**.
 
 ---
 
@@ -462,18 +464,29 @@ The feed builder must also handle **legacy** entries written before this change,
 `ids` is absent: fall back to loading the *originating delete entry* via `payload.from` and
 reading the ids out of that entry's `transactions[].id`. Documented again in §5.4.4.
 
-#### 5.3.5 Effect on Settings → History — expected and handled
+#### 5.3.5 Keeping the new action OUT of Settings → History — normative
 
 `listActivity()` in `src/actions/activity.ts` selects **all** `activity_log` rows with no
-action filter, so the new `update_transaction` rows **will appear in the Settings → History
-list**. This is accepted (it is arguably a feature). Two guards make it safe:
+action filter. Left alone, the new `update_transaction` rows would silently appear in
+Settings → History.
 
-- `restoreActivityEntry` already **hard-refuses** any action other than
-  `delete_transaction` / `delete_transactions` ("Only deleted transactions can be
-  restored"). Adding a new action cannot break restore.
-- The History **UI** should render the new action with a readable label and must not offer a
-  Restore control for it. Ensure the client's action→label mapping has a default branch so an
-  unrecognised action cannot crash the list.
+> **Normative:** `listActivity()` **must filter `update_transaction` out** (an explicit
+action allowlist is the cleanest form). SPEC §6.5 defines that surface as *"every delete and
+merge with who/when; deleted transactions carry a Restore action"* — the frozen document
+names **two** action families, and this feature may not widen it by accident. The edit
+journal is consumed by the feed only.
+
+This is deliberately the *smaller* deviation: rather than recording a widening of the §6.5
+surface, the query keeps the contract exactly as written. See §15.2.
+
+Two further guards, both already true and both worth preserving:
+
+- `restoreActivityEntry` **hard-refuses** any action other than `delete_transaction` /
+  `delete_transactions` ("Only deleted transactions can be restored"), so the new action
+  cannot break restore.
+- The History **UI**'s action→label mapping should keep a default branch so an unrecognised
+  action can never crash the list. (Belt and braces — with the filter above, it will not
+  receive `update_transaction` at all.)
 
 ---
 
@@ -638,10 +651,16 @@ Same shape as an added row, minus the time.
 *Entered in this window: ₹2,420*
 ```
 
-**Additions only.** Integer paise accumulation over the `added` rows. It deliberately
-excludes edits and deletions — the label says *entered*, so it must mean entered. When
-`added` is empty but edits/deletions exist, **omit the total line** (a `₹0` total would be
-misleading).
+**Additions only**, and it deliberately excludes edits and deletions — the label says
+*entered*, so it must mean entered. When `added` is empty but edits/deletions exist, **omit
+the total line** (a `₹0` total would be misleading).
+
+> **Normative:** compute this total with a **SQL `SUM`** over the same window predicate —
+> `SELECT COALESCE(SUM(amount), 0) … WHERE created_at >= :startIso AND created_at < :endIso`
+> — and not as a JavaScript reduce over the fetched rows. SPEC §7.2 prohibits JavaScript
+> aggregation ("Fetching transactions and reducing them in JavaScript is prohibited"), and
+> `getDigestData()` in `src/lib/digest.ts` already sets the SQL-`SUM` precedent. Convert the
+> single returned `NUMERIC` string to paise once, on read (§5.8).
 
 ##### Sanitisation — mandatory
 
@@ -823,9 +842,11 @@ And `src/components/digest/digest-card.tsx` types its `lastSends` prop as
 >
 > 1. `getRecentDigestSends()` recognises the `whatsapp_feed:` prefix (note it must be checked
 >    **before** the `whatsapp:` prefix test, or the more specific one will never match).
-> 2. The label for a feed key is produced by `windowKeyLabel()` (§5.1), not
->    `periodKeyLabel()` — the stored key is a pair of *dates* but the natural label is the
->    `Wed 17 Sep 22:00 → …` form. Branch on the channel.
+> 2. The label keeps using **`periodKeyLabel()`** — the stored key already has the
+>    `<start>..<end>` shape, so it renders as `17–18 Sep` with **no new label function** and
+>    no second code path. `windowKeyLabel()` (§5.1) exists **only** for the message's own
+>    header line (`_Wed 17 Sep 22:00 → …_`) and must never reach the card. This keeps §2.13's
+>    "`getRecentDigestSends()` plus `periodKeyLabel()`" clause literally true.
 > 3. `digest-card.tsx` renders it as **"WhatsApp feed"**. Its two render sites build the
 >    label with `s.channel === "telegram" ? "Telegram" : "WhatsApp"` — those ternaries must
 >    become a proper channel→label map, otherwise the feed will render as "WhatsApp" and be
@@ -1043,6 +1064,12 @@ tools/whatsapp-agent/
 Existing and unchanged for this feature: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`,
 `VAPID_SUBJECT` (web push), `DATABASE_URL`, `AUTH_SECRET`, `FAMILY_MASTER_PASSWORD`.
 
+> **Normative — required by SPEC §9.1**, which says every optional feature variable must fail
+> loudly when absent and points at `.env.example` as the record: **`.env.example` must gain a
+> `DIGEST_AGENT_TOKEN` placeholder**, with a comment in the file's existing per-feature style
+> explaining that it guards `/api/digest/day` and that without it the route answers `503`.
+> Placeholders only — never a real value (§9.2).
+
 The agent's copy of `DIGEST_AGENT_TOKEN` lives only in the phone's `config.json`.
 
 ---
@@ -1206,7 +1233,8 @@ Therefore, as part of this work:
    with the owner rather than amending the frozen document.
 3. **Update `tools/whatsapp-agent/README.md`** with the verbatim one-time setup (§6.4) — it is
    the only place a human will look.
-4. Verify, as the existing entries do, and record it in the entry:
+4. **Add the `DIGEST_AGENT_TOKEN` placeholder to `.env.example`** (§7, SPEC §9.1).
+5. Verify, as the existing entries do, and record it in the entry:
    `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`, `npm run test:digest`.
 
 ---
@@ -1280,3 +1308,68 @@ Therefore, as part of this work:
 | **Change feed** | A journal of events (add/edit/delete) in a time range — not a state snapshot. |
 | **Digest** | The pre-existing weekly/monthly *aggregate* message. Different feature, untouched. |
 | **Agent** | The Termux script that fetches the rendered message and posts it. |
+
+---
+
+## 15. Frozen-`SPEC.md` Conflict Report
+
+`docs/SPEC.md` carries a **standing directive**: *"No deviations, no 'helpful' additions
+outside this scope, and no architectural changes are permitted. (if you have 'helpful'
+additions, architectural changes -- first present to it to user, ask for permission, no
+silent folding ins)"*. This section is that presentation, for the record. It was produced by
+comparing this document against `SPEC.md` clause by clause.
+
+### 15.1 The one real deviation — needs explicit owner sign-off
+
+| | |
+|---|---|
+| **SPEC clause** | §7 — *"**API routes that exist alongside the actions** (read streams and crons, **not mutations**): `GET /api/export`, `POST /api/import`, attachment upload/serve routes, and the CRON_SECRET-protected `/api/cron/*` routes."* |
+| **What this spec adds** | `POST /api/digest/day` — a **mutating** route handler. It writes the `digest_sent:whatsapp_feed:<windowKey>` marker (D11) and authenticates by bearer token rather than `auth()`. |
+| **Why a Server Action cannot be used** | §7.1's mutating-action rule — including *"Check the session — `auth()`"* — is written for **browser clients holding a NextAuth session cookie**. The poster is an external, non-browser client on a phone: it cannot invoke a Server Action and holds no session cookie. |
+| **Precedent it follows** | The `/api/cron/*` routes are already exactly this pattern — bearer-authenticated route handlers that bypass `auth()`. §7's own list also includes `POST /api/import`, which is itself a mutation. |
+| **Can it be avoided?** | No — not without breaking the feature. Without the POST, a confirmed send cannot be recorded, which would (a) lose the D11 record on the Settings card and (b) make the D10 fallback push fire **every** night, even after a successful post, because nothing would distinguish *sent* from *not sent*. |
+| **Severity** | Low operational risk, but a **genuine** deviation in wording. The standing directive requires the owner to authorize it. |
+
+### 15.2 Deviations designed OUT (no sign-off needed)
+
+These were caught during the conflict review, and this document was **changed** so that they
+no longer deviate. Do not "restore" the earlier behaviour.
+
+| SPEC clause | Original draft (deviating) | Resolved to |
+|---|---|---|
+| §6.5 — *"**History (§2.12):** the activity log surface — every delete and merge with who/when; deleted transactions carry a **Restore** action."* | New `update_transaction` rows would have appeared in Settings → History, silently widening that surface from "deletes and merges" to "everything". | **`listActivity()` filters `update_transaction` out.** The edit journal is consumed by the feed only, and §6.5's contract stays literally true. See §5.3.5. |
+| §2.13 — *"`getRecentDigestSends()` plus `periodKeyLabel()` render the per-channel 'Last sent' blocks."* | A new `windowKeyLabel()` was going to be introduced as a second label function for the card. | The card reuses **`periodKeyLabel()`** like every other channel — the stored key already has the `<start>..<end>` shape. `windowKeyLabel()` serves only the message header and never reaches the card. See §5.6.1. |
+| §7.2 — *"**All dashboard analytics are computed in SQL** … Fetching transactions and reducing them in JavaScript is prohibited."* | The closing total was a JavaScript reduce over the fetched `added` rows. | The total is a **SQL `SUM`** over the same window predicate, matching `getDigestData()`. See §5.4.6. |
+| §9.1 — *"each feature fails loudly as 'not configured' when its variable is absent — never silently; see `.env.example`"* | `.env.example` was not mentioned anywhere. | `.env.example` **must** gain a `DIGEST_AGENT_TOKEN` placeholder in the file's existing per-feature comment style. See §7. |
+
+### 15.3 Extensions recorded in `docs/CHANGELOG.md` (not contradictions)
+
+| SPEC clause | Relationship |
+|---|---|
+| §4.2 — `activity_log.payload` *"carries snapshots, **e.g.** `{ transactions: [...] }` for deletes or `{ sourceId, targetId, moved: n }` for merges"* | The **"e.g."** makes the payload vocabulary illustrative, not exhaustive — §4.2 already omits `restore_transactions` and `skip_template_month`, both of which are in use. The new `update_transaction` payload, and the `ids` field added to `restore_transactions`, are **extensions**. No contradiction. |
+| §2.12 — *"The 5-second undo toast is backed by the persistent **activity log** … with a Settings → History surface and **Restore** for deleted transactions."* | Unchanged. Restore still applies to deletions only. The undo *mechanism* (§6.4.1) is client-state-only and is not touched. |
+| §2.13 — *"every successful send — cron AND manual, **either channel** — writes a `digest_sent:<channel>:<start>..<end>` record"* | "Either channel" becomes **three** channels. The record *shape* is unchanged, and a channel is explicitly what that clause's own `<channel>` placeholder parameterises. |
+| §7.1 — the mutating-action preconditions (session check, Zod parse, member validation, paise conversion) | `GET /api/digest/day` performs **no write at all**, so none of these apply. The one writing route is the §15.1 deviation. Validation rules in this spec (strict `windowKey` regex, strict `at` parsing) go beyond Zod but do not contradict it. |
+
+### 15.4 No conflict found
+
+| Area | Verdict |
+|---|---|
+| **§11 exclusion list** | The digest exclusion bullet was **already struck out** (*"weekly/monthly Telegram + WhatsApp digest added 7 Sept 2026"*). Nothing in the remaining list — multi-user auth, freeform tags, multi-currency, merchant auto-categorization, voice input — touches this feature. **No new exclusion applies and §11 needs no amendment.** |
+| **§5.7 timezone** | Satisfied: every boundary is derived through `APP_TIMEZONE` via `date-fns-tz`; no bare `new Date()` for a business-date decision. |
+| **§5.8 money** | Satisfied: `NUMERIC` strings are read at the DB boundary, converted to integer paise once, arithmetic stays in paise, and `formatINR()` is used only at the render edge. |
+| **§9.2 / §9.3 secrets** | Satisfied: this document and the changelog name `DIGEST_AGENT_TOKEN` but never carry a **value**; the agent's `config.json` is gitignored and `chmod 600`'d. |
+| **§3.2.1 — the active member is not a security boundary** | Satisfied: the feed's `activity_log.actor` is advisory only and drives no authorization decision. |
+| **§6.4.1 delete semantics** | Satisfied: no soft delete and no tombstones are introduced. Netting (D6) reads existing audit rows and needs no schema change. |
+| **§4 (8-table schema summary)** | Satisfied: this feature adds **no table and no column**. `activity_log.payload` is already `jsonb`. The only schema-adjacent change is a new **value** for an existing `text` column. |
+
+### 15.5 Pre-existing inconsistency — noted, not introduced, not fixed
+
+§6.4.1 still states *"**No soft delete.** No `deleted_at` column, no tombstones, no restore
+UI, no filtering of deleted rows from queries"*, while §2.12 (3 Sept 2026) later added the
+`activity_log`-backed Settings → History surface **with Restore** for deleted transactions.
+The two clauses are in tension inside the frozen document itself.
+
+This feature touches neither and must not be used as an excuse to "clean it up". It is
+recorded here only so a future reader does not attribute the inconsistency to this work.
+House rule: superseded clauses are **annotated in `CHANGELOG.md`, never rewritten in place**.
