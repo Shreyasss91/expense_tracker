@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Document status** | 📝 DRAFT — owner-authorized feature, awaiting implementation |
+| **Document status** | ✅ **App side implemented and verified 18 September 2026**; phone agent pending (`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`) |
 | **Date** | 18 September 2026 |
 | **Feature owner decision** | Yes — every clause below is an owner decision or a consequence of one |
 | **Supersedes** | Nothing. This is **additive**; the existing weekly/monthly digest (§6.8) is untouched |
@@ -495,6 +495,14 @@ Two further guards, both already true and both worth preserving:
 `server-only`. Mirrors the split already used by the digest engine: pure logic in one module,
 DB access in another.
 
+> **Implemented as two files — 18 September 2026.** `src/lib/ledger-feed-format.ts` holds the
+> types, `sanitizeWhatsAppText`, `buildFeedChanges` and `buildLedgerFeedMessage` as a **pure**
+> module; `src/lib/ledger-feed.ts` holds the `server-only` `getLedgerFeed` plus the
+> `app_settings` keys and **re-exports** the pure surface. One file was not possible:
+> `server-only` throws when imported outside a React Server Component, which would leave the
+> message builder untestable under `tsx`. Same import surface, same split as
+> `digest.ts`/`digest-format.ts`, and the builder is now covered by the test suite.
+
 ```ts
 export interface LedgerFeed {
   window: FeedWindow;
@@ -612,6 +620,11 @@ HH:MM · <emoji> <category name> · ₹amount
   `src/lib/money.ts` is the only formatter that may be used** — never a hand-rolled rupee
   string, never a float operation (SPEC §5.8). Convert with `rupeesToPaise()` first.
 
+> **Implemented (18 Sept 2026):** the builder uses `formatINR`, so amounts render as `₹450.00`
+> rather than the sample's `₹450`. That follows this clause to the letter; the difference is
+> cosmetic, and switching to `formatINRWhole()` is a one-word change if the owner prefers the
+> tighter rendering.
+
 ##### Edited row
 
 ```text
@@ -635,6 +648,10 @@ When only one field changed and it is the amount, the compact
 `🍔 Dining Out · ₹450 → ₹500` from the sample is produced — i.e. do **not** print the field
 name for `amount`, `categoryId` or `tag`; print `field: …` prefixes only when the field is
 ambiguous (`note`, `date`/`time`, `memberId`, `splitWith`).
+
+> **Implemented (18 Sept 2026):** the prefixes are readable labels held in **one constant**,
+> `CHANGE_PREFIX` in `ledger-feed-format.ts` — `note:`, `when:` (date/time), `for:` (member),
+> `assigned:` (splitWith). Change them there and every rendering follows.
 
 ##### Deleted row
 
@@ -891,6 +908,15 @@ re-running `/api/cron/digest` twice a day is not. Do not "simplify" by merging t
 7. Write `digest_fallback_pinged:<key>`.
 8. `revalidatePath("/")` so the dashboard re-renders.
 9. Return `{ ok, date, sent, failed, stale }`.
+
+> **Implemented (18 Sept 2026) — the exact gate order.** The numbered list above is a logic
+description, not an execution order; the code in
+`src/app/api/cron/digest-fallback/route.ts` evaluates
+**`whatsapp_feed_enabled` → `digest_sent:…` → `digest_fallback_pinged:…` → `isPushConfigured()`**.
+The disabled check runs **first** and the push-config check **last**, because that is the only
+order in which the two rules below hold together: a deliberately disabled feed must not ping
+even on a deployment with no VAPID keys, and a duplicate run must be deduped whether or not
+push happens to be configured.
 
 #### Preconditions and graceful degradation
 
@@ -1345,45 +1371,49 @@ Therefore, as part of this work:
 
 ## 13. Implementation Order (Checklist)
 
-**Phase 1 — pure logic (no DB, no network)**
+**Phase 1 — pure logic (no DB, no network)** — ✅ **done 18 September 2026**
 
-- [ ] `src/lib/ledger-feed-window.ts` — `feedWindowForInstant`, `windowKeyLabel`, constants.
-- [ ] `src/lib/transaction-diff.ts` — `TRACKED_FIELDS`, `diffSnapshots`, snapshot type.
-- [ ] `src/lib/ledger-feed-test.ts` + the `test:ledger-feed` npm script. **Green before
-      moving on** — the window math is where the subtle bugs live.
+- [x] `src/lib/ledger-feed-window.ts` — `feedWindowForInstant`, `windowKeyLabel`, constants.
+- [x] `src/lib/transaction-diff.ts` — `TRACKED_FIELDS`, `diffSnapshots`, snapshot type.
+- [x] `src/lib/ledger-feed-test.ts` + the `test:ledger-feed` npm script — **68 assertions, green**.
 
-**Phase 2 — edit instrumentation**
+**Phase 2 — edit instrumentation** — ✅ **done 18 September 2026**
 
-- [ ] Add the `update_transaction` payload contract (§5.3.1).
-- [ ] Instrument `updateTransaction`, `setTransactionAssignment`, `setTransactionsAssignment`,
+- [x] Add the `update_transaction` payload contract (§5.3.1) — via `logTransactionEdits()`.
+- [x] Instrument `updateTransaction`, `setTransactionAssignment`, `setTransactionsAssignment`,
       `assignCategory` (§5.3.2) with pre-image reads and best-effort logging.
-- [ ] Add `ids` to `restoreActivityEntry`'s payload (§5.3.4).
-- [ ] Check the Settings → History action label mapping has a safe default (§5.3.5).
+- [x] Add `ids` to `restoreActivityEntry`'s payload (§5.3.4).
+- [x] Check the Settings → History action label mapping has a safe default (§5.3.5) —
+      `describe()`'s default branch already covers an unrecognised action, and `listActivity()`
+      excludes `update_transaction`, so it never arrives.
 
-**Phase 3 — the feed**
+**Phase 3 — the feed** — ✅ **done 18 September 2026**
 
-- [ ] `src/lib/ledger-feed.ts` — `getLedgerFeed` (additions / edits / deletions / merges,
-      netting) and `buildLedgerFeedMessage` (format, sanitisation, caps).
-- [ ] Extend the builder's unit tests with the message cases.
+- [x] `getLedgerFeed` (additions / edits / deletions / merges, netting) and
+      `buildLedgerFeedMessage` (format, sanitisation, caps) — split across
+      `ledger-feed.ts` (`server-only`) and `ledger-feed-format.ts` (pure), for the
+      testability reason recorded in §5.4.
+- [x] Extend the builder's unit tests with the message cases.
 
-**Phase 4 — endpoints**
+**Phase 4 — endpoints** — code ✅ **done**; deployment steps **outstanding**
 
-- [ ] `src/app/api/digest/day/route.ts` — `GET` + `POST`, token auth, `force-dynamic`.
-- [ ] `DIGEST_AGENT_TOKEN` set on Vercel.
+- [x] `src/app/api/digest/day/route.ts` — `GET` + `POST`, token auth, `force-dynamic`.
+- [ ] `DIGEST_AGENT_TOKEN` set on Vercel. *(Owner action — without it both routes answer `503`.)*
 - [ ] curl-verify `401` unauthenticated and `200` with text.
 
-**Phase 5 — fallback**
+**Phase 5 — fallback** — ✅ **done 18 September 2026**
 
-- [ ] `src/app/api/cron/digest-fallback/route.ts`.
-- [ ] `vercel.json` entry `{ "path": "/api/cron/digest-fallback", "schedule": "45 16 * * *" }`.
-- [ ] Reuse `pingDigestReady`'s delivery loop including the stale-endpoint purge.
+- [x] `src/app/api/cron/digest-fallback/route.ts`.
+- [x] `vercel.json` entry `{ "path": "/api/cron/digest-fallback", "schedule": "45 16 * * *" }`.
+- [x] Reuse `pingDigestReady`'s delivery loop including the stale-endpoint purge — extracted to
+      `src/lib/push-dispatch.ts` (`deliverPushToAllDevices`), which `pingDigestReady()` now calls.
 
-**Phase 6 — record-keeping**
+**Phase 6 — record-keeping** — ✅ **done 18 September 2026**
 
-- [ ] Extend `getRecentDigestSends()` with the third channel (§5.6.1).
-- [ ] Update `digest-card.tsx` to render it as **"WhatsApp feed"**.
+- [x] Extend `getRecentDigestSends()` with the third channel (§5.6.1).
+- [x] Update `digest-card.tsx` to render it as **"WhatsApp feed"** (channel→label map).
 
-**Phase 7 — the agent**
+**Phase 7 — the agent** — ⬜ **not started** (phone side only)
 
 - [ ] `tools/whatsapp-agent/` (agent, config template, start.sh, README).
 - [x] `.gitignore` entries for `config.json`, `auth/`, `sent/` — **done 18 September 2026**.
@@ -1393,10 +1423,11 @@ Therefore, as part of this work:
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →
       JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`.
 
-**Phase 8 — documentation**
+**Phase 8 — documentation** — ✅ **done 18 September 2026**
 
-- [ ] `docs/CHANGELOG.md` entry (§12).
-- [ ] All four verification commands green.
+- [x] `docs/CHANGELOG.md` entry (§12), including the implementation block.
+- [x] `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed` (68/68) and
+      `npm run test:digest` (38/38) green.
 
 ---
 

@@ -9,12 +9,11 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ## Daily ledger-change feed to a private WhatsApp group — 18 September 2026 (owner request)
 
-**Status: design authorized, implementation pending.** Unlike the entries below, this
-records a frozen contract for work not yet built — the code does not exist at the time of
-writing. The complete hand-off specification is
-**`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`**; this entry is its summary. Add the
-verification results (`npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`,
-`npm run test:digest`) here when the implementation lands.
+**Status — app side IMPLEMENTED and verified 18 September 2026; phone side pending.** The
+service half of the contract below is built (see the implementation block at the end of this
+entry). The Termux + Baileys agent on Dad's phone is **not** — see
+`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`. The complete hand-off specification is
+**`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`**; this entry is its summary.
 
 Owner request: every night at **10 PM IST**, post one message into a **new private WhatsApp
 group containing only Dad, Mom and Son**, listing (1) every transaction **added** in the
@@ -146,6 +145,79 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   digest (§6.8) — Telegram auto-send plus WhatsApp Click-to-Chat — is **untouched**; the two
   messages are different shapes on different triggers, and both fire on the
   7th/14th/21st/28th and month-end.
+
+### Implementation — 18 September 2026
+
+New files:
+
+- `src/lib/ledger-feed-window.ts` (pure) — `feedWindowForInstant`, `windowKeyLabel`,
+  `FEED_KEY_RE`, `FEED_HOUR_IST`, `FEED_GRACE_MS`. The boundary is built through
+  `date-fns-tz`'s `fromZonedTime` against `APP_TIMEZONE`, never by adding `19800` seconds
+  (§5.7).
+- `src/lib/transaction-diff.ts` (pure) — `TransactionSnapshot`, `TRACKED_FIELDS`,
+  `toSnapshot`, `diffSnapshots`. Amounts compare **numerically** (so `450.00` → `450.0` is not
+  a change) and `splitWith` compares as a **set** (so reordering the assigned members is not a
+  change either) — both were the difference between a useful journal and a noisy one.
+- `src/lib/ledger-feed-format.ts` (pure) — the feed types, `sanitizeWhatsAppText`,
+  `buildFeedChanges` and `buildLedgerFeedMessage`.
+- `src/lib/ledger-feed.ts` (`server-only`) — `getLedgerFeed`, the three `app_settings` keys and
+  their helpers, re-exporting both pure modules.
+- `src/lib/ledger-feed-test.ts` + the `test:ledger-feed` npm script — **68 assertions**.
+- `src/app/api/digest/day/route.ts` — `GET` (the finished message) + `POST` (the send record,
+  the §15.1 deviation the owner authorized).
+- `src/app/api/cron/digest-fallback/route.ts` + the `vercel.json` entry `45 16 * * *` (= 22:15
+  IST) — the safety net, gated in this order: `whatsapp_feed_enabled`, then the send marker,
+  then an at-most-once ping marker.
+- `src/lib/push-dispatch.ts` — the web-push fan-out (including the 404/410 stale-endpoint
+  purge) **extracted** from `pingDigestReady()`, which now calls it. One delivery loop, two
+  callers; no second implementation to drift.
+
+Changed files:
+
+- `src/actions/transactions.ts` — `readSnapshots()` + `logTransactionEdits()` on the four
+  writers: `updateTransaction` (`edit_sheet`), `setTransactionAssignment` (`assignment`),
+  `setTransactionsAssignment` (`bulk_assignment`), `assignCategory` (`bulk_category`). A no-op
+  edit writes **nothing**, and the pre-image read that `updateTransaction` already performed
+  for its Review-queue note comparison was generalized rather than duplicated.
+- `src/actions/activity.ts` — `restoreActivityEntry` now records `ids` (D6 netting), and
+  `listActivity()` **excludes** `update_transaction` so §6.5's History surface is not widened
+  by accident. Excluded rather than allowlisted deliberately: an allowlist would also have
+  dropped the `restore_transactions` and `skip_template_month` rows that surface shows today,
+  which would have been a silent behaviour change this feature has no business making.
+- `src/lib/digest.ts` + `src/components/digest/digest-card.tsx` — the third `whatsapp_feed`
+  channel, tested **before** `whatsapp:` in the key scan, and rendered "WhatsApp feed" through
+  a channel→label map that replaced both `channel === "telegram" ? … : "WhatsApp"` ternaries.
+
+Three implementation decisions worth recording:
+
+1. **The builder is a separate pure module.** The spec puts `getLedgerFeed` and
+   `buildLedgerFeedMessage` in one `server-only` file, but `server-only` throws when imported
+   outside a React Server Component — which would leave the message builder untestable under
+   `tsx`. It therefore lives in `ledger-feed-format.ts` and is re-exported from `ledger-feed.ts`,
+   exactly as `digest.ts` re-exports `digest-format.ts`. Same import surface, and the builder is
+   now covered by the suite.
+2. **Money uses `formatINR()`**, so rows render `₹450.00` rather than the spec sample's `₹450`.
+   §5.4.6 names `formatINR` as *"the only formatter that may be used"*, so this follows the
+   letter at the cost of the sample's whole-rupee look; swapping to `formatINRWhole()` is a
+   one-word change if the owner prefers the tighter rendering.
+3. **Ambiguous change fields carry readable prefixes** from one constant (`CHANGE_PREFIX` in
+   `ledger-feed-format.ts`): `note:`, `when:` (date/time), `for:` (member), `assigned:`
+   (assignment). `amount`, `categoryId` and `tag` stay unprefixed, which is what produces the
+   sample's compact `🍔 Dining Out · ₹450 → ₹500` line.
+
+**Still outstanding on the service side:** `DIGEST_AGENT_TOKEN` must be set on Vercel and
+redeployed — without it `GET`/`POST /api/digest/day` answer `503` by design ("not
+configured" is deliberately a different diagnosis from `401` "wrong token").
+
+**Verified:** `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed` (68/68) and
+`npm run test:digest` (38/38) — all green. The DB-backed paths (netting, the SQL total, the
+fallback gates) are exercised by the spec's §8 curl commands against a real deployment.
+
+**Landed as five commits, `064ed3a`…`984418e`, pushed 18 September 2026** — the pure layer
+(window, diff, builder, 68 assertions) first, then the edit journal, then the read/record
+endpoints, then the 22:15 fallback cron, then the card's third channel. The order is the
+dependency order — the journal and the endpoints both build on the pure layer, and the fallback
+cron on the endpoints — so every commit typechecks on its own as it lands.
 
 ---
 

@@ -74,7 +74,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 
 1. Push the repo to GitHub.
 2. Import the repo in Vercel (framework preset: Next.js).
-3. Add the env vars from `.env.example` (the four core ones, plus `CRON_SECRET` and the §2.10 backup channel vars if you want the monthly backup cron).
+3. Add the env vars from `.env.example` (the four core ones, plus `CRON_SECRET` and the §2.10 backup channel vars if you want the monthly backup cron, plus `DIGEST_AGENT_TOKEN` if you want the daily WhatsApp ledger feed — see [`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`](docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md)).
 4. Run `npm run db:push && npm run db:seed` against the production database (or via a build step).
 
 The seed data itself is immutable — `seed_data/seed.csv` must not be edited, reordered, deduplicated, or given a trailing newline (§8.3).
