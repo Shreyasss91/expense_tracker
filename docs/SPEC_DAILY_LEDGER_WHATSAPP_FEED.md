@@ -14,7 +14,7 @@
 > rule ("the spec is frozen; entries below exist only because the user explicitly authorized
 > each change"). See [§12 Documentation Obligations](#12--documentation-obligations), and
 > [§15 Conflicts](#15-frozen-specmd-conflict-report) for the clause-by-clause comparison and
-> the **one deviation that needs owner sign-off**.
+> the **one deviation, which the owner authorized on 18 September 2026**.
 
 ---
 
@@ -1329,7 +1329,9 @@ Therefore, as part of this work:
    - the new `app_settings` keys;
    - that the Settings digest card gains a third channel.
 2. **Do not edit `docs/SPEC.md`.** If a normative clause there genuinely conflicts, raise it
-   with the owner rather than amending the frozen document.
+   with the owner rather than amending the frozen document. The one conflict found was raised
+   and **authorized by the owner on 18 September 2026** (§15.1) — the record lives in
+   `docs/CHANGELOG.md`; the frozen spec itself is untouched.
 3. **Update `tools/whatsapp-agent/README.md`** with the verbatim one-time setup (§6.4) — it is
    the only place a human will look.
 4. ~~Add the `DIGEST_AGENT_TOKEN` placeholder to `.env.example`~~ — **done 18 September 2026**
@@ -1424,7 +1426,7 @@ additions, architectural changes -- first present to it to user, ask for permiss
 silent folding ins)"*. This section is that presentation, for the record. It was produced by
 comparing this document against `SPEC.md` clause by clause.
 
-### 15.1 The one real deviation — needs explicit owner sign-off
+### 15.1 The one real deviation — **authorized by the owner, 18 September 2026**
 
 | | |
 |---|---|
@@ -1433,7 +1435,8 @@ comparing this document against `SPEC.md` clause by clause.
 | **Why a Server Action cannot be used** | §7.1's mutating-action rule — including *"Check the session — `auth()`"* — is written for **browser clients holding a NextAuth session cookie**. The poster is an external, non-browser client on a phone: it cannot invoke a Server Action and holds no session cookie. |
 | **Precedent it follows** | The `/api/cron/*` routes are already exactly this pattern — bearer-authenticated route handlers that bypass `auth()`. §7's own list also includes `POST /api/import`, which is itself a mutation. |
 | **Can it be avoided?** | No — not without breaking the feature. Without the POST, a confirmed send cannot be recorded, which would (a) lose the D11 record on the Settings card and (b) make the D10 fallback push fire **every** night, even after a successful post, because nothing would distinguish *sent* from *not sent*. |
-| **Severity** | Low operational risk, but a **genuine** deviation in wording. The standing directive requires the owner to authorize it. |
+| **Severity** | Low operational risk, but a **genuine** deviation in wording. Under the standing directive it required the owner's authorization — which is recorded in the next row. |
+| **Owner authorization — granted 18 September 2026** | The deviation was presented to the owner together with the reason a Server Action cannot be used and the consequence of *not* taking it (no D11 record on the Settings card, and the D10 fallback push firing **every** night even after a successful post). The owner **authorized** the mutating `POST /api/digest/day`. Implementation of this route is therefore permitted **without amending `docs/SPEC.md`**: the frozen document stays frozen, and the deviation is recorded here and in `docs/CHANGELOG.md`. |
 
 ### 15.2 Deviations designed OUT (no sign-off needed)
 

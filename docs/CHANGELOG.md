@@ -76,8 +76,8 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   schema-adjacent change is a new *value* for an existing `text` column.
 - **No §11 conflict.** The digest bullet in the exclusion list was already struck out, and
   nothing in the remaining list applies — **§11 needs no amendment**.
-- **One recorded deviation from §7, requiring owner authorization under the standing
-  directive:** `POST /api/digest/day` is a **mutating route handler**, while §7 describes the
+- **One recorded deviation from §7, authorized by the owner on 18 September 2026:**
+  `POST /api/digest/day` is a **mutating route handler**, while §7 describes the
   routes alongside the Server Actions as *"read streams and crons, **not mutations**"*. A
   Server Action is impossible here — the poster is an external, non-browser client holding no
   NextAuth session cookie — and the pattern matches the existing bearer-authenticated
@@ -85,6 +85,12 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   a confirmed send could not be recorded, which would also make the 22:15 fallback ping fire
   every night even after a successful post. Full clause-by-clause analysis in
   `docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md` §15.
+  **Owner authorization — granted 18 September 2026.** The deviation was presented with both
+  the reason a Server Action cannot serve here (the poster is an external, non-browser client
+  with no session cookie) and the cost of avoiding it (D11 record lost, and a fallback push
+  every night after a successful post). The owner **authorized** the mutating route, so it may
+  be implemented as specified. **`docs/SPEC.md` is still not amended** — the frozen document
+  remains frozen, and this entry plus spec §15.1 are the record.
 - **Transport is a decision, not an implementation detail.** No free official route into a
   WhatsApp group exists: Meta's Groups API requires an **Official Business Account**, caps
   groups at 8 participants and exposes no add-participant endpoint; and Vercel's serverless
