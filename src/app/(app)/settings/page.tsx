@@ -15,6 +15,7 @@ import { OfflineEntriesManager } from "@/components/settings/offline-entries-man
 import { PushSetup } from "@/components/pwa/push-setup";
 import { DigestSettingsCard } from "@/components/digest/digest-card";
 import { getWhatsAppDigestConfig, getDigestDayContext } from "@/lib/whatsapp-digest";
+import { isFeedEnabled } from "@/lib/ledger-feed";
 import { formatSentAtLabel, getRecentDigestSends } from "@/lib/digest";
 import { todayInIST } from "@/lib/dates";
 import type { CategoryOption, MemberOption } from "@/components/quick-add/types";
@@ -22,13 +23,14 @@ import type { CategoryOption, MemberOption } from "@/components/quick-add/types"
 export const metadata = { title: "Settings — Family Ledger" };
 
 export default async function SettingsPage() {
-  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills, whatsappConfig, digestToday, recentSends] = await Promise.all([
+  const [memberRows, categoryRows, templateRows, budgetRows, excludeBills, whatsappConfig, feedEnabled, digestToday, recentSends] = await Promise.all([
     getMembers(),
     getCategories(),
     getTemplates(),
     db.select().from(budgets),
     getExcludeBillsEnabled(db),
     getWhatsAppDigestConfig(),
+    isFeedEnabled(),
     getDigestDayContext(todayInIST()),
     getRecentDigestSends(),
   ]);
@@ -113,12 +115,13 @@ export default async function SettingsPage() {
       <SettingsSection
         id="whatsapp-digest"
         title="WhatsApp &amp; Telegram digest"
-        description="A weekly digest (7th, 14th, 21st, 28th) and a monthly one (last day of the month) arrive at 10 PM. Telegram delivers automatically when its env vars are set; WhatsApp uses Click-to-Chat — the app opens WhatsApp with the digest pre-filled and you tap Send. Manual sends for any month, or this month so far, are below."
+        description="A weekly digest (7th, 14th, 21st, 28th) and a monthly one (last day of the month) arrive at 10 PM. Telegram delivers automatically when its env vars are set; WhatsApp uses Click-to-Chat — the app opens WhatsApp with the digest pre-filled and you tap Send. Manual sends for any month, or this month so far, are below. Separately, a nightly ledger-change feed posts to the family WhatsApp group at 10 PM; its switch is at the bottom of this card."
       >
         <DigestSettingsCard
           telegramConfigured={telegramConfigured}
           whatsappPhone={whatsappConfig.phone}
           whatsappEnabled={whatsappConfig.enabled}
+          feedEnabled={feedEnabled}
           digestToday={digestToday ? { label: digestToday.period.label, waUrl: digestToday.waUrl } : null}
           lastSends={recentSends.map((s) => ({ channel: s.channel, label: s.label, sentAtLabel: formatSentAtLabel(s.sentAt) }))}
           months={months}

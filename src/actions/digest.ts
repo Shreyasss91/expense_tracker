@@ -6,11 +6,14 @@ import { todayInIST } from "@/lib/dates";
 import { digestPeriodForDate, monthPeriod, monthToDatePeriod, normalizeWhatsAppPhone } from "@/lib/digest";
 import { setWhatsAppDigestConfig, getWhatsAppDigestConfig, buildWhatsAppDigestLink, recordWhatsAppDigestSent } from "@/lib/whatsapp-digest";
 import { sendTelegramDigest } from "@/lib/telegram-digest";
-import { sendDigestSchema, whatsAppDigestConfigSchema } from "@/lib/validations";
+import { setFeedEnabled as writeFeedEnabled } from "@/lib/ledger-feed";
+import { sendDigestSchema, setFeedEnabledSchema, whatsAppDigestConfigSchema } from "@/lib/validations";
 import { z } from "zod";
 
 /**
- * WhatsApp digest settings + manual digest sends (§19 / owner schedule).
+ * Digest settings + manual digest sends (§19 / owner schedule), plus the
+ * daily ledger-change feed's master switch (§5.6 of
+ * docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md).
  *
  * Manual sends are deliberately NOT idempotent — the user clicked "send",
  * so re-sending is their intent. The automatic cron path (per-period
@@ -32,6 +35,27 @@ export async function saveWhatsAppDigest(raw: z.infer<typeof whatsAppDigestConfi
   revalidatePath("/settings");
   revalidatePath("/");
   return { ok: true as const, phone };
+}
+
+/**
+ * The daily ledger-change feed's master switch (§5.6).
+ *
+ * Off silences **both** the nightly post and the 22:15 fallback ping, which is
+ * the point: the owner switching the feed off is a decision, not a failure, so
+ * nothing should nag about it. The endpoint and the cron both read this key
+ * live on every run, so no deploy or phone edit is needed either way.
+ */
+export async function saveFeedEnabled(raw: z.infer<typeof setFeedEnabledSchema>) {
+  const session = await auth();
+  if (!session?.user) return { ok: false as const, error: "Unauthorized" };
+  const parsed = setFeedEnabledSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false as const, error: "Invalid setting" };
+
+  await writeFeedEnabled(parsed.data.enabled);
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+  return { ok: true as const };
 }
 
 /**

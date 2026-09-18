@@ -74,6 +74,17 @@ export async function isFeedEnabled(): Promise<boolean> {
   return (await getAppSetting(db, FEED_ENABLED_KEY)) !== "0";
 }
 
+/**
+ * §5.6 — write the master switch, from the Settings card's toggle.
+ *
+ * Stored as `'1'`/`'0'` rather than "true"/"false" so it matches
+ * `whatsapp_digest_enabled` and `exclude_bills`; the reader above only treats
+ * `'0'` as off, which is what makes the missing-row-means-on rule work.
+ */
+export async function setFeedEnabled(enabled: boolean): Promise<void> {
+  await setAppSetting(db, FEED_ENABLED_KEY, enabled ? "1" : "0");
+}
+
 /** The confirmed-send marker, also the `alreadySent` gate and the card's history record. */
 export async function getFeedSentAt(windowKey: string): Promise<string | null> {
   return getAppSetting(db, feedSentKey(windowKey));

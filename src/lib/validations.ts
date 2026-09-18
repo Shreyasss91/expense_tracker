@@ -171,6 +171,15 @@ export const setExcludeBillsSchema = z.object({
   enabled: z.boolean(),
 });
 
+/**
+ * The daily ledger-change feed's master switch (§5.6 of
+ * docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md). Off silences the feed AND the
+ * 22:15 fallback ping — the owner turned it off deliberately.
+ */
+export const setFeedEnabledSchema = z.object({
+  enabled: z.boolean(),
+});
+
 /** WhatsApp digest settings — phone is normalized to E.164 digits server-side. */
 export const whatsAppDigestConfigSchema = z.object({
   phone: z.string().trim().min(1).max(20),

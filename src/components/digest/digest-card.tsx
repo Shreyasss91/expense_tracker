@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { saveWhatsAppDigest, sendDigestManual } from "@/actions/digest";
+import { saveFeedEnabled, saveWhatsAppDigest, sendDigestManual } from "@/actions/digest";
 import { formatWhatsAppPhone } from "@/lib/digest-format";
 
 /**
@@ -27,7 +27,8 @@ import { formatWhatsAppPhone } from "@/lib/digest-format";
  * wa.me with the digest pre-filled and the household taps Send in WhatsApp.
  *
  * Two variants share this file:
- *   - DigestSettingsCard (full)  — Settings: number + auto toggle + manual sends.
+ *   - DigestSettingsCard (full)  — Settings: number + auto toggle + manual sends,
+ *     plus the daily ledger-change feed's master switch (§5.6).
  *   - DigestDashboardCard (compact) — dashboard: ready-banner + quick sends.
  */
 
@@ -69,6 +70,8 @@ interface BaseProps {
 
 interface SettingsProps extends BaseProps {
   whatsappEnabled: boolean;
+  /** Master switch for the nightly ledger-change feed posted by the phone agent. */
+  feedEnabled: boolean;
   /** Month options, newest first, { key: 'yyyy-MM', label } — same 36-month window as the ledger. */
   months: { key: string; label: string }[];
 }
@@ -103,10 +106,13 @@ function SendButton({
   );
 }
 
-export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsappEnabled, digestToday, months, lastSends }: SettingsProps) {
+export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsappEnabled, feedEnabled, digestToday, months, lastSends }: SettingsProps) {
   const router = useRouter();
   const [phoneInput, setPhoneInput] = useState(whatsappPhone ? formatWhatsAppPhone(whatsappPhone) : "");
   const [enabled, setEnabled] = useState(whatsappEnabled);
+  // Own state, not shared with `enabled`: the weekly digest and the nightly feed
+  // are independent switches and must never mask each other's failure.
+  const [feedOn, setFeedOn] = useState(feedEnabled);
   const [month, setMonth] = useState<string>(months[0]?.key ?? "");
   const [busy, setBusy] = useState<BusyKey>(null);
 
@@ -270,6 +276,43 @@ export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsapp
           ))}
         </div>
       )}
+
+      <div className="border-t pt-3">
+        <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="feed-auto" className="text-sm font-medium">
+              Daily ledger feed to the family WhatsApp group
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Every night at 10 PM, one message listing what changed in the ledger since the
+              previous 10 PM — additions, edits and deletions — is posted to the private family
+              group by the small agent on Dad&apos;s phone. If it does not post, your devices are
+              pinged at 10:15. Switching this off stops both, and needs no change on the phone:
+              the message format and this switch are read from the server on every run.
+            </p>
+          </div>
+          <Switch
+            id="feed-auto"
+            checked={feedOn}
+            disabled={busy !== null}
+            onCheckedChange={(next) => {
+              setFeedOn(next);
+              void (async () => {
+                setBusy("feed-toggle");
+                const res = await saveFeedEnabled({ enabled: next });
+                setBusy(null);
+                if (!res.ok) {
+                  setFeedOn(!next);
+                  toast.error(res.error ?? "Could not save setting");
+                } else {
+                  toast.success(next ? "Daily ledger feed on" : "Daily ledger feed off");
+                  router.refresh();
+                }
+              })();
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }
