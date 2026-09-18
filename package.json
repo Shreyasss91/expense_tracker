@@ -29,6 +29,7 @@
     "test:web-push": "tsx src/lib/web-push-test.ts",
     "test:digest": "tsx src/lib/digest-test.ts",
     "test:ledger-feed": "tsx src/lib/ledger-feed-test.ts",
+    "test:whatsapp-agent": "tsx tools/whatsapp-agent/agent-test.ts",
     "generate:vapid": "node scripts/generate-vapid.mjs",
     "test:validation": "tsx src/lib/validation-test.ts",
     "test:password-session": "tsx src/auth-session-test.ts",
