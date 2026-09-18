@@ -5,8 +5,8 @@ import { getAppSetting, setAppSetting } from "@/db/app-settings-mutations";
 import { pushSubscriptions } from "@/db/schema";
 import { formatINR } from "@/lib/money";
 import { buildWhatsAppDigestText, buildWhatsAppLink, digestPeriodForDate, DIGEST_SENT_KEY_PREFIX, getDigestData, type DigestPeriod } from "@/lib/digest";
-import { inArray } from "drizzle-orm";
-import { isPushConfigured, sendWebPush, type SendStatus } from "@/lib/web-push";
+import { isPushConfigured } from "@/lib/web-push";
+import { deliverPushToAllDevices } from "@/lib/push-dispatch";
 
 /**
  * WhatsApp digest delivery — Click-to-Chat, per the owner's decision.
@@ -127,27 +127,13 @@ export async function pingDigestReady(period: DigestPeriod): Promise<PingResult>
     url: "/",
   };
 
-  let sent = 0;
-  let failed = 0;
-  const staleEndpoints: string[] = [];
-  for (const sub of subs) {
-    let status: SendStatus;
-    try {
-      status = await sendWebPush({ endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth }, notification);
-    } catch {
-      status = "failed";
-    }
-    if (status === "sent") sent += 1;
-    else if (status === "failed") failed += 1;
-    else staleEndpoints.push(sub.endpoint);
-  }
-  if (staleEndpoints.length > 0) {
-    await db.delete(pushSubscriptions).where(inArray(pushSubscriptions.endpoint, staleEndpoints));
-  }
+  // Shared fan-out (src/lib/push-dispatch.ts) — the same loop the daily feed's
+  // fallback cron uses, including its stale-endpoint purge.
+  const { sent, failed, stale } = await deliverPushToAllDevices(subs, notification);
 
   // Same marker as recordWhatsAppDigestSent — doubles as the ping gate.
   await setAppSetting(db, pingKey, new Date().toISOString());
 
   const ok = sent > 0 || failed === 0;
-  return { ...base, ok, status: ok ? 200 : 502, sent, failed, stale: staleEndpoints.length };
+  return { ...base, ok, status: ok ? 200 : 502, sent, failed, stale };
 }
