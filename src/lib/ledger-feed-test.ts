@@ -14,7 +14,14 @@ import {
   UNCATEGORIZED_LABEL,
   type LedgerFeed,
 } from "./ledger-feed-format";
-import { FEED_GRACE_MS, feedWindowForInstant, windowKeyLabel } from "./ledger-feed-window";
+import {
+  FEED_GRACE_MS,
+  FEED_KEY_RE,
+  feedKeyHasEnded,
+  feedWindowForInstant,
+  parseFeedKey,
+  windowKeyLabel,
+} from "./ledger-feed-window";
 import { diffSnapshots, toSnapshot, type TransactionSnapshot } from "./transaction-diff";
 
 let failures = 0;
@@ -53,6 +60,43 @@ const monthRollover = feedWindowForInstant(new Date("2026-10-02T16:30:00.000Z"))
 check(monthRollover.key === "2026-10-01..2026-10-02", "month rollover keeps both IST dates");
 const yearRollover = feedWindowForInstant(new Date("2027-01-01T16:30:00.000Z"));
 check(yearRollover.key === "2026-12-31..2027-01-01", "year rollover keeps both IST dates");
+
+/* --------------------------------------------------- window key validation ---- */
+
+console.log("\nWindow key validation (POST /api/digest/day)");
+
+// A key the endpoint hands out must parse back to the window it came from.
+const roundTrip = parseFeedKey(onBoundary.key);
+check(roundTrip !== null, "a key the endpoint issues parses back");
+if (roundTrip) {
+  check(
+    roundTrip.startIso === onBoundary.startIso && roundTrip.endIso === onBoundary.endIso,
+    "…to the same 22:00 IST boundaries",
+  );
+  check(roundTrip.label === onBoundary.label, "…and the same human label");
+
+  const endsAt = new Date(roundTrip.endIso);
+  check(feedKeyHasEnded(roundTrip, endsAt), "a window ending exactly now counts as ended");
+  check(!feedKeyHasEnded(roundTrip, new Date(endsAt.getTime() - 1_000)), "one second before its end it has NOT ended");
+  check(feedKeyHasEnded(roundTrip, new Date(endsAt.getTime() + 1_000)), "one second after its end it has");
+}
+check(parseFeedKey(yearRollover.key) !== null, "a year-rollover key parses (adjacent across the new year)");
+
+// The shape regex alone is the reason `parseFeedKey` exists: every key below
+// passed it, and each would have been written verbatim as a permanent marker.
+check(
+  FEED_KEY_RE.test("9999-99-99..9999-99-99"),
+  "the SHAPE regex alone accepts 9999-99-99 — which is why shape is not enough",
+);
+check(parseFeedKey("9999-99-99..9999-99-99") === null, "an impossible month/day is rejected");
+check(parseFeedKey("2026-02-30..2026-03-01") === null, "February 30 is rejected rather than rolled over");
+check(parseFeedKey("2027-02-29..2027-03-01") === null, "a non-leap February 29 is rejected");
+check(parseFeedKey("2028-02-28..2028-02-29") !== null, "a real leap day parses");
+check(parseFeedKey("2026-01-01..2026-12-31") === null, "a NON-ADJACENT range is rejected — the key means 24 hours");
+check(parseFeedKey("2026-09-18..2026-09-17") === null, "a reversed range is rejected");
+check(parseFeedKey("2026-09-17") === null, "a bare date is rejected");
+check(parseFeedKey("not-a-key") === null, "garbage is rejected");
+check(parseFeedKey("") === null, "an empty key is rejected");
 
 check(
   feedWindowForInstant(new Date(boundary.getTime() + FEED_GRACE_MS)).stale === false,

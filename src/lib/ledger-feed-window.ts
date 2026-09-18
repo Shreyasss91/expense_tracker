@@ -1,4 +1,4 @@
-import { format, parse, subDays } from "date-fns";
+import { format, isValid, parse, subDays } from "date-fns";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { APP_TIMEZONE } from "./constants";
 
@@ -100,6 +100,83 @@ export function feedWindowForInstant(now: Date): FeedWindow {
     label: windowKeyLabel(key),
     stale: now.getTime() - end.getTime() > FEED_GRACE_MS,
   };
+}
+
+/** A window reconstructed from a stored or claimed `key` (§5.5.3). */
+export interface FeedKeyWindow {
+  /** The key verbatim — round-tripped so a caller can echo what it was given. */
+  key: string;
+  startDateIst: string;
+  endDateIst: string;
+  /** Window start as a UTC instant, ISO 8601. */
+  startIso: string;
+  /** Window end (exclusive) as a UTC instant, ISO 8601. */
+  endIso: string;
+  label: string;
+}
+
+/**
+ * True when `isoDate` is a real `YYYY-MM-DD` calendar date.
+ *
+ * `parse()` alone is not enough: it accepts out-of-range components by rolling
+ * them over (`2026-02-30` becomes 2 March), so the value is re-formatted and
+ * compared — a date that changed is a date that never existed.
+ */
+function isRealIsoDate(isoDate: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return false;
+  const parsed = parse(isoDate, "yyyy-MM-dd", new Date());
+  return isValid(parsed) && format(parsed, "yyyy-MM-dd") === isoDate;
+}
+
+/**
+ * Parse a `key` into the window it denotes, or `null` when it is not a real
+ * 24-hour window ending on a 22:00 IST boundary.
+ *
+ * `FEED_KEY_RE` only checks the **shape**, and shape alone is far too weak to
+ * write a marker with (§5.5.3): the `POST` body comes from outside the app, and
+ * the loose regex happily accepts `9999-99-99..9999-99-99` as well as ranges
+ * that are not 24 hours at all (`2026-01-01..2026-12-31`) or run backwards. A
+ * marker written under such a key is permanent, and because
+ * `getRecentDigestSends()` keeps the newest `app_settings` value per channel, it
+ * would also surface on the Settings card as the feed's last send
+ * (`periodKeyLabel()` falls back to the raw key).
+ *
+ * Enforced here, in order: the shape, both dates are real calendar dates, and
+ * the two dates are **adjacent** — the key means "these 24 hours".
+ */
+export function parseFeedKey(key: string): FeedKeyWindow | null {
+  const match = FEED_KEY_RE.exec(key);
+  if (!match) return null;
+  const [, startDateIst, endDateIst] = match;
+  if (!isRealIsoDate(startDateIst) || !isRealIsoDate(endDateIst)) return null;
+  if (previousIsoDate(endDateIst) !== startDateIst) return null;
+
+  return {
+    key,
+    startDateIst,
+    endDateIst,
+    startIso: boundaryForDate(startDateIst).toISOString(),
+    endIso: boundaryForDate(endDateIst).toISOString(),
+    label: windowKeyLabel(key),
+  };
+}
+
+/**
+ * Has the parsed window actually ended by `now`?
+ *
+ * §5.5.3 — a window that has not ended must never be recorded as sent. Marking
+ * a future window is not merely useless data: the agent would later see
+ * `alreadySent` for that night, post nothing, and the 22:15 fallback would stay
+ * silent too, because the marker it checks already exists. That turns one bad
+ * client (a wrong clock, or an `?at=` pointing forward) into a night that is
+ * silently not reported — the exact failure this feature exists to prevent.
+ *
+ * Both sides of the comparison come from the server (the boundary is derived
+ * from the key, `now` from the request), so clock skew between the phone and
+ * the deployment cannot cause a false rejection.
+ */
+export function feedKeyHasEnded(window: FeedKeyWindow, now: Date): boolean {
+  return Date.parse(window.endIso) <= now.getTime();
 }
 
 /**

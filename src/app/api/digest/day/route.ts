@@ -3,11 +3,12 @@ import { revalidatePath } from "next/cache";
 import { timingSafeStringEqual } from "@/lib/secure-compare";
 import {
   buildLedgerFeedMessage,
-  FEED_KEY_RE,
+  feedKeyHasEnded,
   feedWindowForInstant,
   getFeedSentAt,
   getLedgerFeed,
   isFeedEnabled,
+  parseFeedKey,
   recordFeedSent,
 } from "@/lib/ledger-feed";
 
@@ -127,8 +128,23 @@ export async function POST(request: Request) {
 
   const payload = (body ?? {}) as Record<string, unknown>;
   const windowKey = typeof payload.windowKey === "string" ? payload.windowKey : "";
-  if (!FEED_KEY_RE.test(windowKey)) {
+  // Key validation is deliberately stricter than the key's SHAPE: this body
+  // comes from outside the app, and the shape regex alone accepts
+  // `9999-99-99..9999-99-99` and ranges that are not 24 h. A marker is
+  // permanent, and `getRecentDigestSends()` keeps the newest value per channel,
+  // so a junk key would also show up on the Settings card. See `parseFeedKey`.
+  const parsedKey = parseFeedKey(windowKey);
+  if (!parsedKey) {
     return NextResponse.json({ ok: false, error: "Invalid windowKey" }, { status: 400 });
+  }
+  // Never record a window that has not ended: the marker would suppress that
+  // night's post, and the 22:15 fallback with it, because the fallback also
+  // treats an existing marker as "already handled".
+  if (!feedKeyHasEnded(parsedKey, new Date())) {
+    return NextResponse.json(
+      { ok: false, error: "windowKey has not ended yet — refusing to mark a future window as sent" },
+      { status: 400 },
+    );
   }
   if (payload.status !== "sent" && payload.status !== "failed") {
     return NextResponse.json({ ok: false, error: 'status must be "sent" or "failed"' }, { status: 400 });

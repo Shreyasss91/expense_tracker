@@ -50,8 +50,16 @@ export type {
   FeedMergeSummary,
   LedgerFeed,
 } from "./ledger-feed-format";
-export { FEED_GRACE_MS, FEED_HOUR_IST, FEED_KEY_RE, feedWindowForInstant, windowKeyLabel } from "./ledger-feed-window";
-export type { FeedWindow } from "./ledger-feed-window";
+export {
+  FEED_GRACE_MS,
+  FEED_HOUR_IST,
+  FEED_KEY_RE,
+  feedKeyHasEnded,
+  feedWindowForInstant,
+  parseFeedKey,
+  windowKeyLabel,
+} from "./ledger-feed-window";
+export type { FeedKeyWindow, FeedWindow } from "./ledger-feed-window";
 
 /* --------------------------------------------------------- app_settings ---- */
 
