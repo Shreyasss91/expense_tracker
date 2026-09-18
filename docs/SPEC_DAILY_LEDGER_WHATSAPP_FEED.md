@@ -817,6 +817,37 @@ The agent's confirmation, satisfying D11.
 
 - Validate `windowKey` against the same `^(\\d{4}-\\d{2}-\\d{2})\\.\\.(\\d{4}-\\d{2}-\\d{2})$`
   shape the digest key logic uses. Reject anything else.
+
+> **Hardened 18 September 2026 — the shape regex alone was not enough.** The `windowKey` arrives
+> from outside the app, and the shape test accepts far more than a real window:
+> `9999-99-99..9999-99-99`, `2026-02-30..2026-03-01` (February 30), ranges that are not 24 hours
+> at all (`2026-01-01..2026-12-31`) and reversed ranges all pass it. A marker written under such
+> a key is permanent, and because `getRecentDigestSends()` keeps the **newest `app_settings`
+> value per channel**, a junk key also becomes the Settings card's "WhatsApp feed" last-send row
+> (`periodKeyLabel()` falls back to the raw key — an existing test asserts that fallback).
+>
+> `parseFeedKey(key)` in `src/lib/ledger-feed-window.ts` (pure, `null` on rejection) now enforces,
+> in order: the shape, **both dates are real calendar dates** (re-formatted and compared, so
+> `2026-02-30` is rejected rather than silently rolled over to 2 March), and **the two dates are
+> adjacent** — the key means "these 24 hours".
+>
+> A second rule sits beside it: **a window that has not ended may never be recorded.**
+> `feedKeyHasEnded(parsed, now)` gates the write, because marking a future window is not merely
+> useless data — the agent would later see `alreadySent` for that night, post nothing, and the
+> 22:15 fallback would stay silent too, since the marker it checks would already exist. That
+> would convert one bad client (a wrong clock, or an `at` pointing forward) into a night that is
+> silently not reported, which is the failure this whole feature exists to prevent. The route
+> will still **return** a future window from `GET at=<future>`; it only refuses to *record* one.
+> Both sides of the comparison are server-derived, so clock skew between the phone and the
+> deployment cannot cause a false rejection.
+>
+> Deliberately **not** added: an age bound. A well-formed, already-ended, old key is still
+> accepted — it can only be written by whoever holds the token, its only effect is a confusing
+> row on the card, and rejecting late legitimate posts is the worse failure. Recorded here so the
+> omission is a decision rather than an oversight.
+>
+> Covered by 17 new assertions in `src/lib/ledger-feed-test.ts` (the suite is now **85 checks**)
+> and by three new `POST` probes in the live verifier.
 - On `status: "sent"`, write the marker (§5.6) with `new Date().toISOString()`.
 - On `status: "failed"`, write **nothing** — a failed post must leave the window unmarked so
   the fallback push fires. Optionally log `detail` server-side.
@@ -1293,11 +1324,18 @@ Add to `package.json`:
 > exercise makes the deployment log one line, carrying a detail string that says it was
 > intentional.
 >
-> Expected result on a correctly configured deployment: **150 checks, 0 failures, exit 0**. It
-> was validated against a faithful stub (all 150 pass) and against stubs with a shifted window,
-> an unbalanced markdown marker and no configured token (each fails, exit 1, naming the check).
-> It has **not** yet been run against production, because the Vercel variable above is still
-> unset — until then it stops at the `503`. Run it once that variable exists.
+> Expected result on a correctly configured deployment: **154 checks, 0 failures, exit 0**. It
+> was validated against a faithful stub — built on the app's real `feedWindowForInstant`,
+> `parseFeedKey` and `feedKeyHasEnded`, so the validator and the probes are exercised against the
+> shipping logic rather than a paraphrase of it — where all 154 pass. Stubs with a shifted
+> window, an unbalanced markdown marker and no configured token each fail with exit 1 and the
+> offending check named.
+>
+> **Against production it currently stops at the first call.** That is not a bug in the script:
+> the live deployment predates the routes (`404`), because an invalid `vercel.json` failed every
+> deployment *before* the build ran — see the incident recorded in `docs/CHANGELOG.md`. Set
+> `DIGEST_AGENT_TOKEN` **and** deploy a commit that actually contains the route, then re-run; a
+> `503` at that point means the variable is still missing on Vercel.
 
 The equivalent one-off checks, kept for a manual look:
 
@@ -1357,6 +1395,9 @@ parameter) so a rehearsal is not blocked by the 6 h freshness grace period.
 | E20 | The household edits a transaction dated in a previous window | It appears in the **current** window's Edited section (D2 is an audit-instant basis). |
 | E21 | The agent restarts after a failed attempt (crash, or Android killing it) | The **persisted** ladder reloads consumed, so it does not re-fetch before `nextAttemptAt` — no restart loop can re-arm it. Exhaustion itself is a state, not an exit. |
 | E22 | A `--now` / `--at` run while the scheduler is alive | The second instance takes no lock, posts nothing and exits `7`; the live session is untouched. |
+| E23 | `POST` carries a key that is **not a real 24-hour window** (`9999-99-99..9999-99-99`, `2026-02-30..2026-03-01`, `2026-01-01..2026-12-31`, a reversed range) | **`400`, nothing written** (`parseFeedKey`, §5.5.3). Shape alone is not validation: these all match the old regex, and a marker is permanent — and because `getRecentDigestSends()` keeps the newest value per channel, a junk key would also render on the Settings card as the feed's last send. |
+| E24 | `POST` carries a window that **has not ended yet** | **`400`, nothing written** (§5.5.3). The marker would otherwise suppress that night's post **and** its fallback push, since both treat an existing marker as "handled" — one bad client (a wrong clock, or a forward `?at=`) would turn into a night that is silently never reported. |
+| E25 | `npm run verify:digest-feed` reports **404** | The running deployment predates the route. The script stops at the first call with that diagnosis rather than running ~30 checks that would all 404. Check the Vercel deployment: an invalid `vercel.json` fails **before** the build, so the previous READY deployment keeps serving and the new routes are simply absent. |
 
 ---
 
@@ -1482,6 +1523,8 @@ Therefore, as part of this work:
 
 - [x] Extend `getRecentDigestSends()` with the third channel (§5.6.1).
 - [x] Update `digest-card.tsx` to render it as **"WhatsApp feed"** (channel→label map).
+- [x] **Hardening (second pass, 18 September 2026):** `POST` rejects a `windowKey` that is not a
+      real 24-hour window, and one whose window has not ended yet — see §5.5.3 / E23 / E24.
 - [x] **Extension (second pass, 18 September 2026):** the master switch became editable from
       Settings, closing the gap where §5.6/E18 described a state nothing could reach — see §5.6.2.
 

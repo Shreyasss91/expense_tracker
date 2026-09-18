@@ -262,8 +262,78 @@ where date-fns' `MMM` gives `Sep` (four letters against three, so the label chec
 September window), and `process.exit(1)` called while a fetch socket is still closing trips a
 libuv assertion on Windows (`UV_HANDLE_CLOSING`), aborting with exit 127 instead of 1.
 
-**Still outstanding:** `DIGEST_AGENT_TOKEN` on Vercel — without it the verifier can only reach
-the `503` — and the phone agent (`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`).
+**Still outstanding:** a deployment that actually contains the routes (see the next section — the
+verifier cannot even reach the token check yet) and the phone agent
+(`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`).
+
+### Incident + hardening — 18 September 2026
+
+**Every deployment had been failing, and the cause was mine.** Running the verifier reported
+`404` from `/api/digest/day` rather than the expected `401`/`503`, and the Vercel API (read-only,
+with the `VERCEL_TOKEN` already in `.env.local`) showed why: every deployment from `984418e`
+onward was `ERROR` with `INVALID_VERCEL_CONFIG`:
+
+```
+Invalid vercel.json - `crons[1]` should NOT have additional property `comment`. Please remove it.
+```
+
+The human-readable `"comment"` field I added to the new cron object is not part of the cron
+schema, which allows only `path` and `schedule`. Config validation runs **before** the build, so
+the deploy failed outright and Vercel kept serving the previous one — the last `READY` was
+`ee082c5`, which predates the feature entirely. That is why `/api/digest/day` and
+`/api/cron/digest-fallback` answered `404` while the older `/api/cron/*` routes answered `401`,
+and why the feed was never live despite five green local commits. It also explains the two
+docs-only commits that failed: they cannot break a build, but they *can* break a deploy through
+`vercel.json` — a signal I misread as "unrelated" before checking the log.
+
+Fixed by deleting the property. The file is now validated against the authoritative schema at
+`openapi.vercel.sh/vercel.json` (cron items allow exactly `schedule` and `path`).
+
+**Lesson worth keeping:** a green `npm run build` proves nothing about whether a deployment
+succeeds, because config validation happens before the build. Verify by deployment state, not by
+local build.
+
+**Two `windowKey` findings from the auth review, now fixed** (§5.5.3):
+
+- The key was validated for **shape only**. `FEED_KEY_RE` accepts `9999-99-99..9999-99-99`,
+  `2026-02-30..2026-03-01`, non-24-hour ranges and reversed ones. A marker written under such a
+  key is permanent, and because `getRecentDigestSends()` keeps the newest value per channel it
+  would also surface on the Settings card as the feed's last send. `parseFeedKey()` now requires
+  the shape, **real calendar dates** (re-formatted and compared, so February 30 is rejected
+  rather than rolled over) and **adjacency**.
+- A **future** window could be recorded. `feedKeyHasEnded()` now gates the write: marking a night
+  that has not happened would make the agent see `alreadySent`, post nothing, and leave the
+  22:15 fallback silent too, because it also treats an existing marker as handled. One bad client
+  become one silently unreported night — the exact failure this feature exists to prevent. The
+  route still *returns* a future window from `GET at=<future>`; it only refuses to record one.
+
+Deliberately **not** added: an age bound on the key. Only the token holder can write one, its
+only effect is a confusing card row, and rejecting a legitimately late post is the worse failure.
+
+**Verifier improvements, and a bug it caught in itself:**
+
+- A `404` is now its own diagnosis — the script stops at the first call and says the deployment
+  predates the route, instead of printing "got 404" four times and dumping minified HTML.
+- Three new `POST` probes cover the hardened rules. They send `status: "failed"` deliberately,
+  because that is the one status that records nothing: run against a build predating the
+  hardening, a `sent` probe would have left a junk marker behind.
+- The rehearsal caught a real bug in those very probes: the pre-existing `failed` probe used the
+  hard-coded key `2026-09-17..2026-09-18`, which is a **future** window on the day it runs — the
+  hardened validator correctly rejected it, so the probe failed for the wrong reason. The probes
+  now derive their key from the server's own current window.
+
+**Verified:** `npm run typecheck`, `npm run lint`, `npm run build`, `npm run test:digest` (38/38)
+and `npm run test:ledger-feed` (**85 checks**, up from 68 — 17 for the new validation) all green.
+The verifier was re-run against a stub built on the app's real `parseFeedKey`/`feedKeyHasEnded`:
+**154 checks pass, 0 failures**, while the same script against a 404 stub stops with the clear
+deployment diagnosis. A live production run must follow the deploy.
+
+**Reviewed at the same time and still open** (recorded so they are decisions, not oversights):
+no throttling on the token endpoint though `RateLimiter` exists for the password login; the auth
+scheme is matched case-sensitively, so `bearer <token>` is refused; a `503` before auth discloses
+whether the secret is configured (intended, and how this incident was diagnosed); the POST
+`detail` string reaches `console.warn` unvalidated and unbounded; and the token reads **any**
+24-hour window through `at`, so it is a read capability over all history rather than "today".
 
 ---
 
