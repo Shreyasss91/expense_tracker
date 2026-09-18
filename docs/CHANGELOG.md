@@ -7,6 +7,78 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Daily ledger-change feed to a private WhatsApp group — 18 September 2026 (owner request)
+
+**Status: design authorized, implementation pending.** Unlike the entries below, this
+records a frozen contract for work not yet built — the code does not exist at the time of
+writing. The complete hand-off specification is
+**`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`**; this entry is its summary. Add the
+verification results (`npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`,
+`npm run test:digest`) here when the implementation lands.
+
+Owner request: every night at **10 PM IST**, post one message into a **new private WhatsApp
+group containing only Dad, Mom and Son**, listing (1) every transaction **added** in the
+preceding 24 hours, (2) every **edit** made in that window rendered as *before → after*, and
+(3) every **deletion** made in that window. Nothing is posted on a day with no changes.
+
+- **Window (normative):** the rolling 24 h `[yesterday 22:00, today 22:00)` IST, snapped to
+  the canonical boundary so a late run resolves the **same** window as an on-time one.
+  Membership is decided by **`transactions.created_at`** — the audit instant — **not** by the
+  transaction's business `date`/`time`. Consequence: a backdated expense appears in the window
+  in which it was *entered*, and the closing total is labelled **"Entered in this window"**.
+  It is never a "today's spend" figure.
+- **New audit action `update_transaction` — edits were not journaled at all.** `transactions`
+  has no `updated_at` column, and `activity_log` received only `delete_transaction`,
+  `delete_transactions`, `restore_transactions`, `merge_categories` and
+  `skip_template_month`. `updateTransaction`, `setTransactionAssignment`,
+  `setTransactionsAssignment` and `assignCategory` (all `src/actions/transactions.ts`) each
+  gain a pre-image read plus a best-effort `logActivity` call carrying
+  `{ before, after, changed, via }`. A no-op edit logs nothing. Ids are stored, never names —
+  category and member names are mutable display labels (§3.2.2, §5.3) and are resolved at
+  render time.
+- **`restore_transactions` payload gains `ids`** (`src/actions/activity.ts`) so a delete
+  followed by an Undo inside one window **nets out** — neither event is reported. Entries
+  written before this change are handled through a fallback to the originating delete entry.
+- **`merge_categories` renders as one summary line** ("Merged X into Y · n entries moved"),
+  not as n per-row edits, even though a merge does re-point history.
+- **New endpoints `GET` / `POST /api/digest/day`.** `src/middleware.ts` excludes every `api`
+  route from its matcher, so the route authenticates itself with a bearer
+  `DIGEST_AGENT_TOKEN` compared via `timingSafeStringEqual` (§1.8): a missing env var is
+  `503`, a wrong token is `401`. **GET returns the finished message string**, so the format
+  lives on the server and the poster holds no formatting logic; POST records the confirmed
+  send.
+- **New env var `DIGEST_AGENT_TOKEN`.**
+- **New cron job** `/api/cron/digest-fallback` at `45 16 * * *` (22:15 IST) — a web-push
+  safety net that fires only when no send is recorded for the window. It is a **separate job
+  rather than a second run of `/api/cron/digest`**, because Vercel's Hobby plan permits at
+  most one run per job per day (while allowing up to 100 jobs per project).
+- **New `app_settings` keys:** `digest_sent:whatsapp_feed:<windowKey>` (confirmed send +
+  last-sent history), `digest_fallback_pinged:<windowKey>` (at-most-once nag) and
+  `whatsapp_feed_enabled` (master switch; a missing row means on).
+- **The Settings/dashboard digest card gains a third channel** — `whatsapp_feed`, rendered
+  "WhatsApp feed" — so `getRecentDigestSends()` (§6.8) must test that prefix **before**
+  `whatsapp:`, and the two channel ternaries in `src/components/digest/digest-card.tsx`
+  become a channel→label map.
+- **Transport is a decision, not an implementation detail.** No free official route into a
+  WhatsApp group exists: Meta's Groups API requires an **Official Business Account**, caps
+  groups at 8 participants and exposes no add-participant endpoint; and Vercel's serverless
+  runtime cannot hold a WhatsApp session. The owner therefore authorized a **Termux + Node +
+  Baileys companion-device agent on Dad's Android phone**, posting from Dad's own number —
+  which is also the lowest-ban-risk form of an unofficial session, since it behaves as an
+  ordinary linked device from a residential IP rather than from a datacenter.
+- **Missed windows are never back-filled.** A window that has gone stale is still rendered
+  and returned (so it stays debuggable and curl-testable) but the agent refuses to post it;
+  the 22:15 push is what surfaces the miss.
+- **Accepted risk, on the record:** Baileys drives the undocumented WhatsApp Web protocol and
+  the linked number could be restricted. The owner chose Dad's primary number over a spare
+  one, accepting that residual risk.
+- `docs/SPEC.md` is **not amended** by this feature. The existing weekly/monthly aggregate
+  digest (§6.8) — Telegram auto-send plus WhatsApp Click-to-Chat — is **untouched**; the two
+  messages are different shapes on different triggers, and both fire on the
+  7th/14th/21st/28th and month-end.
+
+---
+
 ## Master-password change retires existing sessions — 13 September 2026 (owner request)
 
 Owner report: after changing `FAMILY_MASTER_PASSWORD` on the deployment platform
