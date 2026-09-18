@@ -345,6 +345,12 @@ whether the secret is configured (intended, and how this incident was diagnosed)
 `detail` string reaches `console.warn` unvalidated and unbounded; and the token reads **any**
 24-hour window through `at`, so it is a read capability over all history rather than "today".
 
+> **Annotated 18 September 2026:** three of those five are now closed — the missing throttle, the
+> scheme casing and the unbounded `detail` — in *"The feed endpoint's remaining review findings
+> closed"* below. Deliberately still open: the `503`-before-auth disclosure (intended — it is how
+> the deployment incident above was diagnosed) and the token's read scope, which is documented
+> rather than changed.
+
 **The deployment is live and verified — 18 September 2026.** With the config fixed, commit
 `7ac570d` deployed `READY` — the first successful deployment since `ee082c5` — and
 `npm run verify:digest-feed` then passed **against production**: **163 checks, 0 failures, exit
@@ -440,6 +446,55 @@ phone: Termux + Termux:Boot from F-Droid, the Samsung background-killer settings
 plan's §3 steps in order. The plan (§2.1, §7, §11) and the feature spec (§6.2, §12, §13) were
 updated to say exactly that rather than leaving Phase 7 reading "not started" or, worse,
 implying it was verified.
+
+### The feed endpoint's remaining review findings closed — 18 September 2026
+
+The auth review recorded five open findings. Three were real defects rather than judgement calls,
+and all three are now fixed; the other two stay open deliberately (annotated above).
+
+| Finding | Fix |
+|---|---|
+| **No throttling on the token endpoint**, though `RateLimiter` already guarded the password login | Per-client-address throttle: **20 failed attempts per 5 minutes**, then **`429`** |
+| The auth scheme was matched **case-sensitively**, so a client sending `bearer <token>` was refused | A case-insensitive `^Bearer\s+` prefix, per RFC 7235 — the token itself is still compared in constant time |
+| The POST `detail` reached `console.warn` **unvalidated and unbounded** | `sanitizeLogDetail()`: control characters flattened, length capped at 300 |
+
+**The throttle counts only a presented-but-wrong credential, and that is the design decision
+worth keeping.** A request with no `Authorization` header presents nothing to compare against the
+secret, so a 401 teaches it nothing — refusing it is enough. Counting it would have meant that
+anything merely *poking* the endpoint unauthenticated could burn the budget and lock out the real
+agent: a health check, a browser prefetch, or this feature's own live verifier, which sends
+several anonymous probes per run. Only a credential **presented and rejected** is a failed
+attempt, which is also exactly what the password login counts. The budget is 20 rather than 5
+because the agent's ladder makes at most five attempts a night, and locking out a legitimate typo
+is the worse failure. A block lifts with its window, so one bad night heals itself.
+
+**The scheme fix also had to not over-correct.** Case-insensitivity must not become "the scheme is
+optional": `Bearer<token>` with no space is one single token and is still refused. The live
+verifier now asserts both halves of that — `bearer`/`BeArEr` are accepted, the glued form is not.
+
+**The policy moved out of the route into `src/lib/agent-auth.ts`**, free of `server-only` and of
+any DB import, so the whole decision — including the throttle — is reachable from a test. That was
+not incidental: `RateLimiter`, already guarding the master-password login, had **no test coverage
+at all** until this change, and the honest way to claim the `429` path works is to test it rather
+than to assert it. The route is now a thin wire: read the headers, map the decision to a response.
+
+**One more bug, in my own test.** `auth(..., { expected: undefined })` silently tested the
+*configured* path, because passing `undefined` re-triggers the helper's destructuring default — so
+the two `503` assertions were passing vacuously (as failures). Caught because the suite failed,
+and fixed by calling `checkAgentAuth` directly so `undefined` actually reaches it; the comment
+now warns the next reader off the same trap.
+
+**Verified:** `npm run test:agent-auth` — a new suite, **37 checks** (including the previously
+untested `RateLimiter`: budget, per-key isolation, expiry, and that a success costs nothing) —
+plus `npm run test:ledger-feed` at **96 checks** (up from 85, the 11 new ones for `sanitizeLogDetail`,
+including that truncating mid-emoji drops the orphaned half of a surrogate pair). `typecheck` and
+`lint` green.
+
+**A live probe caught the fix's absence, which is the point of it.** Running
+`npm run verify:digest-feed` before deploying this change reported the two new scheme probes as
+**failures** against production (`bearer` → `401`), exactly as it should have: the running
+deployment predated the fix. That is the verifier confirming it can detect the defect rather than
+merely agreeing with the code.
 
 ---
 

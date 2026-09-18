@@ -94,6 +94,37 @@ export const MAX_SECTION_ROWS = 40;
 /** Assembly guard: past this the Added section is truncated further. */
 export const MAX_MESSAGE_CHARS = 50_000;
 
+/** Cap on the agent-reported failure `detail` that reaches a log line. */
+export const LOG_DETAIL_MAX_CHARS = 300;
+
+/**
+ * Log hygiene for the agent's failure `detail` — a string that arrives over HTTP
+ * from outside the app, and is written into a log line.
+ *
+ * Two hazards, one function. **Unbounded:** a caller could put a megabyte into
+ * every line of the server log. **Newlines:** without stripping, a caller can
+ * forge additional log lines, which is what makes a log untrustworthy exactly
+ * when someone is reading it during an incident.
+ *
+ * Every C0/C1 control character is collapsed to a space — not just `\n` and
+ * `\r`, because a lone `\t` or a vertical tab is just as effective at breaking a
+ * line's shape. The truncation marker is appended **outside** the cap on
+ * purpose: silently clipping would hide that anything was dropped, and knowing a
+ * detail was cut is often the whole diagnosis.
+ */
+export function sanitizeLogDetail(value: unknown): string {
+  if (typeof value !== "string") return "";
+  const flattened = value
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (flattened.length <= LOG_DETAIL_MAX_CHARS) return flattened;
+  // Drop a trailing lone high surrogate: cutting between the two halves of a
+  // surrogate pair would otherwise leave a broken character in the log.
+  const clipped = flattened.slice(0, LOG_DETAIL_MAX_CHARS).replace(/[\uD800-\uDBFF]$/, "");
+  return `${clipped}… (truncated, ${flattened.length} chars)`;
+}
+
 /**
  * Prefixes for the change fields that would otherwise be ambiguous when two
  * changes are joined by " · ". `amount`, `categoryId` and `tag` deliberately

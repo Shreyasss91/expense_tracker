@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { timingSafeStringEqual } from "@/lib/secure-compare";
+import { RateLimiter } from "@/lib/secure-compare";
+import {
+  AGENT_AUTH_FAIL_LIMIT,
+  AGENT_AUTH_FAIL_WINDOW_MS,
+  checkAgentAuth,
+  clientKeyFrom,
+} from "@/lib/agent-auth";
 import {
   buildLedgerFeedMessage,
   feedKeyHasEnded,
@@ -10,6 +16,7 @@ import {
   isFeedEnabled,
   parseFeedKey,
   recordFeedSent,
+  sanitizeLogDetail,
 } from "@/lib/ledger-feed";
 
 export const dynamic = "force-dynamic";
@@ -34,23 +41,22 @@ export const dynamic = "force-dynamic";
 /** An ISO 8601 instant WITH an explicit offset — the only `at` shape accepted. */
 const ISO_INSTANT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
 
+/**
+ * One throttle across both verbs, as the login has one across its attempts. The
+ * policy itself lives in `@/lib/agent-auth` so it can be tested without HTTP.
+ */
+const authFailLimiter = new RateLimiter(AGENT_AUTH_FAIL_LIMIT, AGENT_AUTH_FAIL_WINDOW_MS);
+
 /** Returns a response to send back when the caller is not the agent, else null. */
 function denyUnauthorized(request: Request): NextResponse | null {
-  const expected = process.env.DIGEST_AGENT_TOKEN;
-  // "Not configured" and "wrong token" are different diagnoses, and the agent's
-  // log has to be able to tell them apart: 503 vs 401.
-  if (!expected) {
-    return NextResponse.json(
-      { ok: false, error: "DIGEST_AGENT_TOKEN is not configured on the server" },
-      { status: 503 },
-    );
-  }
-  const authorization = request.headers.get("authorization");
-  // §1.8 — constant-time compare. Never `===` on a secret (CWE-208).
-  if (!authorization || !timingSafeStringEqual(authorization, `Bearer ${expected}`)) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-  }
-  return null;
+  const result = checkAgentAuth({
+    authorization: request.headers.get("authorization"),
+    expected: process.env.DIGEST_AGENT_TOKEN,
+    clientKey: clientKeyFrom(request.headers.get("x-forwarded-for"), request.headers.get("x-real-ip")),
+    limiter: authFailLimiter,
+  });
+  if (result.ok) return null;
+  return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
 }
 
 /**
@@ -154,10 +160,12 @@ export async function POST(request: Request) {
     // A failed post deliberately writes NOTHING: leaving the window unmarked is
     // exactly what lets the 22:15 fallback push fire.
     if (payload.status === "failed") {
+      // `detail` is caller-supplied and lands in the server log, so it is
+      // flattened and bounded first: newlines would let a caller forge
+      // additional log lines, and length was previously unbounded.
+      const detail = sanitizeLogDetail(payload.detail);
       console.warn(
-        "digest/day reported a failed send",
-        windowKey,
-        typeof payload.detail === "string" ? payload.detail : "",
+        `digest/day reported a failed send window=${windowKey}${detail ? ` detail=${detail}` : ""}`,
       );
       return NextResponse.json({ ok: true, recorded: false, sentAt: null });
     }

@@ -10,6 +10,8 @@ import {
   buildFeedChanges,
   buildLedgerFeedMessage,
   categoryLabel,
+  LOG_DETAIL_MAX_CHARS,
+  sanitizeLogDetail,
   sanitizeWhatsAppText,
   UNCATEGORIZED_LABEL,
   type LedgerFeed,
@@ -376,6 +378,37 @@ check(
   "exactly 40 rows are rendered",
 );
 check(capped.length < 50_000, "a capped message stays inside the length guard");
+
+/* ------------------------------------------------------- log-line hygiene ---- */
+
+console.log("\nLog detail hygiene (the POST body's `detail`)");
+
+check(sanitizeLogDetail("sendMessage failed: 401") === "sendMessage failed: 401", "ordinary text is untouched");
+check(
+  sanitizeLogDetail("boom\nINFO posted window=2026-09-17..2026-09-18") ===
+    "boom INFO posted window=2026-09-17..2026-09-18",
+  "an embedded newline is flattened — one detail cannot forge a second log line",
+);
+check(!sanitizeLogDetail("a\r\nb\tc").includes("\n"), "CRLF and tab do not survive");
+check(sanitizeLogDetail("\u0000\u0007truncate-me") === "truncate-me", "NUL and BEL are stripped, not just whitespace");
+check(sanitizeLogDetail("   spaced   out   ") === "spaced out", "runs of whitespace collapse");
+check(sanitizeLogDetail("") === "", "an empty detail stays empty");
+check(sanitizeLogDetail(undefined) === "" && sanitizeLogDetail(42) === "", "a non-string detail becomes empty");
+
+const longDetail = sanitizeLogDetail("x".repeat(5000));
+check(longDetail.startsWith("x".repeat(50)), "a long detail is still logged, not dropped");
+check(longDetail.includes("truncated, 5000 chars"), "and says how much was cut — silently clipping would hide it");
+check(
+  longDetail.length < LOG_DETAIL_MAX_CHARS + 40,
+  `it is bounded (${longDetail.length} chars for a 5000-char input)`,
+);
+
+// A split surrogate pair: 400 emoji, so the 300-char cut lands mid-character.
+const emojiDetail = sanitizeLogDetail("🙂".repeat(400));
+check(
+  !/[\uD800-\uDBFF]$/.test(emojiDetail.split("…")[0]!),
+  "truncating mid-emoji drops the orphaned half of the surrogate pair",
+);
 
 console.log(failures === 0 ? "\nAll ledger-feed checks passed.\n" : `\n${failures} ledger-feed check(s) failed.\n`);
 process.exit(failures === 0 ? 0 : 1);

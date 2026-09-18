@@ -11,7 +11,9 @@
  *      and a `503` is reported as its own diagnosis ("the deployment has no
  *      secret") rather than lumped in with "the token is wrong". Those two
  *      failures need different fixes, which is the whole reason the route
- *      distinguishes them.
+ *      distinguishes them. Also checks that the scheme casing is accepted
+ *      (`bearer`, `BeArEr` — RFC 7235 makes it case-insensitive) and that a
+ *      missing space is not.
  *   2. Window math — `?at=` pins the instant, so the boundary arithmetic is
  *      checked against an INDEPENDENT implementation in this file (fixed
  *      +05:30; India has no DST) at exact-boundary, one-second-before,
@@ -171,9 +173,20 @@ function expectedWindow(ms) {
 
 /* -------------------------------------------------------------- the calls --- */
 
-async function get(path, { token = TOKEN, headers = {} } = {}) {
+async function get(path, { token = TOKEN, headers = {}, rawAuth } = {}) {
+  // `rawAuth` sets the header verbatim so the scheme CASING can be probed, which
+  // `token` cannot express. An empty string means "send no Authorization header
+  // at all" — distinct from omitting the option, which means `Bearer ${TOKEN}`.
+  const auth =
+    rawAuth !== undefined
+      ? rawAuth
+        ? { authorization: rawAuth }
+        : {}
+      : token
+        ? { authorization: `Bearer ${token}` }
+        : {};
   const res = await fetch(`${BASE}${path}`, {
-    headers: token ? { ...headers, authorization: `Bearer ${token}` } : headers,
+    headers: { ...headers, ...auth },
     signal: AbortSignal.timeout(30_000),
   });
   const text = await res.text();
@@ -340,13 +353,47 @@ async function main() {
         "(`npm run build` proves the route compiles locally) and re-run.",
     );
   }
-  check(anonymous.status === 401, `GET with no Authorization → 401 (got ${anonymous.status})`);
+  // If any of these reports 429 instead, the cause is a spent budget from an
+  // earlier run in the last five minutes — not a broken rule. Say so, rather than
+  // leaving the reader to guess why a 401 check "got 429".
+  const throttled = (probe) =>
+    probe.status === 429
+      ? " — 429: this address's failed-attempt budget is spent (it records only presented-but-WRONG credentials, not anonymous probes) and lifts five minutes after the last one. Wait, then re-run."
+      : "";
+
+  check(anonymous.status === 401, `GET with no Authorization → 401 (got ${anonymous.status})${throttled(anonymous)}`);
 
   const wrongToken = await get("/api/digest/day", { token: "not-the-token" });
-  check(wrongToken.status === 401, `GET with a wrong token → 401 (got ${wrongToken.status})`);
+  check(
+    wrongToken.status === 401,
+    `GET with a wrong token → 401 (got ${wrongToken.status})${throttled(wrongToken)}`,
+  );
 
   const anonymousPost = await post({ windowKey: "2026-09-17..2026-09-18", status: "sent" }, { token: "" });
-  check(anonymousPost.status === 401, `POST with no Authorization → 401 (got ${anonymousPost.status})`);
+  check(
+    anonymousPost.status === 401,
+    `POST with no Authorization → 401 (got ${anonymousPost.status})${throttled(anonymousPost)}`,
+  );
+
+  // RFC 7235: the auth scheme is case-insensitive, so `bearer` is a correct
+  // client. Refusing it was a recorded review finding.
+  const lowerScheme = await get("/api/digest/day", { rawAuth: `bearer ${TOKEN}` });
+  check(
+    lowerScheme.status === 200,
+    `GET with a lowercase \`bearer\` scheme → 200 (got ${lowerScheme.status})${throttled(lowerScheme)}`,
+  );
+  const mixedScheme = await get("/api/digest/day", { rawAuth: `BeArEr ${TOKEN}` });
+  check(
+    mixedScheme.status === 200,
+    `... and a mixed-case \`BeArEr\` (got ${mixedScheme.status})${throttled(mixedScheme)}`,
+  );
+  // Case-insensitivity must not become "the scheme is optional": no space means
+  // the whole header is one token, and it must not be accepted.
+  const gluedScheme = await get("/api/digest/day", { rawAuth: `Bearer${TOKEN}` });
+  check(
+    gluedScheme.status === 401,
+    `a missing space after the scheme is still refused (got ${gluedScheme.status})${throttled(gluedScheme)}`,
+  );
 
   const live = await get("/api/digest/day");
   // 503 and 401 mean different things and need different fixes, so they are
@@ -355,7 +402,7 @@ async function main() {
     check(false, "GET with the token → 200 (got 503: the deployment has no DIGEST_AGENT_TOKEN — set it on Vercel and redeploy)");
     throw new Error("the deployment is not configured");
   }
-  check(live.status === 200, `GET with the token → 200 (got ${live.status})`);
+  check(live.status === 200, `GET with the token → 200 (got ${live.status})${throttled(live)}`);
   if (live.status !== 200) throw new Error(`unexpected GET response (http ${live.status}): ${snippet(live.raw)}`);
 
   // Shape only for the live window: it is derived from the server's own clock,

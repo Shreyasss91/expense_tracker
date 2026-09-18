@@ -748,12 +748,32 @@ if (!expected || !authorization || !timingSafeStringEqual(authorization, `Bearer
 Rules:
 
 - **Constant-time compare only.** `timingSafeStringEqual` exists precisely so `===` is never
-  used on a secret (SPEC §1.8, CWE-208).
+  used on a secret (SPEC §1.8, CWE-208). Only the **token** is compared; the scheme is stripped
+  with a case-insensitive regex first.
+- **The auth scheme is case-insensitive** (RFC 7235), so `bearer <token>`, `BEARER <token>` and
+  `BeArEr <token>` are all valid clients. Refusing them was a bug, not strictness — and
+  case-insensitivity must not become "the scheme is optional": `Bearer<token>` with no space is
+  still refused, because the whole header is then one token.
 - **Missing env var ⇒ `503`**, not `401` — "not configured" and "wrong token" are different
-  diagnoses and the agent's logs must distinguish them.
+  diagnoses and the agent's logs must distinguish them. Checked **before** the throttle, so a
+  throttled caller on an unconfigured deployment still learns the more useful fact.
+- **Failed-auth throttle (normative, not optional).** The existing `RateLimiter` from
+  `src/lib/secure-compare.ts` is applied per client address (`x-forwarded-for`'s left-most
+  entry, `x-real-ip` as fallback, one shared bucket if neither is present), at **20 attempts per
+  5 minutes**; past that the route answers **`429`** *before* comparing anything, so a blocked
+  caller cannot keep using the endpoint as a comparison oracle. The budget is four times the
+  agent's worst case (its ladder makes at most five attempts a night), because locking out a
+  legitimate typo is a worse failure than a handful of extra attempts. Like the login's use of
+  the same class, this is **best-effort** — serverless instances do not share the map and a cold
+  start clears it; Vercel's own throttling is the backstop.
+- **Only a presented-but-wrong credential counts as a failed attempt.** A request with no
+  `Authorization` header is refused without being recorded: it presents nothing to compare
+  against the secret, so it cannot learn from a 401, and counting it would let anything that
+  merely pokes the endpoint — a health check, a browser prefetch, the live verifier's anonymous
+  probes — exhaust the budget and lock out the real agent. The policy lives in
+  `src/lib/agent-auth.ts`, deliberately free of `server-only` and of any DB import so the whole
+  decision — including the throttle — is unit-testable (`npm run test:agent-auth`).
 - Never log the token or the comparison input.
-- Optionally apply the existing `RateLimiter` from `src/lib/secure-compare.ts` on
-  failed auth attempts, mirroring how it is used elsewhere.
 
 #### 5.5.2 `GET /api/digest/day`
 
@@ -846,11 +866,15 @@ The agent's confirmation, satisfying D11.
 > row on the card, and rejecting late legitimate posts is the worse failure. Recorded here so the
 > omission is a decision rather than an oversight.
 >
-> Covered by 17 new assertions in `src/lib/ledger-feed-test.ts` (the suite is now **85 checks**)
+> Covered by 17 new assertions in `src/lib/ledger-feed-test.ts` (the suite is now **96 checks**)
 > and by three new `POST` probes in the live verifier.
 - On `status: "sent"`, write the marker (§5.6) with `new Date().toISOString()`.
 - On `status: "failed"`, write **nothing** — a failed post must leave the window unmarked so
-  the fallback push fires. Optionally log `detail` server-side.
+  the fallback push fires. Log `detail` server-side, **sanitised and bounded**
+  (`sanitizeLogDetail`, cap `LOG_DETAIL_MAX_CHARS` = 300): it is caller-supplied text landing in
+  the server log, so newlines would let a caller forge additional log lines and length was
+  previously unbounded. The truncation marker sits outside the cap on purpose — a silently
+  clipped detail hides the very thing being diagnosed.
 - **Response:** `{ ok: true, recorded: boolean, sentAt: string | null }`.
 - Idempotent: re-posting the same window simply refreshes the timestamp. That is fine and
   matches the existing digest-marker semantics ("written on EVERY successful send").
@@ -1311,7 +1335,15 @@ Add to `package.json`:
 >
 > 1. **Auth** — unauthenticated and wrong-token calls are `401`; a `503` is reported as its own
 >    diagnosis (*"the deployment has no `DIGEST_AGENT_TOKEN`"*) rather than as a bad token, which
->    is the whole point of the route distinguishing them.
+>    is the whole point of the route distinguishing them. It also checks that the scheme casing
+>    is accepted (`bearer`, `BeArEr`) and that a **missing space** (`Bearer<token>`) is still
+>    refused — case-insensitivity must not become "the scheme is optional". A `429` on any auth
+>    probe is reported as a spent throttle with the wait, not as a bare mismatch, so a re-run too
+>    soon explains itself.
+>
+>    Each run spends **two** failed attempts of the 20-per-5-minutes budget (the wrong-token and
+>    the missing-space probes). Anonymous probes deliberately cost nothing — only a
+>    presented-but-wrong credential counts (see §5.5.1).
 > 2. **Window math** — `?at=` pins the instant, and the returned window is compared against an
 >    **independent reimplementation** in the script (fixed +05:30; India has no DST) at six
 >    instants: exactly on the boundary, one second before it, a late fire, 7 h after a boundary,
@@ -1492,7 +1524,8 @@ Therefore, as part of this work:
    never momentarily exposed.
 5. Verify, as the existing entries do, and record it in the entry:
    `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed`, `npm run test:digest`,
-   `npm run test:whatsapp-agent` (the phone-agent contract test, §13 Phase 7).
+   `npm run test:whatsapp-agent` (the phone-agent contract test, §13 Phase 7) and
+   `npm run test:agent-auth` (the feed endpoint's auth policy).
 
 ---
 
