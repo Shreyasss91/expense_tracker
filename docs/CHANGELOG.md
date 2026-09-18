@@ -97,10 +97,39 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   (a QR rendered by Termux on Dad's phone cannot be scanned by that same phone — this
   **supersedes** the earlier "prefer QR by default" wording); **Termux:Boot is installed** so a
   reboot or overnight update cannot silently stop the feed; and a transient send failure
-  retries at **≈2 / 5 / 15 / 30 minutes, then stops for the night**, while a `401` or `503` is
+  retries at **≈2 / 5 / 15 / 30 minutes, then stops for the night** (the ladder is **persisted**
+  to `sent/retry-state.json`, so a crash-restart cannot re-arm it), while a `401` or `503` is
   never retried. The target is Dad's **Samsung** (One UI), which needs more than a
   battery-optimisation exemption: Unrestricted battery, absent from *Sleeping apps*, exempt
   from *Put unused apps to sleep*, and kept open from the Recents card.
+- **Phone-agent plan hardened after a cold re-read — 18 September 2026 (plan docs only, no
+  app code).** Re-reading `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` the way a fresh implementer would
+  surfaced **four things that could not have been built as written**, and each was fixed in the
+  plan rather than in prose:
+  1. **The retry ladder contradicted the wrapper.** It was described as living "in memory"
+     while `start.sh` restarts on exit `1` — so exhaustion reset the ladder and the ≈2/5/15/30
+     schedule ran again, forever: an outage that should have cost four retries would have
+     polled the API all night behind a busy-looking log. The ladder is now **persisted** and
+     **exhaustion is a state, not an exit** (exit `1` no longer means "ladder exhausted").
+  2. **The ladder was never reached for the failure it existed for.** `tick()` started with the
+     fetch and consulted the retry schedule afterwards, so a *thrown* fetch — the canonical
+     transient failure — skipped it entirely. The gate (local window key, marker, exhaustion,
+     `nextAttemptAt`) is now evaluated **before any network call**, which also stops the 60 s
+     tick from polling a database-backed endpoint ~1,440 times a day.
+  3. **`--link` failed as specified.** It called `requestPairingCode()` straight after creating
+     the socket, which Baileys rejects with `Connection Closed`; the call must be triggered by
+     the **first `qr` event** (used only as a trigger — the QR string is still never rendered),
+     and gated on `creds.registered` so a second `--link` requests nothing.
+  4. **The acceptance tests had no runnable procedure.** `FEED_GRACE_MS` makes the target window
+     **stale for 18 hours of every day**, so a real-send rehearsal was only possible between
+     22:00 and 04:00. A new `--at <ISO>` flag pins the evaluation instant (forwarded to the
+     endpoint's `at` parameter), so every test runs at any hour.
+  Also closed in the same pass: a **single-instance lock** (`sent/agent.lock`, exit `7`) and
+  **atomic marker writes** so a `--now` rehearsal cannot race the live scheduler into a double
+  post or corrupt `auth/`; the **package name is stated** rather than deferred to "verify at
+  install time" — `@whiskeysockets/baileys`, Node **≥ 20**, and **no** optional peer dependency
+  (`sharp` being exactly the native dependency that would break a Termux install); and `phone`
+  is **normative** in `config.json` because `--link` cannot work without it.
 - **Missed windows are never back-filled.** A window that has gone stale is still rendered
   and returned (so it stays debuggable and curl-testable) but the agent refuses to post it;
   the 22:15 push is what surfaces the miss.

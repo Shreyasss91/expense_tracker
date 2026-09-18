@@ -959,7 +959,9 @@ tools/whatsapp-agent/
 ├── start.sh             # wake-lock + restart loop
 ├── boot/termux-boot.sh  # copy of the Termux:Boot script (survive a reboot)
 ├── auth/                # gitignored — Baileys multi-file session state
-├── sent/                # gitignored — local anti-double-post markers
+├── sent/                # gitignored — runtime state: markers (<key>.json),
+│                        #   the persisted retry ladder (retry-state.json) and
+│                        #   the single-instance lock (agent.lock)
 └── agent.log            # gitignored — rotating run log
 ```
 
@@ -976,6 +978,7 @@ tools/whatsapp-agent/
 {
   "apiUrl": "https://<your-deployment>.vercel.app",
   "token": "<DIGEST_AGENT_TOKEN>",
+  "phone": "919876543210",
   "groupJid": "1203630xxxxxxxxx@g.us",
   "sendAt": "22:00",
   "timezone": "Asia/Kolkata"
@@ -983,6 +986,10 @@ tools/whatsapp-agent/
 ```
 
 - `groupJid` (not a phone number) — groups are addressed by JID, not by E.164 number.
+- `phone` — Dad's sending number, **E.164 digits only, no `+`**. It is **required**, not
+  optional: `--link` cannot request a pairing code without it, so a template that omits the
+  field fails on the first command. `--phone <E164>` overrides it; the agent validates the
+  shape and never silently strips characters.
 - `token` must be `chmod 600 config.json`.
 - `timezone` is explicit so the schedule does not depend on the phone's locale.
 
@@ -997,10 +1004,13 @@ what it entails and the points this section makes normative:
    *same* source (it only works when both come from the same place).
 2. `pkg update && pkg upgrade`, then `pkg install nodejs-lts git`.
 3. `git clone` the repo (or copy the `tools/whatsapp-agent` folder), then `npm install`
-   inside it. Dependencies are **`baileys`** (pure JavaScript — no native build, which is
-   precisely why this works on Termux) plus a logger such as `pino`. Verify the current
-   package name at install time; the library has moved between `baileys` and
-   `@whiskeysockets/baileys` over its history.
+   inside it. The dependency is **`@whiskeysockets/baileys`** — the scoped package Baileys is
+   actually published under (the unscoped `baileys` is the abandoned older line). It is pure
+   JavaScript with **no native build**, which is precisely why this works on Termux, and its
+   optional peer dependencies (`jimp`/`sharp`, `link-preview-js`, `ffmpeg`, `audio-decode`) are
+   **not installed** — this agent sends plain text only, and `sharp` is exactly the native
+   dependency that would break a Termux install. Node **≥ 20** is required; Baileys enforces it
+   with a `preinstall` check.
 4. `cp config.example.json config.json`, fill in `apiUrl` + `token`, then
    **`chmod 600 config.json`**.
 5. Create the dedicated WhatsApp group **from Dad's phone** with Mom and Son.
@@ -1013,7 +1023,7 @@ what it entails and the points this section makes normative:
    **kept open** from the Recents card. The full table is in the plan document §3.2.
 9. Install the **Termux:Boot** hook so a reboot cannot silently stop the feed, and **launch the
    Termux:Boot app at least once** — it does nothing until it has been opened. Test it by
-   rebooting (plan document §7, Test 7).
+   rebooting (plan document §7, Test 8).
 10. Start it: `./start.sh` (which takes a `termux-wake-lock` first).
 
 > **Normative:** the boot hook is **not optional**. Without it, a phone reboot or an overnight
@@ -1030,6 +1040,12 @@ what it entails and the points this section makes normative:
   requests a code for Dad's number (E.164 digits, **no leading `+`**) and prints an 8-digit
   value to be typed into WhatsApp → Linked devices → *Link with phone number instead*. The
   agent exposes **no QR mode** — an unsupported mode is worse than a missing one.
+- **The code is requested from the first `qr` event, used only as a *trigger*.** Calling
+  `requestPairingCode()` immediately after creating the socket fails with `Connection Closed`
+  (Baileys issue #1382), because the socket is not ready yet; the `qr` event fires in pairing-code
+  mode precisely so it can be used this way. The QR **string is never rendered or printed**. The
+  agent also checks `sock.authState.creds.registered` first, so re-running `--link` on an
+  already-linked session requests no code and exits cleanly.
 - Linking is **one-time**; the session persists in `auth/` across restarts, reboots and
   config edits. Only a WhatsApp-side unlink requires re-running `--link`.
 - On `connection.update` with `connection: "close"` and a **401**, the session has been
@@ -1054,6 +1070,12 @@ what it entails and the points this section makes normative:
   minutes**, then stops for the night. A `401` or `503` is **never** retried — a wrong or
   absent token cannot fix itself. The ladder intentionally extends past the 22:15 fallback
   push: a late post plus a nudge beats a silent loss.
+- **The ladder is persisted (`sent/retry-state.json`) and exhaustion is a state, not an
+  exit.** The process stays alive; once exhausted it makes *no further network call* until the
+  window key rolls over at the next boundary, and a restart reloads the consumed ladder rather
+  than re-arming it. An in-memory ladder would be reset by `start.sh`'s restart loop and would
+  then poll the endpoint all night — see plan §6.4. The 60 s tick must never fetch more often
+  than the ladder permits.
 - **A failed send must write no marker at all.** Writing a marker for a failed send would
   suppress both the retries and the fallback push — the single worst bug this agent could
   have.
@@ -1076,18 +1098,34 @@ what it entails and the points this section makes normative:
    - The local marker is the primary guard against a double-post across a restart.
    - The POST is best-effort — if it fails, log it. Do **not** re-send the message because
      the confirmation failed. (Consequence: the Settings card may under-report; acceptable.)
-9. On send failure: log, do **not** write either marker, and exit — the 22:15 fallback push
-   will alert the household.
+9. On send failure: log, do **not** write either marker, and hand the failure to the **retry
+   ladder** (plan §6.4) — do **not** exit, because exiting throws away the remaining attempts.
+   Only when the ladder is exhausted for the night does the 22:15 fallback push do its job as
+   the household's alert.
 
 #### Operational
 
 - `start.sh`:
   ```sh
   termux-wake-lock
-  while true; do node agent.mjs >> agent.log 2>&1; sleep 30; done
+  while true; do
+    node agent.mjs >> agent.log 2>&1; code=$?
+    case "$code" in 2|3|4|7) exit "$code";; esac   # a human must act — do not spin
+    sleep 30
+  done
   ```
-  The restart loop is deliberate: if Node crashes, the agent comes back within 30 s.
-  Termux's `termux-services`/`sv` is the more robust alternative — document it as optional.
+  The restart loop is deliberate: if Node crashes, the agent comes back within 30 s. The
+  `case` guard is equally deliberate — codes `2`/`3`/`4`/`7` are states only a human can fix,
+  and restarting them produces a log that looks busy and healthy while nothing is delivered. It
+  is safe to restart on anything else because the retry ladder is **persisted**: a restart
+  reloads a consumed ladder instead of re-arming the schedule. Termux's `termux-services`/`sv`
+  is the more robust alternative — document it as optional.
+- **Single instance.** Every mode (including `--now` and `--dry-run`) takes a file lock at
+  `sent/agent.lock`; a second instance logs `another instance is running` and exits `7` without
+  touching `auth/`. This is what makes a stray `--now` rehearsal safe: two processes sharing one
+  session directory corrupt it, and two evaluating one window can both post. Markers and the
+  retry state are written temp-file-plus-`rename`, so a power cut cannot leave a truncated
+  marker that reads as "sent". Full rules: plan §5.9.
 - Rotate `agent.log` (truncate past ~1 MB) so a forgotten phone cannot fill its storage.
 - Never log the token or the full response body at info level.
 - Prefix every log line with an IST timestamp.
@@ -1193,6 +1231,12 @@ npm run test:digest          # the existing digest suite must stay green
 npm run test:ledger-feed     # the new suite
 ```
 
+The **phone agent's** acceptance tests are separate and live in
+`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §7 — including the single-instance lock check and the
+"consumed retry ladder survives a restart" test. They are runnable at any hour via the agent's
+`--at <ISO>` flag, which pins the evaluation instant (and forwards it to this endpoint's `at`
+parameter) so a rehearsal is not blocked by the 6 h freshness grace period.
+
 ---
 
 ## 9. Edge Cases & Failure Modes
@@ -1212,13 +1256,15 @@ npm run test:ledger-feed     # the new suite
 | E11 | Note contains `*` or a newline | Sanitised (§5.4.6). |
 | E12 | 200 rows in one window | Truncated at 40 per section with `… and N more`. |
 | E13 | Phone off / Termux killed at 22:00 | No post; 22:15 web push fires. |
-| E14 | WhatsApp unlinks the device (401) | Agent logs "re-link required" and exits non-zero; it does not spin. |
-| E15 | `/api/digest/day` returns 401 in production | Wrong or missing `DIGEST_AGENT_TOKEN`; the agent fails loudly rather than silently retrying. |
+| E14 | WhatsApp unlinks the device (401 on the socket) | Agent logs "re-link required" and exits `3`; it does not spin, and the restart wrapper refuses to restart it. |
+| E15 | `/api/digest/day` returns 401 or 503 in production | Wrong or missing `DIGEST_AGENT_TOKEN`; the agent exits `4` loudly rather than consuming retry attempts on something that cannot fix itself. |
 | E16 | Confirmation POST fails after a successful send | The message **is** sent; only the record is missing. Never re-send. |
-| E17 | Two agents configured (e.g. a second phone) | The server marker plus local markers make a duplicate highly unlikely but not impossible within the same second. Accepted; this is a one-phone household feature. |
+| E17 | Two agents configured (e.g. a second phone) | On **one** host the `sent/agent.lock` prevents it outright (the second exits `7`). Across hosts the server marker plus local markers make a duplicate unlikely but not impossible within the same second (check-then-write). Accepted; this is a one-phone household feature. |
 | E18 | Owner disables the feed mid-month | `whatsapp_feed_enabled = '0'` ⇒ endpoint returns `disabled: true`, agent posts nothing, fallback does not ping. |
 | E19 | Merge touches transactions created earlier | The merge summary appears; those transactions do **not** appear as Added (their `created_at` is outside the window). |
 | E20 | The household edits a transaction dated in a previous window | It appears in the **current** window's Edited section (D2 is an audit-instant basis). |
+| E21 | The agent restarts after a failed attempt (crash, or Android killing it) | The **persisted** ladder reloads consumed, so it does not re-fetch before `nextAttemptAt` — no restart loop can re-arm it. Exhaustion itself is a state, not an exit. |
+| E22 | A `--now` / `--at` run while the scheduler is alive | The second instance takes no lock, posts nothing and exits `7`; the live session is untouched. |
 
 ---
 

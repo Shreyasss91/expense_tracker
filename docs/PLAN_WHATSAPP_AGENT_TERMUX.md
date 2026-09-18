@@ -44,14 +44,15 @@ phone number instead** → type the 8-digit code shown in Termux.
 | P1 | Device | Dad's **Samsung** (One UI) | Owner's phone; near-stock Android with Samsung-specific extra steps |
 | P2 | Linking | **Pairing code** | QR is physically impossible on one phone (§1.1) |
 | P3 | Auto-start | **Termux:Boot installed** | A reboot would otherwise silently stop the feed |
-| P4 | Retry | **Capped**: ≈2, 5, 15, 30 min after a failure, then stop for the night | Self-heals a blip; cannot hammer WhatsApp during an outage |
+| P4 | Retry | **Capped and persisted**: ≈2, 5, 15, 30 min after a failure, then stop for the night | Self-heals a blip; cannot hammer WhatsApp during an outage. **Persisted to disk** so a restart cannot re-run a consumed ladder (§6.4) |
 | P5 | Send time | **22:00 IST** daily | Matches the existing digest cron |
 | P6 | Sender | Dad's WhatsApp number | Owner decision D9 |
 | P7 | Destination | A **new dedicated group** (Dad, Mom, Son) | Owner decision D8 |
 | P8 | Empty window | Post **nothing** | Owner decision D7 |
 | P9 | Stale window | **Refuse to post** | Owner decision / spec §5.1 |
 | P10 | Scheduler | **In-process timer + 60 s self-healing tick**, wrapped by `start.sh` | Not `termux-job-scheduler` — see §6.3 |
-| P11 | Transport | Baileys (unofficial) | Accepted risk, recorded in the changelog |
+| P11 | Transport | Baileys (`@whiskeysockets/baileys`, unofficial) | Accepted risk, recorded in the changelog |
+| P12 | Single instance | A **lock file** in `sent/` guards every mode | Stops a `--now` run from racing the live scheduler into a double post or a corrupt session (§5.9) |
 
 ### 1.3 What is NOT this agent's job
 
@@ -86,8 +87,14 @@ tools/whatsapp-agent/
 |---|---|---|
 | `config.json` | API base URL, bearer token, group JID | `chmod 600`, gitignored |
 | `auth/` | Baileys multi-file session state | gitignored |
-| `sent/` | Local anti-double-post markers | gitignored |
+| `sent/<windowKey>.json` | Local anti-double-post markers | gitignored (`sent/` wholesale) |
+| `sent/retry-state.json` | The **persisted retry ladder** (§6.4) | gitignored |
+| `sent/agent.lock` | Single-instance lock, holding the owning PID (§5.9) | gitignored |
 | `agent.log` | Rotating run log | gitignored |
+
+> **Runtime state lives under `sent/` deliberately.** The directory is already gitignored, so
+> the lock and the retry state need no new ignore rule. A file is a **marker** only when its
+> name is exactly `<windowKey>.json`; `agent.lock` and `retry-state.json` are never markers.
 
 > **Mandatory, and easy to forget:** add all four to `.gitignore` **before** the first commit
 > that touches this directory, then confirm with `git status` that nothing under `auth/` or
@@ -138,8 +145,9 @@ pkg install -y nodejs-lts git
 node --version          # expect a current LTS major
 ```
 
-Termux needs **no** native build toolchain for this agent. Baileys is **pure JavaScript** —
-that is precisely why this design works on Android at all.
+Termux needs **no** native build toolchain for this agent. Baileys is **pure JavaScript**, and
+none of its optional peer dependencies is installed (§3.4) — that is precisely why this design
+works on Android at all.
 
 ### 3.4 Get the agent onto the phone
 
@@ -157,15 +165,25 @@ of the repo). Then:
 npm install
 ```
 
-**Verify the dependency name at install time.** The Baileys package has moved between
-`baileys` and `@whiskeysockets/baileys` over its history, and older tutorials name the old
-one. Confirm what the registry currently serves before pinning:
+**The package name is `@whiskeysockets/baileys` — normative.** Baileys is published to npm
+under that scope; the unscoped `baileys` package is the abandoned older line, and most
+tutorials predate the move. A fresh implementer must not have to guess or "verify at install
+time":
 
 ```sh
-npm view baileys version
+npm install @whiskeysockets/baileys
 ```
 
-Use the maintained package and pin the major version in `package.json`.
+Pin the major version in `package.json`.
+
+Two consequences that matter on Termux:
+
+- **Node.js ≥ 20 is required.** Baileys enforces this with a `preinstall` check that fails with
+  a clear message, so an old `node` surfaces at install rather than at runtime.
+- **Install no optional peer dependency.** `jimp`/`sharp`, `link-preview-js`, `ffmpeg` and
+  `audio-decode` only unlock image/sticker thumbnails, link previews, video thumbnails and audio
+  processing. This agent sends **plain text only**, so none of them is needed — and `sharp` is
+  exactly the native dependency that would otherwise break the Termux install.
 
 ### 3.5 Configure
 
@@ -174,17 +192,25 @@ cp config.example.json config.json
 chmod 600 config.json
 ```
 
-Fill in `apiUrl` and `token` now. Leave `groupJid` empty — §4 discovers it.
+Fill in `apiUrl`, `token` and **`phone`** now. Leave `groupJid` empty — §4 discovers it.
 
 ```jsonc
 {
   "apiUrl": "https://<your-deployment>.vercel.app",
   "token": "<DIGEST_AGENT_TOKEN>",
-  "groupJid": "",
+  "phone": "919876543210",     // Dad's number — E.164 DIGITS ONLY, no "+", no spaces
+  "groupJid": "",              // discovered in §4
   "sendAt": "22:00",
   "timezone": "Asia/Kolkata"
 }
 ```
+
+> **`phone` is normative, not optional.** `--link` cannot request a pairing code without it, so
+> a reader who copies a template lacking the field gets a failure on the very first command. It
+> is the same field name in `config.example.json` (committed) and `config.json` (device-only);
+> `--phone <E164>` overrides it. `loadConfig()` validates it as **digits only** (`/^\d{8,15}$/`)
+> and fails with exit `2` otherwise — never strip characters silently, because a silently
+> mangled number requests a code for somebody else's phone.
 
 Generate the token (on any machine) with 32 random bytes:
 
@@ -218,10 +244,38 @@ On the phone:
 On success the agent writes the session into `auth/` and exits `0`. The device now appears in
 WhatsApp's Linked devices list, exactly as a WhatsApp Web session would.
 
+#### When the code is requested — normative
+
+**Do not call `requestPairingCode()` immediately after creating the socket.** That is the
+single most common way this step fails, and it fails with a `Connection Closed` error that
+looks like a WhatsApp-side problem rather than an ordering mistake (Baileys issue #1382).
+Baileys' own documentation is explicit: *"The `qr` field in `connection.update` fires even in
+pairing code mode. Use it as your trigger to call `requestPairingCode` rather than calling it
+immediately after creating the socket, because the socket may not be ready yet."*
+
+The exact sequence, in order:
+
+1. If `sock.authState.creds.registered === true` → the session is already linked; **do not
+   request a code**. Log `already linked`, wait for `open`, exit `0`. (Guards the common case
+   of re-running `--link` out of habit.)
+2. Wait for the **first `qr` event** on `connection.update` and use it purely as a **trigger**.
+   The QR **string is never rendered or printed** — a QR is unusable here (§1.1) and printing
+   one only invites someone to try scanning it.
+3. `const code = await sock.requestPairingCode(phone)` → print the 8-digit code.
+4. On `connection === 'open'` → log success, exit `0`.
+5. If no `qr` arrives within **60 s** of connecting, or no `open` arrives within **5 min** of
+   printing the code → log the recovery guidance (*"re-run `node agent.mjs --link`; if the code
+   was already used, check WhatsApp → Linked devices"*) and exit `8` — a `--link` timeout
+   (§5.8). Do **not** loop.
+6. Never set the deprecated `printQRInTerminal` option.
+
 **Requirements and caveats:**
 
 - The number must be in E.164 digits with **no leading `+`** (e.g. `919876543210`). Provide it
-  via `--phone` or a `phone` field in the config.
+  via `--phone` or the `phone` field in the config (§3.5 — the field is normative).
+- Baileys' documentation notes the pairing-code flow links **one device per phone number**. If a
+  pairing-code device already exists for Dad's number, remove it in WhatsApp → **Linked
+  devices** first, or the new request may not take.
 - WhatsApp allows only a handful of linked devices (**4**). If the list is full, remove a
   stale entry first.
 - If the code expires, re-run `--link`. Codes are short-lived by design.
@@ -251,7 +305,7 @@ nothing until it has been launched at least once, and this is the single most co
 boot hook silently does nothing.
 
 > **Test it, do not assume it.** Reboot the phone, wait two minutes, and confirm the process is
-> alive (§7, Test 7). An untested boot hook is not a feature.
+> alive (§7, Test 8). An untested boot hook is not a feature.
 
 ### 3.9 Start it
 
@@ -328,19 +382,26 @@ One file is appropriate at this size. Functions and their single responsibilitie
 
 | Function | Responsibility | Notes |
 |---|---|---|
-| `loadConfig()` | Read + validate `config.json` | Fail loudly on a missing token or `apiUrl`; validate `sendAt` is `HH:MM` and `timezone` is present. Never log the token. |
+| `loadConfig()` | Read + validate `config.json` | Fail loudly on a missing `apiUrl`, `token` or `phone`; validate `sendAt` is `HH:MM`, `timezone` present, `phone` digits-only. Never log the token. |
 | `log(level, msg, meta?)` | Timestamped (IST) line to stdout and `agent.log` | Rotate past ~1 MB |
+| `acquireLock()` / `releaseLock()` | `sent/agent.lock` — exclusive create, holding the owning PID | §5.9. Taken by **every** mode; contention exits `7` |
 | `connect()` | `useMultiFileAuthState('auth')` + `makeWASocket` | Returns `{ sock, saveCreds }`; wires the `creds.update` listener. **No QR option** (§1.1) |
-| `runLink(phone)` | Request a pairing code, print it, wait for `open`, then exit | One-shot; persists `auth/` |
+| `runLink(phone)` | Wait for the first `qr` event as a **trigger**, `requestPairingCode(phone)`, print the code, wait for `open`, exit | One-shot; persists `auth/`. The **ordering is normative** (§3.7) |
 | `runListGroups()` | Print `name → jid` for every group, exit | §4 |
-| `nextBoundary(now)` | The next **22:00 IST** as a UTC instant | Pure; **never** uses the device timezone |
-| `windowKeyFor(endInstant)` | `"<startDateIst>..<endDateIst>"` for a 24 h window ending at a boundary | Must match the server's key exactly — this is the idempotency contract |
-| `hasLocalMarker(key)` / `writeLocalMarker(key)` | `sent/<key>.json` | Primary anti-double-post guard |
-| `fetchDigest()` | `GET {apiUrl}/api/digest/day` with the bearer token, 20 s timeout | Returns the parsed body; status codes handled per §5.4 |
+| `lastBoundary(now)` | The **most recent** 22:00 IST instant `≤ now` | Pure. This is the window the agent targets, and it must mirror SPEC §5.1 exactly |
+| `nextBoundary(now)` | The next **22:00 IST** instant as a UTC instant | Pure; **never** uses the device timezone |
+| `windowKeyFor(endInstant)` | `"<startDateIst>..<endDateIst>"` for a 24 h window ending at a boundary | Byte-identical to the server's `window.key` — this is the idempotency contract |
+| `effectiveNow()` | Resolve the evaluation instant | `--at` → that instant; otherwise the wall clock |
+| `shouldEvaluate(now)` | The **pre-network gate**: local key, marker, exhaustion, `nextAttemptAt` | §6.1. Returns `{ run, key, state }`; `run: false` means **no fetch at all** |
+| `hasLocalMarker(key)` / `writeLocalMarker(key)` | `sent/<key>.json` | Primary anti-double-post guard; written temp-file + `rename` (§5.9) |
+| `loadRetryState()` / `saveRetryState(s)` | `sent/retry-state.json` | **Persisted** ladder, so a restart cannot reset it (§6.4) |
+| `recordFailure(state, now)` | Advance the ladder and persist it | **Never** writes a marker |
+| `clearState(key)` | Drop the ladder state for a finished window | Called on success and on every non-failure outcome |
+| `fetchDigest(now)` | `GET {apiUrl}/api/digest/day` with the bearer token, 20 s timeout | Appends `?at=` when `--at` was given; status codes handled per §5.4 |
 | `post(text)` | `sock.sendMessage(groupJid, { text })` | Verbatim; no formatting |
 | `confirm(key)` | `POST {apiUrl}/api/digest/day` with `{ windowKey, status }` | Best-effort — see §5.6 |
-| `tick()` | One evaluation of "should I post right now?" | §6; the whole scheduler is this function plus a timer |
-| `main()` | CLI dispatch + the timer loop | `--link`, `--groups`, `--now`, `--dry-run` |
+| `tick()` | One evaluation of "should I post right now?" | §6.1; the whole scheduler is this function plus a timer |
+| `main()` | CLI dispatch + the timer loop | `--link`, `--groups`, `--now`, `--at`, `--dry-run` |
 
 ### 5.2 CLI surface
 
@@ -349,12 +410,24 @@ One file is appropriate at this size. Functions and their single responsibilitie
 | *(none)* | Long-running scheduler mode — the production path (§6) |
 | `--link` | Pairing-code linking, then exit (§3.7) |
 | `--groups` | Print group JIDs, then exit (§4) |
-| `--now` | Run one evaluation immediately, ignoring the clock — for testing |
-| `--dry-run` | With `--now`: fetch and print the message, **send nothing**, write no markers |
+| `--now` | Run one evaluation **immediately, at the real wall clock**, then exit |
+| `--at <ISO>` | Run one evaluation **as if `now` were that instant**, then exit. The instant is also passed to the endpoint as `?at=` (SPEC §5.5.2), so the **window, the freshness judgement and the rendered text** are all computed for that instant |
+| `--dry-run` | With `--now` or `--at`: fetch and print the message, **send nothing**, write no markers |
 | `--phone <E164>` | Number for `--link` (else `config.phone`) |
 
-`--dry-run` and `--now` exist so the whole path can be exercised without spamming the family
-group. They are the agent's test harness (§7).
+`--dry-run`, `--now` and `--at` exist so the whole path can be exercised without spamming the
+family group. They are the agent's test harness (§7).
+
+**`--at` is not a convenience — it is what makes the tests runnable.** `FEED_GRACE_MS` is 6 h
+(SPEC §5.1), so the window ending at the most recent boundary is **stale for 18 hours of every
+day**. Without `--at`, a real-send rehearsal is only possible between 22:00 and 04:00, and any
+test run at another hour is refused as stale — which left the acceptance tests with no
+procedure a human could actually follow.
+
+**Every mode takes the single-instance lock (§5.9), so a one-shot mode cannot be run while the
+scheduler is alive.** Stop it first (`pkill -f agent.mjs`). That is deliberate: two processes
+sharing one `auth/` directory corrupt the session, and two processes evaluating one window can
+both post.
 
 ### 5.3 Connecting — and the 401 rule
 
@@ -366,7 +439,7 @@ Baileys emits a `connection.update` event. Two cases matter:
   invalidated).
 
 > **Normative:** on a 401, do **not** reconnect in a loop. Log a clear, greppable line
-> (`RE-LINK REQUIRED: run 'node agent.mjs --link'`) and **exit non-zero**. A silent retry loop
+> (`RE-LINK REQUIRED: run 'node agent.mjs --link'`) and **exit `3`** (§5.8). A silent retry loop
 > against an invalidated session looks identical to a healthy agent from the outside, which is
 > the worst possible failure mode.
 
@@ -385,10 +458,11 @@ const res = await fetch(`${cfg.apiUrl}/api/digest/day`, {
 | Status | Meaning | Agent action |
 |---|---|---|
 | `200` | Normal | Evaluate the body (§5.5) |
-| `401` | Token missing or wrong | Log loudly, exit non-zero. **Do not retry in a tight loop** — a wrong token will not fix itself |
-| `503` | `DIGEST_AGENT_TOKEN` absent on the server | Log loudly, exit non-zero |
-| `4xx` other | Bad request (should not happen) | Log, exit non-zero |
-| `5xx` / network error | Transient | Feed the retry schedule (§6.4) |
+| `401` | Token missing or wrong | Log loudly, **exit `4`** (§5.8). **Do not retry in a tight loop** — a wrong token will not fix itself |
+| `503` | `DIGEST_AGENT_TOKEN` absent on the server | Log loudly, **exit `4`** — not a transient condition, so it never reaches the ladder |
+| `4xx` other | Bad request (should not happen) | Log, **exit `1`** (generic fatal) |
+| `5xx` / network error | Transient | Feed the retry ladder (§6.4). **Do not exit** — exiting loses the remaining attempts |
+| *(fetch throws / times out)* | Transient | Same as above: `recordFailure()` (§6.4), not an exit |
 
 The response body is the contract from the companion spec §5.5.2.
 
@@ -398,7 +472,7 @@ Evaluate **in this order**, and stop at the first match:
 
 | # | Condition | Action |
 |---|---|---|
-| 1 | `hasLocalMarker(window.key)` | Already posted this window → log, finish |
+| 1 | `hasLocalMarker(localKey)` | Already posted this window → log, finish. `localKey` is computed **locally** (§6.1) and asserted equal to `body.window.key` |
 | 2 | `body.alreadySent === true` | The server recorded it → log, finish |
 | 3 | `body.disabled === true` | Owner switched the feed off → log, finish |
 | 4 | `body.stale === true` | Window too old → log **"stale, not posting"**, finish |
@@ -409,11 +483,16 @@ Evaluate **in this order**, and stop at the first match:
 is a different log line from a fresh empty one, and that distinction is what makes the log
 diagnosable at 22:00.
 
+**These six steps are the second gate, not the first.** Marker, exhaustion and `nextAttemptAt`
+are all checked **before any network call** (§6.1), because the tick runs every 60 s and must
+not poll a database-backed endpoint all night to re-learn an answer it already knows.
+
 ### 5.6 Confirmation is best-effort — never re-send because it failed
 
 After a successful `post()`:
 
-1. Write `sent/<windowKey>.json` — **always, first**. This is the real guard.
+1. Write `sent/<windowKey>.json` — **always, first**, as a temp file followed by `rename()`
+   (§5.9). This is the real guard.
 2. `POST` the confirmation. On failure: log it and **do not** re-send the message.
 
 The consequence is deliberate and worth stating plainly: **if the confirmation POST fails, the
@@ -444,16 +523,63 @@ can fix. Distinct codes make that decision mechanical instead of a judgement cal
 | Code | Meaning | `start.sh` action |
 |---|---|---|
 | `0` | Clean finish (one-shot modes). The scheduler itself does not exit between ticks | Restart the process |
-| `1` | Generic fatal — crash, unexpected state, or a transient failure whose retry ladder is exhausted | Restart after 30 s |
+| `1` | Generic fatal — an unexpected crash or unhandled state. **Not** "the retry ladder is exhausted": exhaustion is a state the agent sits in, never an exit (§6.4) | Restart after 30 s |
 | `2` | `config.json` missing, unreadable, or invalid | **No restart** — a human must fix the file |
 | `3` | **RE-LINK REQUIRED** — WhatsApp returned 401 on the socket | **No restart** — re-run `--link` |
 | `4` | API auth failure — `/api/digest/day` returned 401 or 503 | **No restart** — fix the token |
-| `5`–`9` | Reserved | — |
+| `7` | Another instance holds `sent/agent.lock` | **No restart** — a human is running a one-shot mode (§5.9) |
+| `8` | `--link` timed out (no `qr` trigger, or the code was never confirmed) | **No restart** — one-shot mode; re-run `--link` (§3.7) |
+| `5`, `6`, `9` | Reserved | — |
 
-Codes `2`, `3` and `4` all mean the same thing operationally: **the agent cannot heal
+Codes `2`, `3`, `4` and `7` all mean the same thing operationally: **the agent cannot heal
 itself.** Restarting them produces a log that looks busy and healthy while nothing is ever
 delivered — the worst failure mode available to this component. The non-restart branches in
-§6.5 exist specifically to make that impossible.
+§6.5 exist specifically to make that impossible. (`8` belongs to a one-shot mode that
+`start.sh` never invokes; it is listed so the code space is documented in one place.)
+
+---
+
+### 5.9 Single-instance lock and atomic state writes — normative
+
+Every mode — scheduler, `--link`, `--groups`, `--now`, `--at`, `--dry-run` — acquires a **lock
+file** before doing anything else.
+
+- Acquisition is `fs.openSync('sent/agent.lock', 'wx')` (exclusive create). On success, write
+  the PID and continue.
+- On `EEXIST`: read the PID and test liveness (`process.kill(pid, 0)`; `/proc/<pid>` is
+  available in Termux if a fallback is wanted).
+  - **Dead PID** → the lock is stale. Log it, `unlink` the file, retry **once**.
+  - **Live PID** → log `another instance is running (pid N) — exiting` and exit **`7`** (§5.8).
+- Release on normal exit **and** from `process.on('exit')` / `SIGINT` / `SIGTERM` handlers, so a
+  `Ctrl-C` does not leave a lock that needs manual removal.
+
+**Why this is normative rather than a nicety.** `--now` is documented as a test mode, and a
+reader will naturally run it while the scheduler is running. Two processes sharing one `auth/`
+directory corrupt the session, and two processes evaluating the same window race each other's
+check-then-write on the marker and **both post**. A caveat in a README is not a fix for that;
+a lock is.
+
+**Markers and retry state are written atomically**, for the same reason: write to
+`<name>.tmp`, `fsync` if convenient, then `rename()` over the final name. A power cut must not
+leave a half-written `sent/<key>.json`, because a truncated marker still reads as "sent" and
+would silently suppress the night's post.
+
+#### Stopping the agent — the exact procedure
+
+Killing Node is **not enough**: `start.sh` is a `while true` wrapper and restarts it after 30 s.
+Both must go:
+
+```sh
+pkill -f agent.mjs     # the node process
+pkill -f start.sh      # the wrapper — otherwise node comes back in 30 s
+cat sent/agent.lock    # should be gone; if not, the agent died uncleanly
+```
+
+`pkill` is provided by Android's `toybox` on current releases; if it is missing, `pkg install
+procps`. The always-available alternative is to pull down the **wake-lock notification** in the
+Android shade and tap **Exit**, which terminates the Termux session and therefore the wrapper.
+This procedure is referenced by the acceptance tests (§7), which all require the scheduler to be
+stopped first.
 
 ---
 
@@ -472,23 +598,76 @@ device is dozing; on wake, the interval notices "it is past 22:00 and there is n
 this window" and posts. The timer exists so the normal case fires within a second of 22:00
 rather than within a minute.
 
+#### The tick must not fetch once a minute
+
+The endpoint is a database query. Polling it ~1,440 times a day to answer a question whose
+answer changes once a day is both wasteful and the origin of a fetch storm. The gate is
+therefore computed **locally, before any network call**:
+
 ```js
-async function tick() {
-  const body = await fetchDigest();                 // §5.4
-  const key = body.window.key;
-
-  if (retry.scheduleExhausted(key) && !retry.due(key)) return;  // §6.4
-  if (hasLocalMarker(key)) return;                  // §5.5 step 1
-  if (body.alreadySent) return;                     // step 2
-  if (body.disabled) return;                        // step 3
-  if (body.stale) { log('warn', 'stale, not posting'); return; }  // step 4
-  if (body.empty || !body.text) return;             // step 5
-
-  await post(body.text);                            // step 6
-  writeLocalMarker(key);
-  await confirm(key);
+function shouldEvaluate(now) {
+  const key = windowKeyFor(lastBoundary(now));   // §6.2 — local, no fetch
+  let state = loadRetryState();                  // §6.4 — persisted
+  if (state.key !== key) state = freshState(key);            // a new night resets the ladder
+  if (hasLocalMarker(key)) return { run: false, key, state }; // already posted
+  if (state.exhausted) return { run: false, key, state };     // done for tonight
+  if (state.nextAttemptAt && now < state.nextAttemptAt) return { run: false, key, state };
+  return { run: true, key, state };
 }
 ```
+
+**Why the key is computed locally instead of read from the response.** The ladder, the marker
+and the lock are all keyed by the window, so the agent must know the key *before* it has a
+response. Reading it from the body — as an earlier draft of this document implied — makes the
+ladder impossible to key at all (there is no key until a fetch succeeds, and no fetch until the
+ladder permits it). `windowKeyFor(lastBoundary(now))` is specified to produce **byte-identical**
+output to the server's `window.key`, so the first successful response is **asserted** against
+it and a mismatch is logged loudly as a contract violation.
+
+#### `tick()` — normative shape
+
+```js
+async function tick() {
+  const now = effectiveNow();                       // wall clock, or --at (§5.2)
+  const gate = shouldEvaluate(now);
+  if (!gate.run) return;                            // zero network calls on this path
+
+  let body;
+  try {
+    body = await fetchDigest(now);                  // §5.4 — sends ?at= when --at was given
+  } catch (err) {
+    return recordFailure(gate.state, now);          // §6.4 — a THROWN fetch feeds the ladder
+  }
+
+  if (body.window.key !== gate.key) log('error', `window key mismatch: server=${body.window.key} local=${gate.key}`);
+
+  if (body.alreadySent) return clearState(gate.key);            // §5.5 step 2
+  if (body.disabled)    return clearState(gate.key);            // step 3
+  if (body.stale) { log('warn', 'stale, not posting'); return clearState(gate.key); }  // step 4
+  if (body.empty || !body.text) return clearState(gate.key);    // step 5
+
+  try {
+    await post(body.text);                          // step 6
+  } catch (err) {
+    return recordFailure(gate.state, now);          // §6.4 — and NO marker is written
+  }
+
+  writeLocalMarker(gate.key);                       // §5.6 — always first
+  await confirm(gate.key);                          // best-effort, never re-sends
+  clearState(gate.key);
+}
+```
+
+Three properties of that shape are deliberate and must be preserved:
+
+- **The gate is checked before the fetch, and the fetch's failure feeds the ladder.** The
+  earlier draft started with `await fetchDigest()` and consulted the retry schedule *after* it,
+  so the one failure the ladder was written for — a thrown fetch — never reached it.
+- **Every non-failure outcome clears the ladder state.** A window that resolved to
+  `alreadySent`, `disabled`, `stale` or `empty` is *finished*, not broken; re-fetching it all
+  evening is pointless.
+- **Only a failure keeps the ladder state, and a failure never writes a marker** — that is what
+  keeps the fallback push honest (§5.6, §6.4).
 
 ### 6.2 The boundary calculation — normative
 
@@ -509,7 +688,25 @@ function nextBoundary(now = new Date()) {
 }
 ```
 
-Three things this must **not** do:
+The scheduler additionally needs the **most recent** boundary — the one that has already
+passed, which is the window it is responsible for:
+
+```js
+function lastBoundary(now = new Date()) {
+  const ist = new Date(now.getTime() + IST_OFFSET_MS);
+  const boundaryIst = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate(), 22, 0, 0, 0);
+  const boundary = boundaryIst - IST_OFFSET_MS;
+  return new Date(boundary <= now.getTime() ? boundary : boundary - 24 * 60 * 60 * 1000);
+}
+```
+
+> **Normative:** `lastBoundary()` must reproduce SPEC §5.1 step 4 exactly — *"the most recent
+> boundary that has already passed"*. This is what makes an **early** fire harmless: at 21:30 the
+> target is the *previous* window, which is almost certainly already marked, so the agent posts
+> nothing. Do **not** "fix" it by clamping forward to tonight's boundary — that would post a
+> partial window and then let the marker suppress the rest of the day.
+
+Neither helper may do any of the following:
 
 - Use `new Date().getHours()` or any device-local accessor.
 - Use the `timezone` config field to *shift* anything — that field exists only so a future
@@ -538,30 +735,67 @@ exactly like a WhatsApp Web session, which is what it is.
 
 ### 6.4 The retry ladder — owner decision P4
 
-If `post()` or the fetch fails transiently, retry at **+2, +5, +15 and +30 minutes** relative to
-the first failure, then **stop for the night** and let the 22:15 fallback push do its job.
+If a **fetch** or a **send** fails transiently, retry at **+2, +5, +15 and +30 minutes** relative
+to the first failure, then **stop for the night** and let the 22:15 fallback push do its job.
 
-| Attempt | Time (from first failure) | Cumulative |
-|---|---|---|
-| 1 (initial) | 22:00 | — |
-| 2 | +2 min | 22:02 |
-| 3 | +5 min | 22:07 |
-| 4 | +15 min | 22:22 |
-| 5 | +30 min | 22:52 |
-| — | then stop | — |
+| Attempt | Time (from first failure) | Cumulative | State after this attempt fails |
+|---|---|---|---|
+| 1 (initial) | 22:00 | — | `attempts = 1`, next at +2 min |
+| 2 | +2 min | 22:02 | `attempts = 2`, next at +5 min |
+| 3 | +5 min | 22:07 | `attempts = 3`, next at +15 min |
+| 4 | +15 min | 22:22 | `attempts = 4`, next at +30 min |
+| 5 | +30 min | 22:52 | `attempts = 5`, **exhausted** |
+| — | then stop | — | no further fetch until the next boundary |
 
-Rules:
+#### The ladder is **persisted** — normative
 
-- The ladder state lives **in memory**, keyed by `windowKey`. A process restart resets it —
-  acceptable, because `start.sh` only restarts on a crash and a crash mid-ladder is rare.
-- **Never retry** a `401` or `503` (wrong or missing token). Only transient failures retry.
-- The ladder stops immediately on success.
-- Note the ladder deliberately extends **past** the 22:15 fallback push. Both may fire: the
-  household gets a nudge *and* the post may still land at 22:22. That is the intended
-  behaviour — a late post plus a nudge beats a silent loss.
-- **A failed retry must not write any marker.** Writing a marker for a failed send would
-  suppress both the retries and the fallback push, which is the single worst bug this agent
-  could have.
+`sent/retry-state.json`, one object, replaced atomically on every update:
+
+```jsonc
+{
+  "key": "2026-09-17..2026-09-18",
+  "attempts": 3,
+  "firstFailureAt": "2026-09-18T16:30:02.114Z",
+  "nextAttemptAt": "2026-09-18T16:52:00.000Z",
+  "exhausted": false
+}
+```
+
+Earlier revisions said the ladder "lives in memory". **That was unbuildable, and it inverted
+P4.** `start.sh` restarts the agent whenever it exits `1`; an in-memory ladder whose exhaustion
+caused an exit `1` was therefore re-created *empty* on every restart, and the schedule ran again
+from +2 minutes — forever. An outage that should have cost four retries would have hammered the
+API and WhatsApp all night while the log looked busy and healthy. Persisting the state is the
+fix, and it is also what makes the restart-on-crash behaviour safe.
+
+#### Exhaustion is a **state**, not an exit — normative
+
+`exhausted: true` means *"no more attempts for this window"*. The agent **does not exit**. It
+returns to the tick, and from then until the boundary every tick short-circuits inside
+`shouldEvaluate()` with **zero network calls** (§6.1). When the key rolls over at 22:00 the state
+is replaced with a fresh one and the new night runs normally.
+
+Exit code `1` consequently no longer carries the meaning "retry ladder exhausted" (§5.8). A
+non-zero exit would kill the process, and nothing would remain alive to pick up tomorrow's
+window.
+
+#### Rules
+
+- **Transient** means: a thrown or aborted fetch, a `5xx`, or a failed `sock.sendMessage`.
+  These — and only these — advance the ladder.
+- **Never retry** a `401` or `503` (wrong or missing token): those exit `4` immediately (§5.8). A
+  wrong token cannot fix itself, and retrying it just delays the human who has to fix it.
+- A **successful** send clears the state and writes the marker.
+- Any **non-failure** outcome (`alreadySent`, `disabled`, `stale`, `empty`) also clears it: the
+  window is finished, not broken.
+- Cap the **tick cadence**, not merely the attempts: while a window is failing, the 60 s tick may
+  not fetch — only `nextAttemptAt` may (§6.1). Without that, "capped retries" would still mean a
+  request every minute for the rest of the night.
+- The ladder deliberately extends **past** the 22:15 fallback push. Both may fire: the household
+  gets a nudge *and* the post may still land at 22:22. A late post plus a nudge beats a silent
+  loss.
+- **A failed attempt must not write any marker.** Writing one for a failed send would suppress
+  both the remaining retries and the fallback push — the single worst bug this agent could have.
 
 ### 6.5 `start.sh` — the crash-restart wrapper
 
@@ -577,10 +811,11 @@ while true; do
   node agent.mjs >> agent.log 2>&1
   code=$?
 
-  # 2, 3 and 4 mean "a human must act" — restarting them only produces a
-  # busy-looking log with no delivery. See §5.8.
+  # 2, 3, 4 and 7 mean "a human must act" — restarting them only produces a
+  # busy-looking log with no delivery. 7 additionally means another instance
+  # holds the lock, so restarting would just loop. See §5.8.
   case "$code" in
-    2|3|4)
+    2|3|4|7)
       echo "[$(date)] fatal exit $code — not restarting" >> agent.log
       termux-wake-unlock
       exit "$code"
@@ -595,6 +830,12 @@ done
 The `case` guard exists so a revoked session or a bad token does not produce an infinite
 restart loop that looks like a healthy agent in `ps`. The full code table is §5.8.
 
+> **Why an ordinary crash-restart is now safe.** This wrapper restarts on `1` unconditionally,
+> and it restarts on `0` too (falling through the `case`). That used to be dangerous — a restart
+> wiped the in-memory retry ladder and re-armed the schedule — but the ladder is persisted
+> (§6.4) and exhaustion is a state rather than an exit, so a restart reloads a consumed ladder
+> and the gate blocks every network call until the next boundary.
+
 ### 6.6 Battery reality check
 
 One message a day is nothing. The real cost is the **persistent WebSocket**, which keeps a
@@ -605,29 +846,46 @@ this is a non-issue; it is documented so it is not later mistaken for a bug.
 
 ## 7. Verification & Acceptance Tests
 
-Run these **before** trusting the agent. Several use `--dry-run` so the family group is not
-spammed during setup.
+Run these **before** trusting the agent. They use `--at` so they run **at any hour** (see the
+note below), `--dry-run` so the family group is not spammed, and every mode takes the
+single-instance lock (§5.9) — so **stop the scheduler first** using §5.9's *Stopping the agent*
+procedure.
 
 | # | Test | How | Expected |
 |---|---|---|---|
-| 1 | Config validation | Rename `config.json` temporarily, run the agent | Clear "missing config" error, exit non-zero, no stack-trace dump |
-| 2 | Auth | `curl -s -o /dev/null -w "%{http_code}" <apiUrl>/api/digest/day` (no header) | `401` |
-| 3 | Auth, correct | `curl -s -H "Authorization: Bearer $TOKEN" <apiUrl>/api/digest/day` | `200` with a `text` field |
-| 4 | Render only | `node agent.mjs --now --dry-run` | Prints the rendered message; group receives **nothing** |
-| 5 | Real send | `node agent.mjs --now` on a day with known changes | Message appears in the group; `sent/<key>.json` written |
-| 6 | Idempotency | Immediately run `node agent.mjs --now` again | Logs "already sent"; group receives **no** second message |
-| 7 | Reboot survival | Reboot the phone; wait 2 min; `pgrep -f agent.mjs` | A live process — this is the Termux:Boot test (§3.8) |
-| 8 | Empty window | `curl ... "?at=<a quiet past day>"` | `empty: true`, `text: null`; a `--now --dry-run` posts nothing |
-| 9 | Stale window | `curl ... "?at=<now + 40h>"` | `stale: true`; a `--now --dry-run` logs "stale, not posting" |
-| 10 | Bad token | Run once with a deliberately wrong token | `401` handling: loud log, non-zero exit, **no retry loop** |
-| 11 | Fallback push | On a night with no post, confirm a web push at 22:15 | Push received on an opted-in device |
-| 12 | Log hygiene | `grep -i "$TOKEN" agent.log` | **No matches** |
+| 1 | Config validation | Rename `config.json` temporarily, run the agent | Clear "missing config" error, exit `2`, no stack-trace dump |
+| 2 | Auth | `curl -s -o /dev/null -w "%{http_code}" "<apiUrl>/api/digest/day?at=<a past boundary>"` (no header) | `401` |
+| 3 | Auth, correct | `curl -s -H "Authorization: Bearer $TOKEN" "<apiUrl>/api/digest/day?at=<a past boundary with known changes>"` | `200` with a non-null `text` field |
+| 4 | Render only | Scheduler stopped (§5.9), then `node agent.mjs --at "<the same past boundary>" --dry-run` | Prints the rendered message for that window; group receives **nothing**; **no** marker written |
+| 5 | Lock | With the scheduler **running**, run `node agent.mjs --now` in a second Termux session | Exits `7` with `another instance is running`; nothing posted; session untouched |
+| 6 | Real send (rehearsal) | Scheduler stopped (§5.9), then `node agent.mjs --at "<same past boundary>"` — with `groupJid` pointed at a **test group**, or accepting one odd message in the real group | Message appears; `sent/<key>.json` written; server marker recorded for that window |
+| 7 | Idempotency | Immediately re-run the exact same `--at` command | Logs "already sent"; **no** second message |
+| 8 | Reboot survival | Reboot the phone; wait 2 min; `pgrep -f agent.mjs` | A live process — this is the Termux:Boot test (§3.8) |
+| 9 | Empty window | `node agent.mjs --at "<a past boundary with no changes>" --dry-run` | Logs "nothing to post"; no message |
+| 10 | Stale window | `node agent.mjs --at "<now + 40h>" --dry-run` | `stale: true`; logs "stale, not posting" |
+| 11 | Bad token | Run once with a deliberately wrong token in `config.json` | `401` handling: loud log, exit `4`, **no** retry loop, and `start.sh` does not restart it |
+| 12 | Ladder survives a restart | Point `apiUrl` at `http://127.0.0.1:9` (a closed port → immediate `ECONNREFUSED`), start the agent, let attempt 1 fail | `sent/retry-state.json` shows `attempts: 1` and a `nextAttemptAt`; the log has exactly **one** failed fetch. Restart the process → still **one**, until `nextAttemptAt` passes |
+| 13 | Fallback push | On a night with no post, confirm a web push at 22:15 | Push received on an opted-in device |
+| 14 | Log hygiene | `grep -i "$TOKEN" agent.log` | **No matches** |
 
-> **Testing a send without polluting history:** the server marker is keyed by window, so a
-> real send on the current window is recorded and will suppress the evening's genuine post.
-> For a rehearsal, prefer `--dry-run`, or point `config.json` at a **test group** JID
-> temporarily. If you do post a rehearsal to the real group, delete the server marker
-> (`digest_sent:whatsapp_feed:<windowKey>`) and the local `sent/<key>.json` before 22:00.
+> **Why every test above uses `--at` rather than `--now`.** `FEED_GRACE_MS` is 6 h (SPEC §5.1),
+> so the window ending at the most recent boundary is **stale for 18 hours of every day**. A test
+> that relies on the wall clock can only exercise the real-send path between 22:00 and 04:00 —
+> which is exactly when a human is *not* doing setup, and which is why an earlier revision of
+> this plan listed tests with no procedure anyone could follow. `--at` forwards the instant to
+> the endpoint's `at` parameter (SPEC §5.5.2), so the window, its freshness and the rendered text
+> are all computed for that instant, at any hour. `--now` remains as "evaluate immediately with
+> the real clock".
+>
+> **Testing a send without polluting history.** Choose a **past** window with `--at`: the server
+> marker is keyed by window, so a rehearsal on a past window leaves tonight's genuine post
+> completely unaffected. The message does still land in the group, so point `groupJid` at a
+> **test group** if you would rather not explain it. To erase the trace afterwards, delete the
+> server marker (`digest_sent:whatsapp_feed:<windowKey>`) and the local `sent/<windowKey>.json`.
+>
+> Do **not** rehearse with `--now` while the scheduler is alive: that path targets the **current**
+> window and would suppress the evening's real post. The §5.9 lock makes it fail safely rather
+> than double-post, but it is still the wrong test.
 
 ---
 
@@ -645,9 +903,10 @@ The two halves are independent; the app side must exist before the agent can do 
 7. Create the group from Dad's phone (§3.6).
 8. Link with the pairing code (§3.7).
 9. Discover and paste the group JID (§4).
-10. Install and **test** the boot hook (§3.8, Test 7).
+10. Install and **test** the boot hook (§3.8, Test 8).
 11. Start `./start.sh` (§3.9).
-12. Run tests 4–6 and 10 from §7.
+12. Run tests 4–7 and 11 from §7. All of them are runnable **before** 22:00, because `--at`
+    names the window explicitly — do not wait for the evening to test.
 13. **Watch the first real night.** At 22:00 confirm the group message; at 22:15 confirm **no**
     fallback push arrived (a push means the post did not record — investigate).
 
@@ -694,7 +953,7 @@ The two halves are independent; the app side must exist before the agent can do 
 
 | Item | Status |
 |---|---|
-| `--link` needs `phone` in config or `--phone` — decide the field name during implementation | Open, trivial |
+| `phone` field name | **Resolved** — `phone` is normative in `config.json` (and in the committed `config.example.json`), validated digits-only; `--phone` overrides it |
 | Whether to notify on the phone (a Termux notification) when a **stale** window is skipped | Open, optional — the 22:15 push already covers the household |
 | Optional monthly agent-side self-test (e.g. a silent `--dry-run` weekly) | Out of scope for v1 |
 | Whether the fallback push should also fire when the feed is disabled | **Decided: no** — a deliberate off switch must not generate noise |
