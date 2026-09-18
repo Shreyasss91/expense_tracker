@@ -124,6 +124,11 @@ together (§7).
 Do these in order. Steps 3.2 (Samsung battery) and 3.8 (boot) are the ones that decide
 whether this runs for months or dies on day three.
 
+> **Doing this for real?** [`docs/PHONE_SETUP_CHECKLIST.md`](PHONE_SETUP_CHECKLIST.md) is this
+> section as a printable tick-box run sheet, ending with the eight acceptance checks worth doing
+> on the day. Print it and work down it — transcribing steps from prose onto a phone is where
+> things get skipped, and a skipped step here fails silently and days later.
+
 ### 3.1 Install the apps
 
 1. **Termux** — from **F-Droid** or the GitHub releases page. **Not** the Play Store build:
@@ -1013,11 +1018,12 @@ The two halves are independent; the app side must exist before the agent can do 
 ## 11. Open Items
 
 > **Where this stands, 18 September 2026.** The **code is written, committed and green** —
-> `agent.mjs`, the repo-side contract test (51 assertions), `start.sh`, the boot hook, the
-> config template and the README are all in the repository. What remains is **device work that
-> no agent in a terminal can perform**: §3's one-time setup, the two runs that need a linked
-> WhatsApp session (`--link`, `--groups`), and the acceptance tests in §7. Everything up to the
-> first `./start.sh` is one sitting on Dad's phone.
+> `agent.mjs`, the repo-side contract test (51 assertions), the laptop rehearsal (51 checks),
+> `start.sh`, the boot hook, the config template and the README are all in the repository. What
+> remains is **device work that no agent in a terminal can perform**: §3's one-time setup, the
+> two runs that need a linked WhatsApp session (`--link`, `--groups`), and the acceptance tests
+> in §7. Everything up to the first `./start.sh` is one sitting on Dad's phone, and
+> [`docs/PHONE_SETUP_CHECKLIST.md`](PHONE_SETUP_CHECKLIST.md) is the run sheet for it.
 
 | Item | Status |
 |---|---|

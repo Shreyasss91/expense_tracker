@@ -447,6 +447,26 @@ plan's §3 steps in order. The plan (§2.1, §7, §11) and the feature spec (§6
 updated to say exactly that rather than leaving Phase 7 reading "not started" or, worse,
 implying it was verified.
 
+### A printable run sheet for the phone session — 18 September 2026
+
+`docs/PHONE_SETUP_CHECKLIST.md`. The plan's §3 states every step and why it exists; the README
+repeats it with the reasoning attached. Neither is what anyone wants to be reading while holding
+someone else's phone and typing with one thumb — and a *skipped* step here fails silently and days
+later, which is the worst combination available: §3.2 (Samsung background settings) and §3.8 (the
+boot hook) both do exactly that.
+
+So the same material now exists as a tick-box run sheet: a four-value table to fill in **before**
+the session (deployment URL, token, Dad's number, group name), the steps in order, the two places
+people actually stumble called out inline (the pairing-code ordering, and a group list that is
+incomplete for the first 30 seconds after linking), a stop-the-scheduler block, and the eight
+acceptance checks worth doing on the day, ending with watching the first real 22:00.
+
+It defers to the plan on every point of substance, and says so in its header — a second document
+that agrees with the first is a convenience; one that quietly becomes a rival source of truth is a
+defect. It also carries its own warning about what a tick means: *"Tick nothing you have not
+verified. An unticked box is useful information; a ticked box that was never checked is how a
+two-hour session becomes a two-week mystery."*
+
 ### A laptop rehearsal for the phone agent — 18 September 2026
 
 The gap between "the agent's pure functions are tested" and "the agent works" was the whole

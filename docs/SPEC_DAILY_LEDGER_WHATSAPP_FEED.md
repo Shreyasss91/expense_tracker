@@ -1115,8 +1115,9 @@ tools/whatsapp-agent/
 ### 6.4 One-time setup
 
 The **authoritative, ordered, step-by-step version is
-`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §3** (target device: Dad's Samsung, One UI). Summary of
-what it entails and the points this section makes normative:
+`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §3** (target device: Dad's Samsung, One UI), with
+**`docs/PHONE_SETUP_CHECKLIST.md`** as its printable tick-box run sheet. Summary of what it
+entails and the points this section makes normative:
 
 1. Install **Termux from F-Droid or GitHub** — **not** the Play Store build, which is
    deprecated and will not install a current Node. Also install **Termux:Boot** from the
@@ -1594,7 +1595,9 @@ work left**
       rehearsal (`npm run rehearse:whatsapp-agent`, **51 checks**), both green.
 - [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →
-      JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`.
+      JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`. Work from
+      **`docs/PHONE_SETUP_CHECKLIST.md`** — the same steps as a printable run sheet that ends
+      with the acceptance checks worth doing on the day.
 
 > Phase 7's code is complete but **unverified on a device**, and no amount of local testing can
 > change that: `--link`, `--groups`, delivery, the socket 401 path and the boot hook all need a

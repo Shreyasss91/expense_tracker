@@ -1,5 +1,10 @@
 # WhatsApp sender agent (Termux + Baileys)
 
+> **Setting this up on the phone?** Use
+> [`docs/PHONE_SETUP_CHECKLIST.md`](../../docs/PHONE_SETUP_CHECKLIST.md) — a printable, tick-box
+> run sheet for the whole sitting, derived from the plan's §3. This file explains the *why*;
+> that one is what you follow while holding the phone.
+
 Posts the daily **ledger-change feed** to one private family WhatsApp group, from Dad's phone,
 once a night at **22:00 IST**.
 
