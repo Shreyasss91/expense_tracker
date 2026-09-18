@@ -39,12 +39,24 @@ interface DigestDayInfo {
 }
 
 interface LastSend {
-  channel: "telegram" | "whatsapp";
+  /** Mirrors DigestSendRecord['channel'] (src/lib/digest.ts) — `whatsapp_feed` is the daily ledger-change feed. */
+  channel: "telegram" | "whatsapp" | "whatsapp_feed";
   /** Period label, e.g. "1–7 Sep" or "September 2026". */
   label: string;
   /** Pre-formatted IST time, e.g. "7 Sep, 9:41 PM". */
   sentAtLabel: string;
 }
+
+/**
+ * Channel → label. A map rather than a ternary: with a third channel a
+ * `channel === "telegram" ? … : "WhatsApp"` fallback would silently render the
+ * daily feed as the weekly digest's channel.
+ */
+const CHANNEL_LABELS: Record<LastSend["channel"], string> = {
+  telegram: "Telegram",
+  whatsapp: "WhatsApp",
+  whatsapp_feed: "WhatsApp feed",
+};
 
 interface BaseProps {
   telegramConfigured: boolean;
@@ -253,7 +265,7 @@ export function DigestSettingsCard({ telegramConfigured, whatsappPhone, whatsapp
           <p className="text-xs font-medium text-muted-foreground">Last sent</p>
           {lastSends.map((s) => (
             <p key={s.channel} className="text-xs text-muted-foreground">
-              {s.channel === "telegram" ? "Telegram" : "WhatsApp"} · {s.label} · {s.sentAtLabel}
+              {CHANNEL_LABELS[s.channel]} · {s.label} · {s.sentAtLabel}
             </p>
           ))}
         </div>
@@ -326,7 +338,7 @@ export function DigestDashboardCard({ telegramConfigured, whatsappPhone, digestT
       {lastSends.length > 0 && (
         <p className="border-t pt-1.5 text-[11px] text-muted-foreground">
           Last sent:{" "}
-          {lastSends.map((s) => `${s.channel === "telegram" ? "Telegram" : "WhatsApp"} ${s.label} · ${s.sentAtLabel}`).join(" · ")}
+          {lastSends.map((s) => `${CHANNEL_LABELS[s.channel]} ${s.label} · ${s.sentAtLabel}`).join(" · ")}
         </p>
       )}
     </CardBody>

@@ -38,8 +38,16 @@ export type { DigestData, DigestKind, DigestPeriod } from "./digest-format";
  */
 export const DIGEST_SENT_KEY_PREFIX = "digest_sent:";
 
+/**
+ * A delivery channel. `whatsapp_feed` is the daily ledger-change feed
+ * (docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md) — a third channel sharing this
+ * history surface, recorded under its own `digest_sent:whatsapp_feed:<key>`
+ * namespace so it can never collide with the weekly/monthly WhatsApp digest.
+ */
+export type DigestChannel = "telegram" | "whatsapp" | "whatsapp_feed";
+
 export interface DigestSendRecord {
-  channel: "telegram" | "whatsapp";
+  channel: DigestChannel;
   /** The stored period key, e.g. "2026-09-01..2026-09-07". */
   periodKey: string;
   /** Human label, e.g. "1–7 Sep" or "September 2026". */
@@ -55,10 +63,18 @@ export async function getRecentDigestSends(): Promise<DigestSendRecord[]> {
     .from(appSettings)
     .where(like(appSettings.key, `${DIGEST_SENT_KEY_PREFIX}%`));
 
-  const latest = new Map<string, { periodKey: string; value: string }>();
+  const latest = new Map<DigestChannel, { periodKey: string; value: string }>();
   for (const row of rows) {
     const rest = row.key.slice(DIGEST_SENT_KEY_PREFIX.length);
-    const channel = rest.startsWith("telegram:") ? "telegram" : rest.startsWith("whatsapp:") ? "whatsapp" : null;
+    // Order matters: the more specific `whatsapp_feed:` must be tested BEFORE
+    // `whatsapp:`, or it would never match.
+    const channel: DigestChannel | null = rest.startsWith("whatsapp_feed:")
+      ? "whatsapp_feed"
+      : rest.startsWith("telegram:")
+        ? "telegram"
+        : rest.startsWith("whatsapp:")
+          ? "whatsapp"
+          : null;
     if (!channel) continue;
     const periodKey = rest.slice(channel.length + 1);
     const existing = latest.get(channel);
@@ -67,7 +83,7 @@ export async function getRecentDigestSends(): Promise<DigestSendRecord[]> {
 
   return Array.from(latest.entries())
     .map(([channel, rec]) => ({
-      channel: channel as "telegram" | "whatsapp",
+      channel,
       periodKey: rec.periodKey,
       label: periodKeyLabel(rec.periodKey),
       sentAt: rec.value,
