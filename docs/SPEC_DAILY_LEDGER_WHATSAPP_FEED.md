@@ -1371,11 +1371,12 @@ Add to `package.json`:
 > intentional.
 >
 > Expected result on a correctly configured deployment: **0 failures and `exit 0`**. The check
-> *count* varies and is not the thing to compare — 154 with an empty live window, 163 when the
-> live window has changes, because the message assertions then run for it as well as for the
-> pinned window.
+> *count* varies and is not the thing to compare — it grew from 154 to 163 when message
+> assertions ran for a non-empty live window as well as for the pinned one, and again to **166**
+> when the three auth probes were added. Compare *failures* and the exit code, never the count.
 >
-> **It passed against production on 18 September 2026, 163/163.** The live window happened to
+> **It passed against production on 18 September 2026 — most recently 166/166, `exit 0`.** (The
+> earlier run that day was 163/163, before the auth probes existed.) The live window happened to
 > hold two additions, so the route rendered a real 215-character message with the correct header
 > and italic label. Before that it was validated against a faithful stub — built on the app's
 > real `feedWindowForInstant`, `parseFeedKey` and `feedKeyHasEnded`, so the validator and the

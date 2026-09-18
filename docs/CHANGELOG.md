@@ -547,6 +547,29 @@ including that truncating mid-emoji drops the orphaned half of a surrogate pair)
 deployment predated the fix. That is the verifier confirming it can detect the defect rather than
 merely agreeing with the code.
 
+### Verification of the three above — 18 September 2026
+
+| Check | Result |
+|---|---|
+| `npm run typecheck` · `npm run lint` | clean |
+| `npm run test:agent-auth` | **37 checks** (new suite) |
+| `npm run test:ledger-feed` | **96 checks** (was 85) |
+| `npm run test:whatsapp-agent` | **51 checks** |
+| `npm run rehearse:whatsapp-agent` | **51 checks**, and mutation-tested |
+| `npm run test:digest` | **38 checks** |
+| `npm run verify:digest-feed` against **production** | **166 checks, 0 failures, exit 0** |
+| Vercel deployment for the last commit | **READY** |
+
+The live run is the one that matters for the endpoint change, because it is the only one that
+could contradict it: the same verifier reported the two new scheme probes as **failures** before
+the fix was deployed and **passes** after — the defect and its repair both observed, rather than
+inferred. The count moved 163 → 166 with the three auth probes, which is a third data point for
+the rule the spec already states: **compare failures and the exit code, never the count.**
+
+The phone remains the one thing none of this can verify. Every check above runs on a laptop;
+`--link`, `--groups`, delivery, the socket 401 path and the boot hook still need the device, which
+is what `docs/PHONE_SETUP_CHECKLIST.md` exists to make survivable.
+
 ---
 
 ## Master-password change retires existing sessions — 13 September 2026 (owner request)
