@@ -11,12 +11,93 @@ import { isAssignableCategory } from "@/db/category-mutations";
 import { paiseToDbString } from "@/lib/money";
 import { idSchema, transactionSchema, type TransactionInput } from "@/lib/validations";
 import { logActivity } from "@/db/activity-log";
+import { diffSnapshots, toSnapshot, type TransactionSnapshot } from "@/lib/transaction-diff";
 import { buildWhere, expandGroupFilter, listOrderBy, mapRow, PAGE_SIZE, receiptCountExpr, type Cursor, type TransactionListFilters } from "@/lib/query";
 import { getBudgetAlert } from "@/lib/budgets";
 import type { BudgetAlert } from "@/lib/budget-alert";
 import { isGenericNote } from "@/lib/generic-notes";
 import { pendingReviewWhere } from "@/lib/review-where";
 import { offlineTransactionId } from "@/lib/transaction-identity";
+
+/**
+ * Which writer produced an `update_transaction` entry — stored on the payload
+ * so the journal stays filterable, and rendered by nothing (the feed renders
+ * the changes themselves).
+ */
+type UpdateVia = "edit_sheet" | "assignment" | "bulk_assignment" | "bulk_category";
+
+/** The snapshot columns, selected identically wherever a pre-image is read. */
+const SNAPSHOT_COLUMNS = {
+  memberId: transactions.memberId,
+  categoryId: transactions.categoryId,
+  tag: transactions.tag,
+  amount: transactions.amount,
+  note: transactions.note,
+  date: transactions.date,
+  time: transactions.time,
+  splitWith: transactions.splitWith,
+};
+
+/**
+ * Pre-image read for the edit journal. One extra SELECT per mutation —
+ * acceptable at household scale, and the only way D4 ("before → after") is
+ * derivable, since `transactions` has no `updated_at` and cannot say WHAT
+ * changed.
+ */
+async function readSnapshots(ids: string[]): Promise<Map<string, TransactionSnapshot>> {
+  if (ids.length === 0) return new Map();
+  const rows = await db
+    .select({ id: transactions.id, ...SNAPSHOT_COLUMNS })
+    .from(transactions)
+    .where(inArray(transactions.id, ids));
+  return new Map(rows.map((row) => [row.id, toSnapshot(row)]));
+}
+
+/**
+ * §5.3 — append one `update_transaction` entry describing what a mutation
+ * actually changed. Best-effort, like every other audit write: a logging
+ * failure must never break the edit it records.
+ *
+ * Two rules make the journal trustworthy rather than noisy:
+ *   - a **no-op** edit (the sheet was re-saved unchanged, or a bulk assignment
+ *     re-applied the same members) logs **nothing**;
+ *   - a row that could not be read has no pre-image, so it logs nothing either.
+ */
+async function logTransactionEdits(args: {
+  via: UpdateVia;
+  entityId: string | null;
+  before: Map<string, TransactionSnapshot>;
+  after: Map<string, TransactionSnapshot>;
+  count?: number;
+}) {
+  const before: Record<string, TransactionSnapshot | null> = {};
+  const after: Record<string, TransactionSnapshot> = {};
+  const changed: Record<string, string[]> = {};
+
+  for (const [id, afterSnapshot] of args.after) {
+    const beforeSnapshot = args.before.get(id) ?? null;
+    const fields = diffSnapshots(beforeSnapshot, afterSnapshot);
+    if (fields.length === 0) continue;
+    before[id] = beforeSnapshot;
+    after[id] = afterSnapshot;
+    changed[id] = fields;
+  }
+  if (Object.keys(changed).length === 0) return;
+
+  try {
+    const cookieStore = await cookies();
+    const actor = cookieStore.get("active_member_id")?.value ?? null;
+    await logActivity({
+      action: "update_transaction",
+      entityType: "transaction",
+      entityId: args.entityId,
+      payload: { before, after, changed, via: args.via, ...(args.count === undefined ? {} : { count: args.count }) },
+      actor,
+    });
+  } catch {
+    // audit logging is best-effort
+  }
+}
 
 export async function createTransaction(raw: TransactionInput, clientId?: string) {
   const session = await auth();
@@ -133,11 +214,10 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
     if (!(await isAssignableCategory(db, data.categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
   }
 
-  const [existing] = await db
-    .select({ note: transactions.note })
-    .from(transactions)
-    .where(eq(transactions.id, idCheck.data));
-  const noteChanged = (existing?.note ?? null) !== (data.note ?? null);
+  // Pre-image for the edit journal — also supplies the note comparison the
+  // Review-queue behaviour below already depended on.
+  const before = await readSnapshots([idCheck.data]);
+  const noteChanged = (before.get(idCheck.data)?.note ?? null) !== (data.note ?? null);
 
   const [row] = await db
     .update(transactions)
@@ -160,6 +240,13 @@ export async function updateTransaction(id: string, raw: TransactionInput) {
     .returning();
 
   if (!row) return { ok: false as const, error: "Transaction not found" };
+
+  await logTransactionEdits({
+    via: "edit_sheet",
+    entityId: row.id,
+    before,
+    after: new Map([[row.id, toSnapshot(row)]]),
+  });
 
   revalidatePath("/");
   revalidatePath("/transactions");
@@ -203,12 +290,23 @@ export async function setTransactionAssignment(
     if (found.length !== unique.length) return { ok: false as const, error: "Unknown member" };
   }
 
+  const before = await readSnapshots([idCheck.data]);
   const [row] = await db
     .update(transactions)
     .set({ splitWith: unique, shared: unique.length > 0 })
     .where(eq(transactions.id, idCheck.data))
     .returning({ id: transactions.id });
   if (!row) return { ok: false as const, error: "Transaction not found" };
+
+  const prior = before.get(idCheck.data);
+  if (prior) {
+    await logTransactionEdits({
+      via: "assignment",
+      entityId: row.id,
+      before,
+      after: new Map([[idCheck.data, { ...prior, splitWith: unique }]]),
+    });
+  }
 
   revalidatePath("/");
   revalidatePath("/transactions");
@@ -247,11 +345,19 @@ export async function setTransactionsAssignment(
     if (found.length !== unique.length) return { ok: false as const, error: "Unknown member" };
   }
 
+  const before = await readSnapshots(checkedIds);
   const rows = await db
     .update(transactions)
     .set({ splitWith: unique, shared: unique.length > 0 })
     .where(inArray(transactions.id, checkedIds))
     .returning({ id: transactions.id });
+
+  const after = new Map<string, TransactionSnapshot>();
+  for (const row of rows) {
+    const prior = before.get(row.id);
+    if (prior) after.set(row.id, { ...prior, splitWith: unique });
+  }
+  await logTransactionEdits({ via: "bulk_assignment", entityId: null, before, after, count: rows.length });
 
   revalidatePath("/");
   revalidatePath("/transactions");
@@ -275,11 +381,19 @@ export async function assignCategory(ids: string[], categoryId: string | null): 
     if (!(await isAssignableCategory(db, categoryId))) return { ok: false as const, error: "Unknown or non-assignable category" };
   }
 
+  const before = await readSnapshots(checkedIds);
   const rows = await db
     .update(transactions)
     .set({ categoryId })
     .where(inArray(transactions.id, checkedIds))
     .returning({ id: transactions.id });
+
+  const after = new Map<string, TransactionSnapshot>();
+  for (const row of rows) {
+    const prior = before.get(row.id);
+    if (prior) after.set(row.id, { ...prior, categoryId });
+  }
+  await logTransactionEdits({ via: "bulk_category", entityId: null, before, after, count: rows.length });
 
   revalidatePath("/");
   revalidatePath("/transactions");
