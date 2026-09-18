@@ -219,6 +219,52 @@ endpoints, then the 22:15 fallback cron, then the card's third channel. The orde
 dependency order — the journal and the endpoints both build on the pure layer, and the fallback
 cron on the endpoints — so every commit typechecks on its own as it lands.
 
+### Follow-up — 18 September 2026: the master switch, and a runnable verifier
+
+Two gaps this feature left behind, closed in commits `bc74c71`…`77e880c`.
+
+**The master switch was unreachable.** §5.6 described `whatsapp_feed_enabled` as letting the
+owner silence the feed during a holiday "without touching the phone", and edge case E18
+described disabling it mid-month — but nothing in the app ever *wrote* that key. `isFeedEnabled()`
+is read by the endpoint and by the fallback cron, so the switch half worked; there was simply no
+way to flip it except inserting a row into `app_settings` by hand, which is precisely what the
+spec promised the owner would not have to do. It was found while reconciling the implementation
+against the spec, and it is the reason E18 had no user-facing procedure.
+
+Now: `setFeedEnabled()` writes the key, `saveFeedEnabled()` (a Server Action in
+`src/actions/digest.ts`) authenticates and validates it, and `DigestSettingsCard` renders a
+**Switch** seeded from the Settings page. It keeps its own component state, separate from the
+weekly digest's *"Automatic weekly digest"* switch, so neither delivery can mask the other's
+failure. Off silences the nightly post **and** the 22:15 fallback ping — a switch the owner
+flipped on purpose must not generate a nag.
+
+**The verification block became a script.** `npm run verify:digest-feed`
+(`scripts/digest-feed-check.mjs`) replaces the hand-run curls and adds what a person would not
+do by hand: the 22:00 IST boundary arithmetic is recomputed **independently** in the script and
+compared exactly at six pinned instants — exact boundary, one second before it, a late fire, 7 h
+late, month rollover and year rollover — plus the message contract, `?at` validation, `?dryRun`
+and the write-free POST paths.
+
+It deliberately **never POSTs `status: "sent"`**: that is the real confirmation path, and against
+a live window it would write the send marker, suppress that night's post and disable the
+fallback, with no delete endpoint to undo it. The `failed` branch is exercised instead, and its
+no-write guarantee is proved by reading `alreadySent`/`sentAt` before and after.
+
+A `503` is reported as its own diagnosis — *"the deployment has no `DIGEST_AGENT_TOKEN`"* —
+rather than as a bad token, which is the reason the route tells the two apart at all.
+
+**Verified:** `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed` (68/68) and
+`npm run test:digest` (38/38) all green. The verifier was exercised against a stub built on the
+app's real `feedWindowForInstant`: **150 checks pass**, while a shifted window, an unbalanced
+markdown marker and an unconfigured token each fail with exit 1 and the offending check named.
+That rehearsal caught two bugs **in the script itself** — `Intl` renders September as `Sept`
+where date-fns' `MMM` gives `Sep` (four letters against three, so the label check failed on every
+September window), and `process.exit(1)` called while a fetch socket is still closing trips a
+libuv assertion on Windows (`UV_HANDLE_CLOSING`), aborting with exit 127 instead of 1.
+
+**Still outstanding:** `DIGEST_AGENT_TOKEN` on Vercel — without it the verifier can only reach
+the `503` — and the phone agent (`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`).
+
 ---
 
 ## Master-password change retires existing sessions — 13 September 2026 (owner request)

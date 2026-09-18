@@ -841,6 +841,31 @@ Read/written through `getAppSetting` / `setAppSetting` from
 the weekly/monthly digest and its keys are `start..end` **date** ranges. The daily feed uses
 a distinct channel segment so the two histories cannot collide.
 
+#### 5.6.2 The master switch is editable from Settings — implemented 18 September 2026
+
+> The switch was **read-only** when the feature first landed: `isFeedEnabled()` was called by
+> both the endpoint and the fallback cron, but nothing in the app ever wrote the key. So the row
+> above promised *"the owner silences the feed without touching the phone"* and edge case E18
+> (*"owner disables the feed mid-month"*) described a state that could only be reached by
+> inserting a row into `app_settings` by hand. Both were aspirational, not implemented.
+>
+> Now wired end to end:
+>
+> 1. **`setFeedEnabled(enabled)`** in `src/lib/ledger-feed.ts` writes `'1'`/`'0'` — the same
+>    encoding as `whatsapp_digest_enabled` and `exclude_bills`, and the reason a missing row
+>    still means **on** (only the literal `'0'` is off).
+> 2. **`saveFeedEnabled()`** in `src/actions/digest.ts` authenticates, validates against
+>    `setFeedEnabledSchema` (`src/lib/validations.ts`) and revalidates `/settings` and `/`.
+> 3. **`DigestSettingsCard`** renders a **Switch** at the bottom of the card, seeded by
+>    `isFeedEnabled()` from `src/app/(app)/settings/page.tsx`.
+>
+> It keeps its **own state**, separate from the existing *"Automatic weekly digest"* toggle: the
+> two are independent deliveries and neither may mask the other's failure.
+>
+> Off silences **both** the agent's post and the 22:15 fallback ping — a switch the owner flipped
+> deliberately must not produce a nag (E18). Both readers consult the key live on every run, so
+> turning it off or on needs no redeploy and no change on the phone.
+
 #### 5.6.1 Surfacing it on the digest card (D11)
 
 `src/lib/digest.ts` currently exposes:
@@ -1233,7 +1258,48 @@ Add to `package.json`:
 - each tracked field in isolation;
 - a null pre-image does not throw.
 
-Manual verification (document the exact commands in the agent README):
+#### Live verification — `npm run verify:digest-feed`
+
+> **Implemented 18 September 2026** — `scripts/digest-feed-check.mjs`, run as
+> `npm run verify:digest-feed`. Needs `PROD_URL` and `DIGEST_AGENT_TOKEN` (the same value set on
+> Vercel); `.env.local` is loaded through `loadLiveEnv()`, the shared convention of the repo's
+> live-site scripts.
+>
+> It checks, over real HTTP:
+>
+> 1. **Auth** — unauthenticated and wrong-token calls are `401`; a `503` is reported as its own
+>    diagnosis (*"the deployment has no `DIGEST_AGENT_TOKEN`"*) rather than as a bad token, which
+>    is the whole point of the route distinguishing them.
+> 2. **Window math** — `?at=` pins the instant, and the returned window is compared against an
+>    **independent reimplementation** in the script (fixed +05:30; India has no DST) at six
+>    instants: exactly on the boundary, one second before it, a late fire, 7 h after a boundary,
+>    month rollover and year rollover. The label is compared exactly, and the
+>    one-second-before/late-fire rules are asserted as relations (`≠` the previous window, `=` the
+>    boundary's key).
+> 3. **Freshness** — `stale` is false on the boundary and true 7 h later.
+> 4. **Message contract** — header, italic label matching the window in the same response,
+>    balanced `*` markers, the character cap, section presence driven by the returned counts, and
+>    the additions-only total present exactly when there are additions.
+> 5. **Argument handling** — `?at` without an offset and `?at=garbage` are `400`; `?dryRun=1` is
+>    accepted and changes nothing; a malformed `windowKey`, an unknown `status` and a non-JSON
+>    body are `400`; `status: "failed"` records nothing, proved by reading the window's
+>    `alreadySent`/`sentAt` before and after.
+>
+> **What it deliberately does NOT do: `POST` with `status: "sent"`.** That is the real
+> confirmation path, and against a live window it would write the send marker — suppressing
+> tonight's post and disabling the 22:15 fallback, with no delete endpoint to undo it. The
+> writing path is therefore confirmed by the agent's first real post (see
+> `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §7), not by this script. The `failed` branch it *does*
+> exercise makes the deployment log one line, carrying a detail string that says it was
+> intentional.
+>
+> Expected result on a correctly configured deployment: **150 checks, 0 failures, exit 0**. It
+> was validated against a faithful stub (all 150 pass) and against stubs with a shifted window,
+> an unbalanced markdown marker and no configured token (each fails, exit 1, naming the check).
+> It has **not** yet been run against production, because the Vercel variable above is still
+> unset — until then it stops at the `503`. Run it once that variable exists.
+
+The equivalent one-off checks, kept for a manual look:
 
 ```bash
 # 200 with text
@@ -1399,7 +1465,11 @@ Therefore, as part of this work:
 
 - [x] `src/app/api/digest/day/route.ts` — `GET` + `POST`, token auth, `force-dynamic`.
 - [ ] `DIGEST_AGENT_TOKEN` set on Vercel. *(Owner action — without it both routes answer `503`.)*
-- [ ] curl-verify `401` unauthenticated and `200` with text.
+- [ ] curl-verify `401` unauthenticated and `200` with text — ✅ **made runnable 18 September
+      2026** as `npm run verify:digest-feed` (`scripts/digest-feed-check.mjs`, §8), covering the
+      auth pair plus the pinned-instant window math and the message contract. **Still unrun
+      against production**: it needs `DIGEST_AGENT_TOKEN` in `.env.local`, and that value only
+      exists once the Vercel variable above is set.
 
 **Phase 5 — fallback** — ✅ **done 18 September 2026**
 
@@ -1412,6 +1482,8 @@ Therefore, as part of this work:
 
 - [x] Extend `getRecentDigestSends()` with the third channel (§5.6.1).
 - [x] Update `digest-card.tsx` to render it as **"WhatsApp feed"** (channel→label map).
+- [x] **Extension (second pass, 18 September 2026):** the master switch became editable from
+      Settings, closing the gap where §5.6/E18 described a state nothing could reach — see §5.6.2.
 
 **Phase 7 — the agent** — ⬜ **not started** (phone side only)
 
