@@ -1061,6 +1061,8 @@ tools/whatsapp-agent/
 ├── agent.mjs            # the agent
 ├── agent-test.ts        # repo-side contract test — npm run test:whatsapp-agent (from the
 │                        #   repo root; not shipped to the phone)
+├── rehearse.mjs         # laptop rehearsal vs a local stub — npm run rehearse:whatsapp-agent
+│                        #   (no network, no Baileys, no WhatsApp)
 ├── package.json         # dependencies — baileys, and deliberately nothing else. The logger
 │                        #   is ~20 lines in agent.mjs; no logging dependency is needed
 ├── .npmrc               # legacy-peer-deps — a DELIVERABLE, not a convenience: it keeps
@@ -1588,7 +1590,8 @@ work left**
 - [x] `.gitignore` entries for `config.json`, `auth/`, `sent/` — **done 18 September 2026**.
       Still **verify with `git status`** before any commit that touches that directory.
 - [x] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5** — **done**, including the
-      repo-side contract test (`npm run test:whatsapp-agent`, **51 assertions**, green).
+      repo-side contract test (`npm run test:whatsapp-agent`, **51 assertions**) and the laptop
+      rehearsal (`npm run rehearse:whatsapp-agent`, **51 checks**), both green.
 - [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →
       JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`.

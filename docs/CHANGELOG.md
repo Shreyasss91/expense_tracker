@@ -447,6 +447,37 @@ plan's §3 steps in order. The plan (§2.1, §7, §11) and the feature spec (§6
 updated to say exactly that rather than leaving Phase 7 reading "not started" or, worse,
 implying it was verified.
 
+### A laptop rehearsal for the phone agent — 18 September 2026
+
+The gap between "the agent's pure functions are tested" and "the agent works" was the whole
+agent: its exit codes, its status handling, its ladder, its lock. All of that needed a phone to
+observe, which meant it would first be observed at 22:00 on Dad's device. So
+`tools/whatsapp-agent/rehearse.mjs` runs the **real agent, unmodified**, against a **local stub
+server** — no WhatsApp account, no Baileys install, no network.
+
+**51 checks**, covering what only a running agent can show:
+
+| Area | What is asserted |
+|---|---|
+| Config and args | Exit `2` for a missing `config.json`, a `phone` with `+`/spaces, and `--at` without an offset — each with a message naming the rule, and no request made |
+| API status | `401` and `503` exit `4` (fatal, never a retry loop); a `500` exits `0` and feeds the ladder |
+| Ladder persistence | A **second process** does not re-arm it — it waits for `nextAttemptAt`, and across both runs there is exactly **one** fetch |
+| Gate outcomes | Empty, disabled, stale and already-recorded are distinguished, and each writes **no marker** under `--dry-run` |
+| `--dry-run` is inert | Renders and prints the server's text verbatim, writes no marker, sends no confirmation, releases the lock |
+| Key mismatch | A server key for a different window is logged loudly with both keys, rather than posted |
+| Single instance | A second process exits `7`, and the first still finishes and releases the lock |
+| Log hygiene | The token never appears in a log line |
+
+**It is mutation-tested, because a suite that cannot fail is not evidence.** Sabotaging `finish()`
+so it writes a marker even under `--dry-run` makes it fail with exit `1`, naming exactly the four
+broken assertions. The mutation was reverted and verified byte-identical afterwards.
+
+**What it deliberately does not claim.** The stub returns fixed bodies, so this is not a server
+test — that stays `verify:digest-feed`'s job, and the window contract stays `agent-test.ts`'s (the
+stub recomputes the boundary independently, so a gross error would still surface as a logged
+mismatch). And it cannot reach linking, delivery, the socket 401 path or the boot hook: those
+remain the plan's §7 acceptance tests **on the device**. Its own closing line says so.
+
 ### The feed endpoint's remaining review findings closed — 18 September 2026
 
 The auth review recorded five open findings. Three were real defects rather than judgement calls,

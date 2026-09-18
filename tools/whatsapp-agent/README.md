@@ -281,21 +281,29 @@ is ever delivered.
 
 ## Verifying it
 
-**From the repository root**, this pins the agent's window arithmetic to the server's real
-implementation — the one contract that, if broken, silently double-posts a night:
+**Before anything touches the phone**, two commands from the repository root cover everything
+that can be checked without a WhatsApp account.
 
 ```sh
-npm run test:whatsapp-agent
+npm run test:whatsapp-agent     # pins the window maths to the server's real implementation
+npm run rehearse:whatsapp-agent # runs the real agent against a local stub server
 ```
 
-It compares the two implementations at hand-picked edge instants (boundaries, one millisecond
-either side, month/year rollovers, leap days) and over 400 seeded random instants, then covers
-the retry ladder, the pre-network gate, config validation and CLI parsing. It needs a repo
-checkout, not the phone.
+**The contract test** covers the one thing that, if broken, silently double-posts a night:
+`windowKeyFor(lastBoundary(t))` must equal the server's `feedWindowForInstant(t).key`
+byte-for-byte. It compares the two implementations at hand-picked edge instants (boundaries, one
+millisecond either side, month/year rollovers, leap days) and over 400 seeded random instants,
+then covers the retry ladder, the pre-network gate, config validation and CLI parsing.
 
-Then the plan's [§7 acceptance tests](../../docs/PLAN_WHATSAPP_AGENT_TERMUX.md), which are the
-part no unit test can reach: linking, a real send into a **test group**, a reboot, the lock, and
-the 401 path. Rehearse against a **past** window so tonight's genuine post is untouched.
+**The rehearsal** starts a stub server and runs the actual agent against it, checking the whole
+decision path: exit codes, `401`/`503` versus a transient `500`, the ladder surviving a restart,
+the four gate outcomes, that `--dry-run` writes nothing, a window-key mismatch, and the lock
+refusing a second process. No network, no Baileys, no WhatsApp.
+
+What neither can reach is the part only the phone can prove: **linking, delivery, the socket 401
+path and the boot hook.** Those are the plan's
+[§7 acceptance tests](../../docs/PLAN_WHATSAPP_AGENT_TERMUX.md). Rehearse against a **past**
+window so tonight's genuine post is untouched.
 
 ---
 

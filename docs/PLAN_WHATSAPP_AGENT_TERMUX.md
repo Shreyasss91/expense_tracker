@@ -79,6 +79,7 @@ tools/whatsapp-agent/
 ├── README.md            # the human-facing setup, distilled from §3 below
 ├── agent.mjs            # the agent (§5)
 ├── agent-test.ts        # repo-side contract test — `npm run test:whatsapp-agent` (§7)
+├── rehearse.mjs         # laptop rehearsal vs a stub — `npm run rehearse:whatsapp-agent` (§7)
 ├── package.json         # dependencies: baileys, and deliberately nothing else
 ├── .npmrc               # `legacy-peer-deps` — keeps `sharp` out of the install (§3.4)
 ├── config.example.json  # committed template — placeholders only
@@ -884,6 +885,30 @@ or a device.
 
 It is not a substitute for the table below. It cannot reach linking, sending, the socket 401
 path, the boot hook, or anything about WhatsApp itself — only these acceptance tests can.
+
+**Second, still needing no phone — the rehearsal:**
+
+```sh
+npm run rehearse:whatsapp-agent     # from the REPOSITORY ROOT
+```
+
+**51 checks.** It runs the **real agent, unmodified**, against a **local stub server**, so the
+agent's whole decision path can be watched before anyone touches Dad's phone: config and argument
+validation (exit `2`), the API status handling (`401`/`503` fatal at exit `4`, a `500` fed to the
+ladder instead), the ladder **persisting across a process boundary** — which is the property that
+makes `start.sh`'s restart safe — the four gate outcomes (empty, disabled, stale,
+already-recorded) each distinguished, `--dry-run` proven inert (no marker, no confirmation POST),
+a window-key mismatch logged loudly, the lock refusing a second process with exit `7` and being
+released afterwards, and the token never appearing in a log line.
+
+It needs **no WhatsApp account, no Baileys install and no network.** It is also mutation-tested:
+sabotaging `finish()` so a dry run writes a marker makes it fail with exit `1` and names the four
+broken assertions — a suite that cannot fail is not evidence.
+
+What it does **not** cover, and must not be read as covering: linking, delivery, the socket 401
+path and the boot hook. It also does not validate the server — the stub returns fixed bodies, and
+the server's real behaviour is `verify:digest-feed`'s job while the window contract is
+`agent-test.ts`'s.
 
 #### Acceptance tests
 
