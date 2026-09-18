@@ -7,7 +7,7 @@
 | **Feature owner decision** | Yes — every clause below is an owner decision or a consequence of one |
 | **Supersedes** | Nothing. This is **additive**; the existing weekly/monthly digest (§6.8) is untouched |
 | **Audience** | AI code generators / LLMs / development agents. This document is written to be **self-sufficient** — a fresh agent should be able to implement the whole feature from this file plus the codebase |
-| **Companion files** | `docs/SPEC.md` (frozen master spec), `docs/CHANGELOG.md` (amendment log), `docs/AUDIT-2026-09-17.md` |
+| **Companion files** | `docs/SPEC.md` (frozen master spec), `docs/CHANGELOG.md` (amendment log), `docs/AUDIT-2026-09-17.md`, and **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`** (the device-level plan + runbook for Part B) |
 
 > **Read this first.** `docs/SPEC.md` is **FROZEN**. Do not edit it. Every deviation this
 > feature introduces is recorded in `docs/CHANGELOG.md`, per that file's stated governance
@@ -930,6 +930,13 @@ different triggers (calendar periods vs. rolling 24 h) and different transports.
 
 ## 6. Part B — The Phone Agent (Termux + Baileys)
 
+> **The device-level implementation plan and operational runbook live in
+> `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`** — phone app installs, Samsung's background-killer
+> settings, the module breakdown, the group-JID discovery run, the scheduler, the retry
+> ladder, the acceptance tests and the failure runbook. This section defines only the
+> **behavioural contract**; where the two disagree on a device detail, the plan document wins.
+> In particular the plan document **supersedes §6.5's QR default** — see its §1.1.
+
 ### 6.1 What it is
 
 A small long-running Node script on Dad's Android phone that:
@@ -949,6 +956,7 @@ tools/whatsapp-agent/
 ├── config.example.json  # committed template (no secrets)
 ├── config.json          # gitignored — real token + group JID
 ├── start.sh             # wake-lock + restart loop
+├── boot/termux-boot.sh  # copy of the Termux:Boot script (survive a reboot)
 ├── auth/                # gitignored — Baileys multi-file session state
 └── sent/                # gitignored — local anti-double-post markers
 ```
@@ -974,35 +982,59 @@ tools/whatsapp-agent/
 - `token` must be `chmod 600 config.json`.
 - `timezone` is explicit so the schedule does not depend on the phone's locale.
 
-### 6.4 One-time setup (documented in the README)
+### 6.4 One-time setup
+
+The **authoritative, ordered, step-by-step version is
+`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §3** (target device: Dad's Samsung, One UI). Summary of
+what it entails and the points this section makes normative:
 
 1. Install **Termux from F-Droid or GitHub** — **not** the Play Store build, which is
-   deprecated and will not install the current Node.
-2. `pkg update && pkg upgrade`
-3. `pkg install nodejs-lts git`
-4. `git clone` the repo (or copy the `tools/whatsapp-agent` folder).
-5. `npm install` inside the agent folder (deps: `baileys`; no native build is needed —
-   Baileys is pure JavaScript, which is precisely why it works on Termux).
-6. `cp config.example.json config.json` and fill in `apiUrl`, `token`, and later `groupJid`.
-   `chmod 600 config.json`.
-7. Create the dedicated WhatsApp group from Dad's phone with Mom and Son.
-8. Run `node agent.mjs --groups` once — it links (QR or pairing code) and prints
-   `name → jid` for every group. Paste the intended group's JID into `config.json`.
-9. Disable battery optimisation for Termux (Android Settings → Apps → Termux → Battery →
-   Unrestricted). **Without this, Android will kill the process and the post silently stops.**
+   deprecated and will not install a current Node. Also install **Termux:Boot** from the
+   *same* source (it only works when both come from the same place).
+2. `pkg update && pkg upgrade`, then `pkg install nodejs-lts git`.
+3. `git clone` the repo (or copy the `tools/whatsapp-agent` folder), then `npm install`
+   inside it. Dependencies are **`baileys`** (pure JavaScript — no native build, which is
+   precisely why this works on Termux) plus a logger such as `pino`. Verify the current
+   package name at install time; the library has moved between `baileys` and
+   `@whiskeysockets/baileys` over its history.
+4. `cp config.example.json config.json`, fill in `apiUrl` + `token`, then
+   **`chmod 600 config.json`**.
+5. Create the dedicated WhatsApp group **from Dad's phone** with Mom and Son.
+6. **Link by pairing code** — `node agent.mjs --link`. A QR is impossible here and is not
+   offered (§6.5).
+7. **Discover the group JID** — `node agent.mjs --groups` — and paste it into `config.json`.
+8. Apply the Android background-killer settings. On **Samsung (One UI)** this is more than a
+   battery-optimisation exemption: Termux must be **Unrestricted**, absent from *Sleeping
+   apps* and present in *Never sleeping apps*, exempt from *Put unused apps to sleep*, and
+   **kept open** from the Recents card. The full table is in the plan document §3.2.
+9. Install the **Termux:Boot** hook so a reboot cannot silently stop the feed, and **launch the
+   Termux:Boot app at least once** — it does nothing until it has been opened. Test it by
+   rebooting (plan document §7, Test 7).
 10. Start it: `./start.sh` (which takes a `termux-wake-lock` first).
+
+> **Normative:** the boot hook is **not optional**. Without it, a phone reboot or an overnight
+> system update stops the nightly post until a human notices — and the only signal is an
+> absence.
 
 ### 6.5 Agent behaviour — normative
 
-#### Linking
+#### Linking — pairing code only (supersedes the earlier QR default)
 
 - Use Baileys' `useMultiFileAuthState("auth")` so the session survives restarts.
-- Prefer **QR** by default; support `--pair` to use a **pairing code** against Dad's number,
-  which is easier to complete from the same phone.
+- **Link with a pairing code, never a QR.** The agent runs on Dad's phone, and a QR rendered
+  by Termux *on that phone* cannot be scanned by that same phone. `node agent.mjs --link`
+  requests a code for Dad's number (E.164 digits, **no leading `+`**) and prints an 8-digit
+  value to be typed into WhatsApp → Linked devices → *Link with phone number instead*. The
+  agent exposes **no QR mode** — an unsupported mode is worse than a missing one.
+- Linking is **one-time**; the session persists in `auth/` across restarts, reboots and
+  config edits. Only a WhatsApp-side unlink requires re-running `--link`.
 - On `connection.update` with `connection: "close"` and a **401**, the session has been
   invalidated (WhatsApp unlinked the device). Do **not** retry in a loop — log a clear
-  "re-link required" message and exit non-zero so the operator sees it.
-- For any other close reason, reconnect with exponential backoff.
+  `RE-LINK REQUIRED` line and exit with a **distinct non-zero code** so `start.sh` can refuse
+  to restart it (a silent retry loop against a dead session looks identical to a healthy
+  agent, which is the worst possible failure mode).
+- For any other close reason, reconnect with exponential backoff (≈5 s doubling to a 5 min
+  cap).
 
 #### Scheduling
 
@@ -1012,7 +1044,18 @@ tools/whatsapp-agent/
   22:00 IST and is there no local marker for this window?" — this makes the agent
   self-healing if the timer was suspended while the phone slept.
 - Compute the IST boundary the same way the app does (via a timezone-aware conversion). Do
-  not trust `new Date().getHours()`, which follows the *device* timezone.
+  not trust `new Date().getHours()`, which follows the *device* timezone. India has no DST, so
+  the offset is a constant — but it is applied explicitly, never read from the device.
+- **Retry ladder (owner decision):** a transient failure retries at **≈2, 5, 15 and 30
+  minutes**, then stops for the night. A `401` or `503` is **never** retried — a wrong or
+  absent token cannot fix itself. The ladder intentionally extends past the 22:15 fallback
+  push: a late post plus a nudge beats a silent loss.
+- **A failed send must write no marker at all.** Writing a marker for a failed send would
+  suppress both the retries and the fallback push — the single worst bug this agent could
+  have.
+
+> The full scheduler — the self-healing tick, the boundary helper, and why
+> `termux-job-scheduler` is rejected — is `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §6.
 
 #### One run
 
@@ -1283,8 +1326,10 @@ Therefore, as part of this work:
 
 - [ ] `tools/whatsapp-agent/` (agent, config template, start.sh, README).
 - [ ] `.gitignore` entries — **verify with `git status`**.
-- [ ] On the phone: F-Droid Termux → Node → link → `--groups` → JID → battery exemption →
-      `./start.sh`.
+- [ ] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5**.
+- [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
+      Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →
+      JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`.
 
 **Phase 8 — documentation**
 

@@ -85,6 +85,15 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   Baileys companion-device agent on Dad's Android phone**, posting from Dad's own number —
   which is also the lowest-ban-risk form of an unofficial session, since it behaves as an
   ordinary linked device from a residential IP rather than from a datacenter.
+- **Phone-side plan and runbook:** `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`. Three binding
+  decisions were taken while planning the device: linking uses a **pairing code, never a QR**
+  (a QR rendered by Termux on Dad's phone cannot be scanned by that same phone — this
+  **supersedes** the earlier "prefer QR by default" wording); **Termux:Boot is installed** so a
+  reboot or overnight update cannot silently stop the feed; and a transient send failure
+  retries at **≈2 / 5 / 15 / 30 minutes, then stops for the night**, while a `401` or `503` is
+  never retried. The target is Dad's **Samsung** (One UI), which needs more than a
+  battery-optimisation exemption: Unrestricted battery, absent from *Sleeping apps*, exempt
+  from *Put unused apps to sleep*, and kept open from the Recents card.
 - **Missed windows are never back-filled.** A window that has gone stale is still rendered
   and returned (so it stays debuggable and curl-testable) but the agent refuses to post it;
   the 22:15 push is what surfaces the miss.
