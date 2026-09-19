@@ -85,6 +85,16 @@ const LINK_OPEN_TIMEOUT_MS = 5 * 60_000;
 const FETCH_TIMEOUT_MS = 20_000;
 
 /**
+ * Cap on the outgoing-message store. Exactly ONE message is sent per night and
+ * WhatsApp's retry request arrives within seconds of the send, so 50 entries is
+ * years of headroom while keeping the map bounded on a phone.
+ */
+const OUTGOING_MESSAGE_CACHE_MAX = 50;
+
+/** Cached group metadata is trusted for this long before Baileys refetches it. */
+const GROUP_METADATA_TTL_MS = 5 * 60 * 1000;
+
+/**
  * Shown in WhatsApp's Linked-devices list. A truthful desktop-ish name is better
  * than a fake one — the household will see this entry and may want to remove it.
  */
@@ -464,6 +474,89 @@ function clearState(key) {
   }
 }
 
+/* ---------------------------------------------------- Baileys-side caches --- */
+
+/**
+ * Outgoing messages by id, so Baileys can answer WhatsApp's "resend that".
+ *
+ * A redelivery needs the ORIGINAL message returned by id. Without it the retry
+ * cannot happen — and the dangerous part is how that looks from here:
+ * `sendMessage()` resolves either way, so `tick()` would write the local marker
+ * and POST `status: "sent"` for a message that never reached the group, while
+ * the 22:15 fallback stayed silent because the server now has a record. That is
+ * exactly the silent miss this feature exists to prevent.
+ */
+const sentMessages = new Map();
+
+/** Remember a sent message for the retry path. Exported for the repo-side test. */
+export function rememberMessage(message) {
+  const id = message?.key?.id;
+  if (typeof id !== "string" || id.length === 0) return;
+  sentMessages.set(id, message);
+  while (sentMessages.size > OUTGOING_MESSAGE_CACHE_MAX) {
+    const oldest = sentMessages.keys().next().value;
+    sentMessages.delete(oldest);
+  }
+}
+
+/** The stored message for a retry, or `undefined` (Baileys then cannot resend). */
+export function messageForRetry(id) {
+  return sentMessages.get(id);
+}
+
+/**
+ * A `Map`-backed stand-in for Baileys' `msgRetryCounterCache`.
+ *
+ * Baileys wants an object with `get`/`set`/`del`/`flushAll`. The counter it keeps
+ * is consulted on every retry, so it belongs with `getMessage` above — and one
+ * Map costs nothing next to a dependency on a phone.
+ */
+export function createCacheStore() {
+  const store = new Map();
+  return {
+    get: (key) => store.get(key),
+    set: (key, value) => {
+      store.set(key, value);
+    },
+    del: (key) => {
+      store.delete(key);
+    },
+    flushAll: () => {
+      store.clear();
+    },
+  };
+}
+
+const msgRetryCounterCache = createCacheStore();
+
+/**
+ * Group metadata by JID.
+ *
+ * A group send builds its encryption envelope from the participant list, and
+ * without this cache Baileys asks WhatsApp for that list on EVERY send — which
+ * upstream calls "one of the most common causes of group message failures". A
+ * miss, or an entry past the TTL, returns `undefined`: that is Baileys'
+ * documented fallback, and it does the live fetch itself.
+ */
+const groupMetadataCache = new Map();
+
+function readCachedGroupMetadata(jid) {
+  const hit = groupMetadataCache.get(jid);
+  if (!hit) return undefined;
+  return Date.now() - hit.at < GROUP_METADATA_TTL_MS ? hit.meta : undefined;
+}
+
+/** Refresh one group's metadata. Best-effort — a failure only costs a live fetch later. */
+async function warmGroupMetadata(sock, jid) {
+  if (!jid) return;
+  try {
+    const meta = await sock.groupMetadata(jid);
+    if (meta) groupMetadataCache.set(jid, { meta, at: Date.now() });
+  } catch (err) {
+    log("warn", `could not cache group metadata for ${jid}: ${String(err?.message ?? err).slice(0, 120)}`);
+  }
+}
+
 /* ------------------------------------------------------------- Baileys ------ */
 
 async function loadBaileys() {
@@ -490,7 +583,7 @@ function isLoggedOut(update) {
  * failure mode available here (plan §5.3). `closed` resolves on any other close
  * so the caller can reconnect with backoff.
  */
-async function openSocket({ onQr }) {
+async function openSocket({ onQr, groupJid = null }) {
   const { default: makeWASocket, useMultiFileAuthState } = await loadBaileys();
   // `useMultiFileAuthState` is Baileys' own API name, not a React hook — the
   // `use` prefix trips `react-hooks/rules-of-hooks` in a repo that lints .mjs.
@@ -505,6 +598,15 @@ async function openSocket({ onQr }) {
     logger: baileysLogger,
     browser: BAILEYS_BROWSER,
     syncFullHistory: false,
+    // Retry support. WhatsApp's redelivery path needs the original message back
+    // and the counter cache is the other half of the same handshake; without
+    // both, a failed delivery is indistinguishable from a delivered one — see
+    // `rememberMessage` above.
+    getMessage: async (key) => messageForRetry(key?.id),
+    msgRetryCounterCache,
+    // A group send would otherwise re-fetch the participant list from WhatsApp
+    // every time (see `groupMetadataCache`).
+    cachedGroupMetadata: async (jid) => readCachedGroupMetadata(jid),
     // Never `printQRInTerminal`: a QR shown on this phone cannot be scanned by
     // this phone (plan §1.1).
   });
@@ -521,6 +623,15 @@ async function openSocket({ onQr }) {
     resolveClose = resolve;
   });
 
+  // Keep the cached metadata honest: a membership change is exactly when a stale
+  // participant list would produce an envelope WhatsApp cannot deliver.
+  sock.ev.on("groups.update", ([event]) => {
+    if (groupJid && event?.id === groupJid) void warmGroupMetadata(sock, groupJid);
+  });
+  sock.ev.on("group-participants.update", (event) => {
+    if (groupJid && event?.id === groupJid) void warmGroupMetadata(sock, groupJid);
+  });
+
   sock.ev.on("connection.update", (update) => {
     if (update.qr) {
       // Used purely as a TRIGGER for requestPairingCode — the string is never
@@ -529,6 +640,9 @@ async function openSocket({ onQr }) {
     }
     if (update.connection === "open") {
       log("info", `connected as ${maskPhone(sock.user?.id?.split(":")[0] ?? "")}`);
+      // Warm the cache for the one group this agent posts to, so the 22:00 send
+      // does not pay for a live participant fetch.
+      void warmGroupMetadata(sock, groupJid);
       resolveOpen();
       return;
     }
@@ -536,6 +650,18 @@ async function openSocket({ onQr }) {
       if (isLoggedOut(update)) {
         log("error", "RE-LINK REQUIRED: run 'node agent.mjs --link'");
         process.exit(EXIT.RELINK);
+      }
+      // 403 is the close WhatsApp uses when it refuses the session outright —
+      // the restriction risk the plan accepts for Dad's primary number. It is
+      // deliberately NOT terminal (upstream: "any other error is safe to
+      // retry", and only a 401 means the device was unlinked), so the reconnect
+      // loop stays; but it must be greppable, because a restricted number is not
+      // a flaky network and the two need different fixes.
+      if (update.lastDisconnect?.error?.output?.statusCode === 403) {
+        log(
+          "error",
+          "WhatsApp REFUSED the session (403 forbidden) — the linked number may be restricted. Retrying, but this is not a network problem.",
+        );
       }
       log("warn", `socket closed (${update.lastDisconnect?.error?.message ?? "unknown reason"})`);
       rejectOpen(new Error("socket closed before it opened"));
@@ -719,7 +845,10 @@ async function tick(ctx, { dryRun = false } = {}) {
   }
 
   try {
-    await ctx.sock.sendMessage(ctx.cfg.groupJid, { text: body.text });
+    // Remember it BEFORE confirming: a retry request can arrive while this tick
+    // is still in flight, and whether the message can be re-sent must not depend
+    // on the confirmation below having finished.
+    rememberMessage(await ctx.sock.sendMessage(ctx.cfg.groupJid, { text: body.text }));
   } catch (err) {
     // No marker on a failed send: that would suppress both the remaining retries
     // and the fallback push.
@@ -744,7 +873,7 @@ async function runOnce(cfg, args) {
     return EXIT.OK;
   }
 
-  const conn = await openSocket({});
+  const conn = await openSocket({ groupJid: cfg.groupJid });
   try {
     await conn.opened;
   } catch {
@@ -871,7 +1000,7 @@ async function maintainSocket(ctx) {
   let attempt = 0;
   for (;;) {
     try {
-      const conn = await openSocket({});
+      const conn = await openSocket({ groupJid: ctx.cfg.groupJid });
       ctx.sock = conn.sock;
       await conn.opened;
       ctx.isOpen = () => true;

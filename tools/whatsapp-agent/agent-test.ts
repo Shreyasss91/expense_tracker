@@ -23,12 +23,15 @@
 import { feedWindowForInstant } from "../../src/lib/ledger-feed-window";
 import {
   advanceLadder,
+  createCacheStore,
   freshState,
   gateFor,
   lastBoundary,
   maskPhone,
+  messageForRetry,
   nextBoundary,
   parseArgs,
+  rememberMessage,
   RETRY_OFFSETS_MIN,
   validateConfig,
   windowKeyFor,
@@ -279,6 +282,46 @@ for (const [label, argv, needle] of badArgs) {
   const result = parseArgs(argv) as { error?: string };
   check(Boolean(result.error?.includes(needle)), `${label} is refused (${result.error?.slice(0, 60)})`);
 }
+
+/* ------------------------------------------------- the Baileys-side caches -- */
+
+console.log("\nOutgoing-message store (the retry path)");
+
+const sent = { key: { id: "3EB0ABCDEF", remoteJid: "1203630@g.us" }, message: { conversation: "hello" } };
+check(messageForRetry("3EB0ABCDEF") === undefined, "an unknown id answers undefined");
+rememberMessage(sent);
+check(messageForRetry("3EB0ABCDEF") === sent, "a remembered message comes back by id — this is what a retry needs");
+rememberMessage({ key: {} });
+rememberMessage({});
+check(messageForRetry(undefined) === undefined, "a message with no id is ignored, not stored under undefined");
+rememberMessage({ key: { id: "3EB0ABCDEF" }, message: { conversation: "replacement" } });
+check(
+  messageForRetry("3EB0ABCDEF").message.conversation === "replacement",
+  "re-sending under the same id replaces the stored message",
+);
+
+// The bound is what keeps a months-long run from growing this map forever.
+for (let i = 0; i < 120; i += 1) rememberMessage({ key: { id: `bulk-${i}` } });
+check(messageForRetry("3EB0ABCDEF") === undefined, "the store is bounded — the oldest entries are evicted");
+check(messageForRetry("bulk-119") !== undefined, "and the newest entries survive");
+
+console.log("\nRetry counter cache (Baileys' msgRetryCounterCache)");
+
+const cache = createCacheStore();
+check(cache.get("a") === undefined, "a miss is undefined");
+cache.set("a", 1);
+check(cache.get("a") === 1, "set/get round-trip");
+cache.set("a", 2);
+check(cache.get("a") === 2, "set overwrites");
+cache.del("a");
+check(cache.get("a") === undefined, "del removes");
+cache.set("b", 1);
+cache.flushAll();
+check(cache.get("b") === undefined, "flushAll clears everything");
+// Two stores must not share state — each socket gets its own counter.
+const other = createCacheStore();
+other.set("c", 9);
+check(cache.get("c") === undefined && other.get("c") === 9, "each store is independent");
 
 /* ----------------------------------------------------------------- odds ----- */
 
