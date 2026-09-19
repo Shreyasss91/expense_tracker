@@ -7,6 +7,68 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Post-push verification, and a DB-backed netting test — 19 September 2026
+
+**The four pushed commits were verified by deployment state, not by the local build.** Through the
+Vercel API (read-only, with the `VERCEL_TOKEN` already in `.env.local`): `f82d4d1` — the tip, and so
+the running production build — is **`READY`**, as is `ba21def`. `a8fd8a1` and `39756d3` have no
+deployment of their own: Vercel collapses a rapid sequence of pushes onto the tip, so the middle two
+were never built as separate deployments, which is a different thing from having failed to build.
+**No `ERROR`-state deployment carries any of the four shas** — the failures in the recent list are
+all the historical `vercel.json` incident of 18 September and its August predecessors.
+
+**A DB-backed test for the netting, because the pure suite structurally cannot reach it.**
+`test:ledger-feed-netting` (`src/db/ledger-feed-netting-test.ts`) drives the **real `getLedgerFeed`**
+against a real database and asserts the five scenarios the fix was about: a delete with its Undo
+reports neither a deletion nor a synthetic re-add (D6/E4); a row whose `created_at` the restore
+preserved stays **out** of Added while an identical row stamped `now()` is **in** it — the first
+defect, at the level where the feed actually decides, and simultaneously a D2 assertion that
+membership follows `created_at` and not the business date; a restore followed by a re-delete reports
+exactly **one** deletion; a legacy `{ from }` payload still nets out; and a restore naming a row this
+window never deleted cancels nothing (E5).
+
+Two mechanisms make that reachable, and each has a reason worth keeping:
+
+- **`tsx --conditions=react-server`.** `getLedgerFeed` sits behind `import "server-only"`, which
+  resolves to an empty module under the RSC condition and to a throwing one otherwise. A Node test
+  process is not a bundler, so the condition is passed explicitly — in the npm script, not by
+  weakening the guard or splitting the module. No production code was changed to make this testable.
+- **`src/db/load-env.ts`**, imported *first* for its side effect. `src/db/index.ts` builds its neon
+  client at module scope, and ESM evaluates every import before the entry file's own body — so the
+  inline `config({ path: ".env.local" })` the other DB scripts use runs too late for anything that
+  imports the `db` singleton. They get away with it only because the modules they load are
+  *parameterized* on `db` rather than importing it. `dotenv` does not overwrite what is already set,
+  so CI's `DATABASE_URL` wins and a missing `.env.local` is harmless.
+
+`assertNotProductionDb` guards it like every other DB script, and it is wired into CI's secret-gated
+`db-tests` job — **not** the DB-free `checks` job.
+
+**Honest status as first written:** the assertions had not been executed, because the only database
+reachable from this machine is production and these scripts write rows. What was verified locally at
+that point was that the guard *refuses* a production-looking URL, and that against a disposable-looking
+one the whole import graph resolves — the `server-only` condition and the `@/` alias both — with the
+test reaching its first query and failing only on connectivity.
+
+> **Executed 19 September 2026 against the production database, with the owner's explicit
+> authorization** — `DB_TESTS_ALLOW_PROD=1`, the guard's own documented escape hatch, chosen knowingly
+> over leaving the test CI-only. **14 checks, 0 failures, exit 0**, and an independent
+> `SELECT count(*)` afterwards confirms **0 leftover rows** in both `transactions` and
+> `activity_log`. The cleanup is no longer merely trusted: the suite now ends by asserting the marker
+> rows are gone, because on a production-shaped database the `finally` is the one thing standing
+> between the test and the household's ledger.
+>
+> **The run paid for itself at once by failing — on a defect in the test itself.** The D2 assertion
+> read `stamped.date < window.startDateIst`, which is `false` for the fixture's `2099-01-02` against a
+> 2026 window: the comparison is lexicographic, and the fixture's date is *after* the window rather
+> than before it. It now asserts the date lies outside the window's whole range, which is the claim
+> actually being made. A suite that has never failed has not been shown to run; this one failed, was
+> corrected, and then passed.
+
+*(Incidentally: the typechecker caught that `transactions.id` has no `defaultRandom()` — the fixture
+has to supply the id, unlike `activity_log`, which does.)*
+
+---
+
 ## Daily ledger-change feed — review found five defects, all now fixed — 19 September 2026
 
 A read-through of the 18 September feature against its own spec (`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`)
