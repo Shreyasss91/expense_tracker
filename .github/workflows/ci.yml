@@ -143,3 +143,10 @@ jobs:
       - name: Budget semantics (exclude-bills math, precedence, bill chain)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:budget-semantics
+      # §5.4.4 — the netting is assembled from activity_log, so only a real
+      # getLedgerFeed can prove it nets deletions pairwise, on created_at. Runs
+      # with --conditions=react-server to import the server-only module; see the
+      # test's header.
+      - name: Ledger-feed netting (real getLedgerFeed, pairwise deletions)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:ledger-feed-netting
