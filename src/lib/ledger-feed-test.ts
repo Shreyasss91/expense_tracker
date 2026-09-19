@@ -522,6 +522,25 @@ check(
   restoreValuesFromSnapshot({ ...deleteSnapshot, categoryId: null })?.categoryId === null,
   "an uncategorized deletion restores as uncategorized",
 );
+// §6.4 — a restore must not re-open a Review-queue item the household had
+// already acknowledged: the row's note has not changed, so the answer stands.
+const acknowledgedAt = restoreValuesFromSnapshot({
+  ...deleteSnapshot,
+  reviewedAt: "2026-09-17T05:00:00.000Z",
+})?.reviewedAt;
+check(
+  acknowledgedAt instanceof Date && acknowledgedAt.toISOString() === "2026-09-17T05:00:00.000Z",
+  "an acknowledged expense is restored still acknowledged, not re-queued for review",
+);
+check(
+  restoreValuesFromSnapshot(deleteSnapshot)?.reviewedAt === null,
+  "a never-reviewed deletion restores as pending review",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, reviewedAt: undefined })?.reviewedAt === null &&
+    restoreValuesFromSnapshot({ ...deleteSnapshot, reviewedAt: "garbage" })?.reviewedAt === null,
+  "a missing or unparseable reviewed_at falls back to pending review rather than an Invalid Date",
+);
 check(
   restoreValuesFromSnapshot({ ...deleteSnapshot, shared: true, splitWith: ["m-dad", "m-mom"] })?.shared === true,
   "the assignment round-trips",

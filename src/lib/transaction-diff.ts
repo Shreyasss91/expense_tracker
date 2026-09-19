@@ -96,6 +96,13 @@ export interface RestoreInsertValues {
   splitWith: string[];
   /** Omitted — so the column default applies — when the snapshot carries no usable instant. */
   createdAt?: Date;
+  /**
+   * The row's review state, written through rather than omitted: `null` is a
+   * real value here (pending review), so "absent" and "pending" would otherwise
+   * be indistinguishable and every Undo would quietly re-open an expense the
+   * household had already acknowledged (§6.4).
+   */
+  reviewedAt: Date | null;
 }
 
 /**
@@ -111,6 +118,13 @@ export interface RestoreInsertValues {
  * neither") could never hold. See SPEC_DAILY_LEDGER_WHATSAPP_FEED §5.4.4 step 3,
  * whose "only if its own created_at falls inside the window" presumes exactly
  * this preservation.
+ *
+ * The same reasoning covers **`reviewed_at`**: it records the moment a human said
+ * "no more detail" (§6.4, Amendment 18). The row's note has not changed, so an
+ * Undo must not turn an acknowledged expense back into a Review-queue item —
+ * that would make the queue re-ask a question already answered. Unlike
+ * `created_at`, `null` is a meaningful value to write here, so it is always set
+ * explicitly instead of being left to the column default.
  *
  * Returns `null` for a snapshot that cannot be re-inserted — the caller skips
  * it, which is the behaviour the previous inline insert already produced through
@@ -141,6 +155,7 @@ export function restoreValuesFromSnapshot(snapshot: Record<string, unknown>): Re
       ? snapshot.splitWith.filter((value): value is string => typeof value === "string")
       : [],
     createdAt: restoreTimestamp(snapshot.createdAt),
+    reviewedAt: restoreTimestamp(snapshot.reviewedAt) ?? null,
   };
 }
 

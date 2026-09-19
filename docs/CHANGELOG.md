@@ -65,10 +65,21 @@ be restricted. **No retry policy changed.**
 
 **Deliberately NOT changed, recorded so they stay decisions:**
 
-- **`reviewed_at` is still not preserved on restore.** A deleted-then-restored row that had been
+- ~~**`reviewed_at` is still not preserved on restore.** A deleted-then-restored row that had been
   acknowledged returns to the Review queue. That is arguably another faithfulness gap of the same
   kind as `created_at`, but it is *not* the same failure — it has no effect on the feed, and changing
-  it moves §6.4's review-queue semantics, which this feature has no business doing unasked.
+  it moves §6.4's review-queue semantics, which this feature has no business doing unasked.~~
+
+  > **Resolved 19 September 2026 — on the owner's instruction, and the reasoning holds up.**
+  > `reviewed_at` is now carried through by the same `restoreValuesFromSnapshot`, so an Undo
+  > restores the row *as it was*. §6.4's semantics are not moved, they are respected: the note has
+  > not changed, and the queue's question — *"was this expense detailed enough?"* — was already
+  > answered by a human. Re-asking it is the bug. One distinction from `created_at` mattered here:
+  > `null` is a **meaningful value** for `reviewed_at` (pending review), so it is written through
+  > explicitly rather than omitted, or "absent" and "pending" would be indistinguishable. A missing
+  > or unparseable value falls back to pending review rather than writing an `Invalid Date`.
+  > `docs/SPEC.md` is still **not amended**: §2.12's restore contract does not mention `reviewed_at`,
+  > and nothing here contradicts it. `test:ledger-feed` is now **122 checks** (119 → 122).
 - **The 403 retry loop.** See above: making it terminal would contradict upstream's own reconnection
   guidance. The 22:15 fallback push is still what surfaces a night that never posted.
 - **`DIGEST_AGENT_TOKEN`'s read scope** and the deliberate `503`-before-auth disclosure, both carried
