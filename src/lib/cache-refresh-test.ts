@@ -30,13 +30,17 @@
  *
  * The shape half is a ratchet, not a proof. It pins which files may import the
  * framework's revalidators and how many raw calls each may hold, so a new
- * unguarded call fails until someone deliberately records it here. It can see
- * which module a name came from, but not whether a raw call sits inside the
- * `refreshAfterWrite` thunk or beside it — the call sites are reviewed by eye,
- * and the budget keeps a new one from appearing unnoticed.
+ * unguarded call fails until someone deliberately records it here. It also
+ * checks that each raw call sits **inside** a `refreshAfterWrite` thunk rather
+ * than beside it — a question no text match can answer, so the enclosing call
+ * is found by matching parens, and that scanner has its own checks below.
+ *
+ * What it still cannot see: whether the guard is *effective* (any wrapper would
+ * satisfy it), and whether a call in an action is ever reached.
  */
 import { readFileSync, readdirSync, existsSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import { blankComments, findCalls, findTableWrites } from "./source-scan";
 import { revalidatePath as nextRevalidatePath, revalidateTag as nextRevalidateTag } from "next/cache";
 import { revalidatePath, revalidateTag, refreshAfterWrite } from "./cache-refresh";
 
@@ -138,40 +142,68 @@ function behaviourChecks() {
 
 // --- Source shape ---------------------------------------------------------
 
-/** A call to a revalidator, excluding `nextRevalidatePath(` and `obj.revalidatePath(`. */
-const CALL_RE = /(?<![A-Za-z0-9_$])revalidate(?:Path|Tag)\(/g;
+/** A revalidator call, excluding `nextRevalidatePath(` and `obj.revalidatePath(`. */
+const REVALIDATOR = /(?<![A-Za-z0-9_$.])revalidate(?:Path|Tag)/;
 
-/** Import specifiers have no `(` after the name, but a doc comment could. */
-function stripComments(text: string): string {
-  return text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^[ \t]*\/\/.*$/gm, "");
+function revalidateSites(text: string) {
+  return findCalls(text, REVALIDATOR);
 }
 
 /**
- * Blank out string and template literals first. The helper logs the label
- * ``revalidatePath("/settings")`` — a *string*, not a call — and a text scan
- * that cannot tell the two apart would count the helper's own log lines as raw
- * calls. Quoted arguments are blanked anyway, so this costs nothing.
+ * Comments are blanked first so a doc comment describing an import cannot be
+ * mistaken for one. Literals are NOT blanked — the module specifier is itself a
+ * string, and it is the whole answer here.
  */
-function stripLiterals(text: string): string {
-  return text
-    .replace(/"(?:[^"\\\n]|\\.)*"/g, '""')
-    .replace(/'(?:[^'\\\n]|\\.)*'/g, "''")
-    .replace(/`(?:[^`\\]|\\.)*`/g, "``");
-}
-
-function rawCallCount(text: string): number {
-  return stripComments(stripLiterals(text)).match(CALL_RE)?.length ?? 0;
-}
-
-/** True when the file takes `revalidatePath`/`revalidateTag` straight from the framework. */
 function importsFromNextCache(text: string): boolean {
-  const match = text.match(/import\s*\{([^}]*)\}\s*from\s*"next\/cache"/);
+  const match = blankComments(text).match(/import\s*\{([^}]*)\}\s*from\s*"next\/cache"/);
   return Boolean(match && /\brevalidate(?:Path|Tag)\b/.test(match[1]));
 }
 
 /** True when the file takes them from the guarded helper — the only other source allowed. */
 function importsFromHelper(text: string): boolean {
-  return /import\s*\{[^}]*\brevalidate(?:Path|Tag)\b[^}]*\}\s*from\s*"@\/lib\/cache-refresh"/.test(text);
+  return /import\s*\{[^}]*\brevalidate(?:Path|Tag)\b[^}]*\}\s*from\s*"@\/lib\/cache-refresh"/.test(
+    blankComments(text),
+  );
+}
+
+/**
+ * The enclosing-call scanner is what makes the check below meaningful, so it is
+ * checked first — on snippets whose answer is known, including the ones it must
+ * get *wrong-looking* (a call beside the thunk, a call inside a comment).
+ */
+function scannerChecks() {
+  console.log("\nThe scanner — the shape half is only as good as this");
+
+  const guards = (src: string) => revalidateSites(src).map((s) => s.guard ?? "none");
+
+  check(
+    guards('refreshAfterWrite("x", () => revalidatePath("/"));').join() === "refreshAfterWrite",
+    "an inline thunk reports refreshAfterWrite as its guard",
+  );
+  check(
+    guards('refreshAfterWrite("x", () => {\n  revalidatePath("/");\n  revalidateTag("t");\n});').join() ===
+      "refreshAfterWrite,refreshAfterWrite",
+    "both calls inside a block thunk are guarded",
+  );
+  check(
+    guards('refreshAfterWrite("x", () => revalidatePath("/"));\nrevalidatePath("/beside");').join() ===
+      "refreshAfterWrite,none",
+    "the same call one line later is NOT guarded",
+  );
+  check(
+    guards('// revalidatePath("/")\nconst s = "revalidateTag(t)";').length === 0,
+    "a call named in a comment or a string is not a call site",
+  );
+  check(
+    guards('/* revalidatePath("/") */\nrevalidateTag("t");').join() === "none",
+    "a block comment is blanked, and the real call beside it is still found",
+  );
+  check(
+    findTableWrites("await db\n  .insert(transactions)\n  .values(x);")
+      .map((w) => `${w.op}:${w.table}`)
+      .join() === "insert:transactions",
+    "a write in a multi-line chain is still found",
+  );
 }
 
 /**
@@ -184,6 +216,7 @@ const RAW_CALL_BUDGET: Record<string, number> = {
   "src/app/api/attachments/[id]/route.ts": 2,
   "src/app/api/cron/digest/route.ts": 1,
   "src/app/api/cron/digest-fallback/route.ts": 1,
+  "src/app/api/cron/recurring/route.ts": 3,
   "src/app/api/digest/day/route.ts": 1,
   "src/app/api/import/route.ts": 3,
 };
@@ -225,14 +258,17 @@ function shapeChecks(root: string) {
   );
   // Its own declarations are not calls; everything else must go through the alias.
   const helperBody = helperText.replace(/export function revalidate(?:Path|Tag)\(/g, "export function ");
-  check(rawCallCount(helperBody) === 0, "the helper's own body reaches the framework only through the aliases");
+  check(
+    revalidateSites(helperBody).length === 0,
+    "the helper reaches the framework only through the aliases (its own log labels are strings, not calls)",
+  );
 
   const files = walk(srcDir)
     .filter((f) => !/[-.]test\.tsx?$/.test(f) && statSync(f).isFile())
     .map(rel)
     .filter((f) => f !== HELPER);
 
-  const withCalls = files.filter((f) => rawCallCount(read(f)) > 0);
+  const withCalls = files.filter((f) => revalidateSites(read(f)).length > 0);
   check(withCalls.length > 0, `the scan found files that revalidate (${withCalls.length})`);
 
   const rawUsers = withCalls.filter((f) => importsFromNextCache(read(f)));
@@ -258,25 +294,34 @@ function shapeChecks(root: string) {
   );
   for (const name of budgetKeys) {
     check(
-      rawCallCount(read(name)) === RAW_CALL_BUDGET[name],
+      revalidateSites(read(name)).length === RAW_CALL_BUDGET[name],
       `${name}: ${RAW_CALL_BUDGET[name]} raw call(s) as recorded`,
     );
   }
+
+  // The point of the sweep: a raw call must be INSIDE the thunk whose try/catch
+  // absorbs it. `refreshAfterWrite(` merely appearing in the file proves nothing
+  // — the call could sit beside it and throw straight out of the handler. Only
+  // the enclosing-call scan can tell the two apart.
   for (const name of rawUsers) {
+    const text = read(name);
+    check(text.includes("refreshAfterWrite("), `${name}: every raw call is paired with refreshAfterWrite`);
+    const outside = revalidateSites(text).filter((s) => s.guard !== "refreshAfterWrite");
+    const detail = outside.map((s) => `line ${s.line} (${s.name}, guard=${s.guard ?? "none"})`).join(", ");
     check(
-      read(name).includes("refreshAfterWrite("),
-      `${name}: every raw call is paired with refreshAfterWrite`,
+      outside.length === 0,
+      `${name}: every raw call sits inside a refreshAfterWrite thunk${detail ? `\n      standing outside one: ${detail}` : ""}`,
     );
   }
 
   // `src/actions/**` is the family swept onto the wrapper: all of it, and only it.
   const actionFiles = files.filter((f) => f.startsWith("src/actions/"));
-  const actionUsers = actionFiles.filter((f) => rawCallCount(read(f)) > 0);
+  const actionUsers = actionFiles.filter((f) => revalidateSites(read(f)).length > 0);
   check(actionUsers.length >= 6, `at least six action modules revalidate (found ${actionUsers.length})`);
 
   let actionCallSites = 0;
   for (const file of actionUsers) {
-    actionCallSites += rawCallCount(read(file));
+    actionCallSites += revalidateSites(read(file)).length;
     check(importsFromHelper(read(file)), `${file}: imports the refresh wrappers from the helper`);
     check(!importsFromNextCache(read(file)), `${file}: does NOT import the framework's revalidators directly`);
   }
@@ -285,6 +330,7 @@ function shapeChecks(root: string) {
 }
 
 behaviourChecks();
+scannerChecks();
 shapeChecks(process.cwd());
 
 if (failures > 0) {

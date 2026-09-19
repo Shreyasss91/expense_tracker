@@ -61,6 +61,12 @@ jobs:
       # the failure path. It also pins the import source of every call site.
       - name: Cache-refresh guard (a refresh failure is never a failed write)
         run: npm run test:cache-refresh
+      # A cached read is only as fresh as its tag set, and Next cannot infer one:
+      # a missing tag throws nothing, it just serves the pre-write answer until
+      # the TTL. Pins each unstable_cache read against the tables it touches and
+      # each route-handler write against the tag it must clear. DB-free.
+      - name: Cache-tag guard (cached reads and route-handler writes)
+        run: npm run test:cache-tags
 
   # §1.4 — the committed migration chain MUST replay from scratch on every
   # push: the 0004/0005 collision went unnoticed precisely because the only
