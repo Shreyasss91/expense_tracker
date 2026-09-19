@@ -156,3 +156,10 @@ jobs:
       - name: Restore round-trip (an Undo restores faithfully, timestamps included)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:restore-roundtrip
+      # §5.4.4 / §5.5.3 — the marker row is the gate the agent AND the 22:15
+      # fallback both consult, so "a rejected key writes nothing" is only
+      # provable against the real app_settings table. Drives the real route
+      # handler; see the test's header.
+      - name: digest/day POST (windowKey validation against app_settings)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:digest-day-post
