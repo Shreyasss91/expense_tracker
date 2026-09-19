@@ -7,6 +7,37 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## v1.2 Amendment — 19 September 2026 (owner decision: `/api/cron/recurring` is a mutation, not a read stream)
+
+SPEC §7.1 listed the `/api/cron/*` routes as *"read streams and crons, not mutations"*. That is
+false of `recurring`, which stamps a transaction for every due template and writes
+`templates.last_auto_key` / `skip_month` (plus the unconditional housekeeping update) on each run.
+**The route is amended out of that list, and §7.2 is extended to bind it:** a route handler has no
+caller to revalidate on its behalf, so it must clear the tag of every table it writes — `transactions`
+and `templates` here, not only the obvious one.
+
+**Second clause, deliberately part of the same amendment.** The reclassification alone would be
+inert: §7.2 is titled "Data Fetching & Aggregation" and its rule reads *"inside all mutation
+actions"*. So §7.2 gains one bullet naming the mutation route handlers (`/api/cron/recurring`,
+`POST /api/import`). Flagged here because it adds a normative sentence beyond the reclassification
+it was authorized for — remove that bullet and §7.1's change becomes a description of the code
+rather than a rule the code must keep obeying.
+
+**Why a spec change and not just a code comment.** §7.2's rule was being satisfied *exactly*: every
+Server Action revalidates. The one path that mutates outside the actions satisfied nothing — and
+the spec's own prose said that path was not a mutation, so a reader following the spec would have
+concluded the code was correct, and so would a reviewer. The code fix landed first (`bf37969`,
+which reported the divergence rather than editing the frozen spec); this entry is the amendment the
+owner authorized afterwards.
+
+**Amended files:** `docs/SPEC.md` only — the §7.1 paragraph, one bullet in §7.2, the top-of-file
+amendment note, and the amendment list in the header table. **Not changed:** the other three cron
+routes (`digest`, `backup`, `push` — they read or notify), any schema, any migration, and
+`seed.csv`.
+
+**Held by a test, not just by prose.** `test:cache-tags` fails if a route handler writes a
+cache-mapped table without clearing its tag, naming the file, line and missing tag.
+
 ## The cached reads, audited — three gaps, and the guard that holds them — 19 September 2026
 
 **Six `unstable_cache` sites, and the tag is the whole contract.** Next cannot infer which tables a

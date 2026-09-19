@@ -4,7 +4,7 @@
 |---|---|
 | **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
 | **Version** | 1.3 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `CHANGELOG.md`), 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `CHANGELOG.md` and `AUDIT-2026-09-01.md`), and 5–17 September 2026 (owner-requested: tag-only Quick Add memory, weekly/monthly Telegram + WhatsApp digest with last-sent history, collapsible Settings, assignment bulk/filter/totals, push dispatch record, September-audit hardening; see `CHANGELOG.md` and `AUDIT-2026-09-17.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `CHANGELOG.md`), 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `CHANGELOG.md` and `AUDIT-2026-09-01.md`), and 5–17 September 2026 (owner-requested: tag-only Quick Add memory, weekly/monthly Telegram + WhatsApp digest with last-sent history, collapsible Settings, assignment bulk/filter/totals, push dispatch record, September-audit hardening; see `CHANGELOG.md` and `AUDIT-2026-09-17.md`), and 19 September 2026 (owner decision: `/api/cron/recurring` reclassified as a mutation and bound by §7.2's revalidation rule; see `CHANGELOG.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -63,6 +63,15 @@
 > page as a pinned collapsible queue (`/review` redirects); its pending-count badge rides
 > the Ledger nav item. CSV export writes an empty category cell for uncategorized rows.
 > Full details in `CHANGELOG.md`.
+
+> **19 September 2026 — `/api/cron/recurring` is a mutation (owner decision; §7.1, §7.2):** the
+> §7.1 paragraph below listed the `/api/cron/*` routes as "read streams and crons, not
+> mutations". That is false of `recurring`, which stamps a transaction for every due template and
+> writes `templates.last_auto_key` / `skip_month` on each run. The route is amended out of that
+> list and §7.2's revalidation rule is extended to bind it explicitly, because a route handler has
+> no caller to revalidate on its behalf — the gap that let the 06:00 IST auto-stamp go unseen by
+> the cached dashboard, category chips, recurring suggestions and template list until their TTLs
+> expired. No schema, migration or `seed.csv` change. Recorded in `CHANGELOG.md`.
 
 ---
 
@@ -973,15 +982,22 @@ No traditional REST API routes for mutations. Use Next.js **Server Actions**.
 3. Verify the `member_id` exists in `members` (§3.2.1 — data integrity, *not* authentication).
 4. Convert amounts to/from integer paise at the boundary (§5.8).
 
-**API routes that exist alongside the actions** (read streams and crons, not
-mutations): `GET /api/export` (§6.8), `POST /api/import` (§6.8), attachment
-upload/serve routes (§2.9), and the CRON_SECRET-protected `/api/cron/*` routes
-(`recurring` daily auto-stamp, `digest` daily digest gate, `backup` monthly,
-`push` reminders).
+**API routes that exist alongside the actions** (mostly read streams and crons):
+`GET /api/export` (§6.8), attachment upload/serve routes (§2.9), and the
+CRON_SECRET-protected `/api/cron/*` routes (`digest` daily digest gate, `backup`
+monthly, `push` reminders). **`POST /api/import` (§6.8) and `/api/cron/recurring`
+are MUTATIONS, not read streams** (19 Sep 2026, §7.2): the import writes ledger
+rows, and the daily auto-stamp writes both `transactions` (one per due template)
+and `templates` (`last_auto_key`, `skip_month`, plus housekeeping). Both revalidate
+exactly like a mutation action — see §7.2.
 
 ### 7.2 Data Fetching & Aggregation — Normative
 - React Server Components fetch directly with Drizzle `db.select()` + `where` clauses.
 - `revalidatePath('/')` and `revalidateTag('transactions')` inside all mutation actions.
+- **The same rule binds any route handler that mutates cached data** (19 Sep 2026) — today
+  `/api/cron/recurring` and `POST /api/import`. A route handler has no caller to revalidate on
+  its behalf, and it must clear the tag of **every** table it writes rather than the obvious one:
+  the recurring cron clears `transactions` **and** `templates`, because it writes both.
 - **All dashboard analytics are computed in SQL** — `SUM`, `COUNT`, `GROUP BY`, date-range `WHERE` — and return pre-aggregated rows. Fetching transactions and reducing them in JavaScript is prohibited, on the server as well as the client.
   - Category pie → `GROUP BY category_id`
   - Member split → `GROUP BY member_id`
