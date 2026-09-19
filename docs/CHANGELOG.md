@@ -7,6 +7,89 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Daily ledger-change feed — review found five defects, all now fixed — 19 September 2026
+
+A read-through of the 18 September feature against its own spec (`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`)
+and against the phone agent's upstream API turned up **five defects that every existing suite was
+blind to**, because each one lives on a path that only real data or a real device can reach. All five
+are fixed, and every fix carries a test that fails without it.
+
+**Service side — two, both in the D6 netting.** The netting had never been exercised: it lives in the
+DB-backed `getLedgerFeed`, so the pure suites could not reach it, and the spec's §8 assertion list
+asked for coverage that was never written. It was hiding two bugs, one in each direction.
+
+1. **A delete + Undo was reported as an *Added* expense.** `restoreActivityEntry`
+   (`src/actions/activity.ts`) re-inserted the delete snapshot without its **`created_at`**, so
+   `defaultNow()` stamped the row with the *restore* instant. The feed decides window membership on
+   `created_at`, so the restored row appeared as a brand-new addition — the opposite of D6's
+   "report **neither** the deletion nor a synthetic re-add", and of edge case E4 ("Delete + Undo
+   inside the window | Netted out"). §5.4.4 step 3's guard ("only if its own `created_at` falls
+   inside the window") was, in effect, always true.
+   **Fix:** a delete snapshot is now turned back into an insert by one pure function,
+   `restoreValuesFromSnapshot` (`src/lib/transaction-diff.ts`), which carries the original
+   `created_at` through — the inverse of the existing `toSnapshot`. A snapshot with no usable
+   timestamp still leaves the column default alone rather than inventing a date.
+2. **A restore followed by a new delete was swallowed entirely.** Netting collected every restored id
+   into a `Set` and dropped every deletion carrying one — the shape §5.4.4 step 2 described. Delete
+   `X`, Undo `X`, delete `X` again inside one window, and the set dropped **both** deletions: the
+   family was told nothing although `X` is deleted at close. **Fix:** netting is now ordered and
+   pairwise (`netDeletedRows`, `src/lib/ledger-feed-format.ts`) — a restore claims the most recent
+   **still-open** deletion of each id, and only that one. The legacy `payload.from` fallback is
+   resolved *before* the walk so it nets out at its own position like any other. §5.4.4 was amended
+   to match, with the reasoning recorded there.
+
+**Phone side — two, both from the agent's own upstream API.** Neither is reachable without a linked
+session, so neither could be caught on this machine.
+
+3. **A message WhatsApp asked to re-send could not be re-sent, and the agent recorded it as
+   delivered.** `makeWASocket` was created without `getMessage` or `msgRetryCounterCache`. WhatsApp's
+   redelivery path needs the original message returned by id; without it the retry cannot happen —
+   while `sendMessage()` had already **resolved**, so `tick()` wrote the local marker and POSTed
+   `status: "sent"` for a message that never reached the group, and the 22:15 fallback stayed silent
+   because the server now held a record. That is the precise silent miss this feature exists to
+   prevent. **Fix:** a bounded outgoing-message store (`rememberMessage`, capped at 50 — one message
+   a night) wired to `getMessage`, plus a dependency-free `createCacheStore()` for
+   `msgRetryCounterCache`. The message is remembered **before** the confirmation POST, so a retry
+   arriving mid-tick cannot depend on that POST having finished.
+4. **Every group send re-fetched the participant list from WhatsApp.** Upstream: *"one of the most
+   common causes of group message failures"*. **Fix:** `cachedGroupMetadata` backed by a 5-minute
+   TTL cache, warmed on connect for the configured group and refreshed from `groups.update` /
+   `group-participants.update`. A miss or a stale entry returns `undefined`, which is Baileys'
+   documented fallback — it then does the live fetch itself.
+
+**One diagnostic (finding 5).** A **403** close — WhatsApp refusing the session, i.e. the restriction
+risk this feature accepts for Dad's primary number — was retried silently and looked exactly like a
+flaky network. It stays retryable (upstream is explicit that only a 401 means "unlinked", and
+*"any other error is safe to retry"*), but it now logs a distinct greppable line saying the number may
+be restricted. **No retry policy changed.**
+
+**Deliberately NOT changed, recorded so they stay decisions:**
+
+- **`reviewed_at` is still not preserved on restore.** A deleted-then-restored row that had been
+  acknowledged returns to the Review queue. That is arguably another faithfulness gap of the same
+  kind as `created_at`, but it is *not* the same failure — it has no effect on the feed, and changing
+  it moves §6.4's review-queue semantics, which this feature has no business doing unasked.
+- **The 403 retry loop.** See above: making it terminal would contradict upstream's own reconnection
+  guidance. The 22:15 fallback push is still what surfaces a night that never posted.
+- **`DIGEST_AGENT_TOKEN`'s read scope** and the deliberate `503`-before-auth disclosure, both carried
+  over from the 18 September review.
+
+**Verified:** `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed` (**119 checks**, up from
+96 — 23 new for the netting and the restore mapping), `npm run test:whatsapp-agent` (**63 checks**, up
+from 51 — 12 new for the message store and the counter cache), `npm run rehearse:whatsapp-agent`
+(**51 checks**, the real agent against a stub) and `npm run test:digest` (38) / `npm run test:agent-auth`
+(37) — all green. `npm run verify:digest-feed` was re-run against **production**: **166 checks,
+0 failures, exit 0**, unchanged from 18 September, so the service half is still exactly as verified.
+
+> **The lesson, and it is the same one as yesterday's incident.** Every one of these five was invisible
+to a green test run. The netting defects sat on the far side of a `server-only` import, and the two
+agent defects sat behind a socket that only a phone can open — so "all suites pass" was, for those
+paths, no evidence at all. The response is not more assertions over the same ground: it is moving the
+logic somewhere a test can reach it (the netting is now a pure function) and reading the upstream API's
+own recommendations rather than trusting the code's self-consistency.
+
+---
+
 ## Daily ledger-change feed to a private WhatsApp group — 18 September 2026 (owner request)
 
 **Status — app side IMPLEMENTED and verified in production; phone-agent code built but not yet

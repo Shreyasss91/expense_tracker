@@ -566,16 +566,35 @@ already carries everything needed to render (amount, note, categoryId, tag, date
 
 #### 5.4.4 Netting (D6) — algorithm, normative
 
-1. Build `restoredIds`: the union of
-   - `ids` from every in-window `restore_transactions` payload that has them, **plus**
-   - the fallback path for legacy payloads: if `ids` is absent, load the `activity_log` row
-     with id === `payload.from` and take `payload.transactions[].id`.
-2. Drop from `deleted` every row whose id is in `restoredIds`.
-3. **Do not** synthesise an "Added" row for a restore. A restored row appears in `added`
+The walk is **ordered and pairwise**, never a set difference over ids. The events are the
+in-window `delete_transaction` / `delete_transactions` and `restore_transactions` rows, in
+`activity_log.created_at` **ascending** order.
+
+1. Resolve each restore's ids: `ids` from the payload when it has them, **plus** the fallback
+   path for legacy payloads — if `ids` is absent, load the `activity_log` row with id ===
+   `payload.from` and take `payload.transactions[].id`. Resolve this **before** the walk, so a
+   legacy restore nets out at its own position exactly like a modern one.
+2. Walk the events in order. A deletion opens; a restore **claims the most recent still-open
+   deletion of each id it names — and only that one**.
+3. `deleted` = the deletions no restore claimed, in chronological order.
+4. **Do not** synthesise an "Added" row for a restore. A restored row appears in `added`
    **only if its own `created_at` falls inside the window** — legitimate, because it really
-   was created in this window.
-4. Decrement `counts.deleted` accordingly. If netting empties a section, the section is
+   was created in this window. **Normative prerequisite:** a restore must therefore
+   **preserve the snapshot's `created_at`** when it re-inserts. Letting the column default
+   (`defaultNow()`) fire stamps the row with the *restore* instant, which makes every
+   restored row look freshly created and reduces this clause to "always" — so a deleted-and-
+   undone expense would be reported as an Added one and D6/E4 could never hold.
+5. Decrement `counts.deleted` accordingly. If netting empties a section, the section is
    omitted from the message (and can make the whole window empty → D7).
+
+> **Amended 19 September 2026 — why pairwise, not a set.** A set difference over ids drops
+> *every* deletion of a restored id. Delete `X`, Undo `X`, then delete `X` again inside one
+> window, and the family is told nothing although `X` is deleted at close. Pairing each restore
+> with the most recent open deletion makes the report equal the net change instead: a re-delete
+> after an Undo **is** reported, and a second Undo nets it out again. The over-report is the
+> mirror image of the same root cause — step 4's `created_at` prerequisite above.
+> Implemented as `netDeletedRows` (`src/lib/ledger-feed-format.ts`), asserted by
+> `npm run test:ledger-feed`.
 
 #### 5.4.5 Merges — one summary line, not fake per-row edits
 
@@ -1317,7 +1336,8 @@ Add to `package.json`:
 - edited rows render the before → after forms from the §5.4.6 table, one case per field;
 - deleted rows render from a snapshot;
 - netting: a delete with a matching in-window restore produces **neither** a Deleted line
-  nor a synthetic Added line;
+  nor a synthetic Added line — *and* a restore followed by a **re-delete** still reports the
+  deletion (asserted in `npm run test:ledger-feed`, 19 September 2026);
 - legacy restore payload (no `ids`) still nets out via the `payload.from` fallback;
 - section omission when a section is empty; total line omitted when `added` is empty;
 - a 50-row day truncates at 40 with `… and N more` while the header count stays true.
