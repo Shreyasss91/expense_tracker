@@ -1,7 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { revalidatePath } from "@/lib/cache-refresh";
 import { todayInIST } from "@/lib/dates";
 import { digestPeriodForDate, monthPeriod, monthToDatePeriod, normalizeWhatsAppPhone } from "@/lib/digest";
 import { setWhatsAppDigestConfig, getWhatsAppDigestConfig, buildWhatsAppDigestLink, recordWhatsAppDigestSent } from "@/lib/whatsapp-digest";

@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { randomUUID } from "node:crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath } from "@/lib/cache-refresh";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { savedSearches } from "@/db/schema";

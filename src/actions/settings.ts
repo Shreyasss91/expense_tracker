@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "@/lib/cache-refresh";
 import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { setAppSetting, EXCLUDE_BILLS_KEY } from "@/db/app-settings-mutations";

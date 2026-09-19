@@ -2,7 +2,7 @@
 
 import { auth } from "@/auth";
 import { desc, eq, ne } from "drizzle-orm";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag } from "@/lib/cache-refresh";
 import { db } from "@/db";
 import { activityLog, transactions } from "@/db/schema";
 import { idSchema } from "@/lib/validations";
