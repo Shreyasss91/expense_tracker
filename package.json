@@ -32,6 +32,7 @@
     "test:ledger-feed-netting": "tsx --conditions=react-server src/db/ledger-feed-netting-test.ts",
     "test:restore-roundtrip": "tsx --conditions=react-server src/db/restore-roundtrip-test.ts",
     "test:digest-day-post": "tsx --conditions=react-server src/db/digest-day-post-test.ts",
+    "test:recurring-cron": "tsx --conditions=react-server src/db/recurring-cron-test.ts",
     "test:agent-auth": "tsx src/lib/agent-auth-test.ts",
     "test:cache-refresh": "tsx --conditions=react-server src/lib/cache-refresh-test.ts",
     "test:cache-tags": "tsx src/lib/cache-tags-test.ts",

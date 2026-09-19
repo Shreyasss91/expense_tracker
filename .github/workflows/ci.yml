@@ -176,3 +176,11 @@ jobs:
       - name: digest/day POST (windowKey validation against app_settings)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:digest-day-post
+      # §2.12 — the daily auto-stamp is the only path that writes to the ledger
+      # unattended, and every one of its guarantees (one stamp per template per
+      # month, the marker that stops a second, the one-shot skip_month, paused
+      # and variable templates) is a database fact. Drives the real route; picks
+      # a day of month no real template uses so it can only match its fixtures.
+      - name: Recurring cron (drives /api/cron/recurring against real templates)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:recurring-cron
