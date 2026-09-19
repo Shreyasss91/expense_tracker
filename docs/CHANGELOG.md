@@ -7,6 +7,53 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## `/api/cron/recurring` driven for real, and the 500 it was hiding — 19 September 2026
+
+**The route that writes to the ledger unattended is now exercised.** `test:recurring-cron`
+(`src/db/recurring-cron-test.ts`, **41 checks**) drives the real handler against a real database, and
+every guarantee it checks is a database fact that no pure test can reach: one transaction per
+`(template, month)` under a deterministic id, the `last_auto_key` marker that stops a second stamp,
+a one-shot `skip_month` consumed exactly once, paused and variable templates that never fire, the
+household-default member fallback, and §1.11's review flag — a real note marks the auto-entry
+reviewed while a generic one leaves it **pending**. Nothing else covered this route at all.
+
+**It found a defect on its first run, in the branch that exists to prevent exactly that defect.**
+The route's `?date=` validation promises, in its own comment, to reject *"impossible calendar dates
+(e.g. 2026-02-30)"* with a `400` "instead of letting the later INSERT throw a 500". It didn't:
+an impossible date parses to an Invalid Date, and date-fns's `format` **throws** a RangeError on one,
+so the round-trip check crashed with an unhandled error before it could compare anything. The test
+asked for `400` and got a `RangeError` — it disagreed with the comment, which is the whole reason
+the test was worth writing. Fixed by adding the `isValid(parsed) ||` guard that both of the route's
+siblings (`cron/digest`, `ledger-feed-window`) already had; this was the one place it had been left
+out, and the failing example was the one named in the sentence above it.
+
+**The safety design came first, because the fixture runs against a real ledger.** Four things make
+it safe anywhere, and each reflects something the route really does: (1) the suite reads every
+existing template's `auto_day` and picks a day of the month no template uses, so the route's
+`auto_day = day` query can only match the fixtures — with fewer than two free days it refuses to run
+rather than guess; (2) it snapshot-restores every pre-existing template, because the route's
+housekeeping UPDATE (`auto_day IS NULL` → clear `last_auto_key`) is not scoped to the fixtures, then
+verifies every one is unchanged; (3) it deletes exactly what it created, by ids it can compute in
+advance, and counts them again; (4) nothing survives to be seen by the 22:00 IST feed, and no
+activity is logged — the route writes rows directly, the cleanup deletes directly, so `activity_log`
+is never involved.
+
+**What it cannot prove:** that the tags reach a live cache. `revalidateTag` needs Next's request
+store, so in a bare Node process the real call throws and the guard logs it — the test asserts the
+run still answered `200` *and* that the log line naming the auto-stamp appeared, which is what shows
+the guarded thunk ran in the route as shipped. `test:cache-tags` covers the shape; the framework
+owns the rest.
+
+> **Executed against the production database with the owner's standing authorization**, and a
+> **read-only check ran first**: 4 templates exist, **all with `auto_day` NULL**, and **0 stale
+> `last_auto_key` markers** — so the day query could not match a real bill and the housekeeping had
+> nothing to clear. Afterwards, independently of the suite's own assertions: templates 4 → 4, zero
+> fixture templates, zero fixture transactions, and **0 rows in `activity_log` in the last two hours**
+> (so nothing this test did can appear in tonight's feed). The suite reported `restored 0`.
+
+**Also amended in the same sitting:** SPEC §7.1 now classifies this route as a mutation and §7.2
+binds it — see the amendment entry below.
+
 ## v1.2 Amendment — 19 September 2026 (owner decision: `/api/cron/recurring` is a mutation, not a read stream)
 
 SPEC §7.1 listed the `/api/cron/*` routes as *"read streams and crons, not mutations"*. That is
