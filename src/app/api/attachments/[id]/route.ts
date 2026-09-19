@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { attachments } from "@/db/schema";
 import { BlobNotConfiguredError, deleteBlob, fetchBlob } from "@/lib/blob";
 import { revalidatePath } from "next/cache";
+import { refreshAfterWrite } from "@/lib/cache-refresh";
 import { idSchema } from "@/lib/validations";
 
 export const dynamic = "force-dynamic";
@@ -89,8 +90,12 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       console.error("Receipt row deleted but the object could not be removed", error);
     }
 
-    revalidatePath("/");
-    revalidatePath("/transactions");
+    // Same rule as the blob above: the row is gone, so a refresh that fails must
+    // not report the delete as failed (see `refreshAfterWrite`).
+    refreshAfterWrite("receipt deleted", () => {
+      revalidatePath("/");
+      revalidatePath("/transactions");
+    });
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Receipt delete failed", error);

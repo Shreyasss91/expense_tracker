@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { refreshAfterWrite } from "@/lib/cache-refresh";
 import { format, isValid, parse } from "date-fns";
 import { digestPeriodForDate } from "@/lib/digest";
 import { sendTelegramDigestIdempotent } from "@/lib/telegram-digest";
@@ -72,8 +73,10 @@ export async function GET(request: Request) {
       whatsappConfig.enabled && whatsappConfig.phone ? await pingDigestReady(period) : { ok: true as const, skipped: "whatsapp_not_configured" };
 
     // The dashboard banner ("digest ready — send on WhatsApp") derives from
-    // today being a digest day, so the page must re-render after a send.
-    revalidatePath("/");
+    // today being a digest day, so the page should re-render after a send. The
+    // send itself is already made; a refresh that fails must not mark the run
+    // failed (see `refreshAfterWrite`).
+    refreshAfterWrite(`digest cron sent for ${date}`, () => revalidatePath("/"));
 
     return NextResponse.json({ ok: true, date, period, telegram, whatsapp });
   } catch (error) {

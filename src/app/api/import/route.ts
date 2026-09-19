@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
+import { refreshAfterWrite } from "@/lib/cache-refresh";
 
 /**
  * §2.10 — /api/import: the way back in. Export used to be one-way.
@@ -50,10 +51,15 @@ export async function POST(request: Request) {
   }
 
   const { inserted, skipped } = await commitImport(resolution.insertable);
-  // Dashboard aggregates and the ledger list are cached under this tag.
-  revalidatePath("/");
-  revalidatePath("/transactions");
-  revalidateTag("transactions");
+  // Dashboard aggregates and the ledger list are cached under this tag. The rows
+  // are committed by now, so a refresh that fails must not answer 500 — the UI
+  // would report a failed import for one that happened, and invite a retry
+  // (see `refreshAfterWrite`).
+  refreshAfterWrite(`import committed ${inserted} row(s)`, () => {
+    revalidatePath("/");
+    revalidatePath("/transactions");
+    revalidateTag("transactions");
+  });
 
   return NextResponse.json({ ok: true, inserted, skipped, summary: resolution.summary });
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { refreshAfterWrite } from "@/lib/cache-refresh";
 import { db } from "@/db";
 import { pushSubscriptions } from "@/db/schema";
 import { getAppSetting, setAppSetting } from "@/db/app-settings-mutations";
@@ -77,7 +78,10 @@ export async function GET(request: Request) {
 
     // At most once per window, whether or not any device accepted it.
     await setAppSetting(db, pingKey, new Date().toISOString());
-    revalidatePath("/");
+    // The ping marker is written; a refresh that fails must not mark the run
+    // failed, or Vercel alerts on a nag that was in fact delivered
+    // (see `refreshAfterWrite`).
+    refreshAfterWrite(`digest fallback ping ${window.key}`, () => revalidatePath("/"));
 
     return NextResponse.json({ ok: true, date: window.endDateIst, sent, failed, stale });
   } catch (error) {
