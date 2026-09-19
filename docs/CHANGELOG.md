@@ -7,6 +7,82 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## The cached reads, audited — three gaps, and the guard that holds them — 19 September 2026
+
+**Six `unstable_cache` sites, and the tag is the whole contract.** Next cannot infer which tables a
+cached callback touched, so each read declares the tags that clear it — and a forgotten tag throws
+nothing and types nothing: the read answers from before the write until its TTL expires. That is the
+same shape as the refresh defect fixed above (a silent wrong answer rather than a crash), so it got
+the same treatment — every cached read checked against the tables it actually depends on, and a
+guard so the next one cannot slip in.
+
+**Three real gaps, none reachable by any existing test.**
+
+1. **`/api/cron/recurring` invalidated nothing at all.** It is a *mutation* — it stamps transactions
+   and updates templates (`last_auto_key`, a consumed `skip_month`, the unconditional housekeeping
+   update) — yet it cleared no tag and no path. Every read on the dashboard, the Recent-category
+   chips, the recurring suggestions and the cached template list was therefore up to a TTL behind
+   the household's own ledger right after the 06:00 IST run. It now clears `transactions` and
+   `templates` through `refreshAfterWrite`, since its response goes to Vercel and a failed refresh
+   must not fail a completed run. Reading it surfaced a second thing worth recording: **SPEC §7.1
+   lists `/api/cron/*` as "read streams and crons, not mutations"**, which is not true of this one.
+   The spec is frozen and this entry is not an amendment, so the divergence is reported rather than
+   edited — §7.2's "`revalidateTag('transactions')` inside all mutation actions" was being satisfied
+   in letter while the one mutation outside the actions satisfied nothing.
+2. **The dashboard was cached under `transactions` alone.** Its pie takes every name, emoji and
+   group rollup from a join on `categories` (`parentCategories` is an alias of it), so renaming or
+   re-emoji-ing a category left the old label on the pie for up to 60 s: the settings action cleared
+   "categories", which this cache did not listen to.
+3. **The recurring suggestions were tagged `transactions` alone while depending on three tables.**
+   Which clusters to suppress is decided by the existing `templates` rows, and each suggestion
+   carries its category's name and emoji. So creating a template from a suggestion did **not** clear
+   the card the user had just acted on — it survived until the TTL or the next ledger mutation, which
+   is precisely why it went unseen: it only showed for a household that did nothing else. The file's
+   own comment claimed the opposite ("a template created from a suggestion suppresses it on the next
+   refresh").
+
+**Two things checked and found sound, because both read like bugs.** `unstable_cache` appends the
+callback's arguments to the cache key (`invocationKey = ${fixedKey}-${JSON.stringify(args)}` in the
+installed Next), so the dashboard's per-month entry cannot serve another month's aggregates — the
+`keyParts` array says nothing about the month, which is easy to misread as a collision. And the
+22:00 IST feeder is untouched by any of this: `getLedgerFeed`, the message builder, the window maths
+and the sent-marker reader are all uncached, so the one path that must never be stale reads live.
+
+**The guard — `test:cache-tags`, 30 checks, DB-free, in CI's `checks` job.** Two rules, both
+over-approximating in the safe direction (over-tagging costs a re-query; under-tagging costs silent
+staleness), plus the tag set itself:
+
+- **Readers**: every `unstable_cache` callback must declare a tag for every cache-mapped table it
+  depends on. "Depends on" is two scans: the names the file bound to schema tables — which sees an
+  aliased import (`templates as templateTable`) and ignores a local variable that merely shares a
+  table's name (`detectRecurringSuggestions` has `const members = …`, which is not the `members`
+  table) — and one level of indirection into functions declared in the same file, because
+  `unstable_cache(() => detectRecurringSuggestions(), …)` names no table at all and its tags were the
+  ones that were wrong.
+- **Writers**: a route handler under `src/app/api/**` that inserts, updates or deletes a cache-mapped
+  table must clear that tag itself, having no caller to do it. The write chains are multi-line
+  (`db` ⟶ `.insert(transactions)`), which a naive `db.insert(` match misses — the first version of
+  that scan did, and reported the cron as clean.
+- Plus: every declared tag must be known, every tag must be cleared somewhere, and no `revalidateTag`
+  may name a tag nothing is cached under. That last check needed care of its own: the helper's log
+  label is a template literal reading `revalidateTag("${tag}")`, so call sites are located with the
+  scanner and their arguments read out of the untouched text.
+
+**Verified, not assumed.** Reverting all three fixes together produces **9 failures naming the file,
+line and missing tag** — `page.tsx:47 … MISSING categories`, `recurring-detection.ts:179 … MISSING
+categories, templates`, and five `cron/recurring` write lines — and restoring re-runs green, with the
+three files byte-identical (`cp` round-trip, `git diff` clean apart from the intended changes).
+
+**Not exercised, and why.** No test drives `/api/cron/recurring` end to end: it needs a template
+fixture and a live `CRON_SECRET`, and running it with a backfilled `?date=` would stamp real rows for
+that month if any template's `auto_day` matched. The guard covers the shape (the tag is cleared, and
+inside the guarded thunk); the deployment check covers it being live. The revalidation itself is the
+framework's.
+
+Verified: `typecheck`, `lint` and a full `build` clean; `test:cache-refresh` 65, `test:cache-tags`
+30, `test:ledger-feed` 122, `test:whatsapp-agent` 63, `test:digest` 38, `test:agent-auth` 37,
+`test:validation` 22, `test:ledger-url` 35 — all green.
+
 ## Post-push verification, and a DB-backed netting test — 19 September 2026
 
 **The four pushed commits were verified by deployment state, not by the local build.** Through the
@@ -225,6 +301,23 @@ framework's revalidators directly"* plus the budget diff, and the file was resto
 counted the helper's log labels (`revalidatePath("/settings")` inside a template literal) as calls, and
 it matched a `revalidatePath(` inside `src/lib/meta.ts`'s doc comment — so the scan now blanks string
 literals and comments before counting.
+
+### The guard now checks *inside*ness, not proximity — 19 September 2026
+
+The check above accepted `refreshAfterWrite(` merely appearing in the file, which proves nothing: the
+call could sit on the next line and throw straight out of the handler — the exact defect the sweep
+was for. The question is structural, so it is now answered structurally: `src/lib/source-scan.ts`
+(shared with `test:cache-tags`, and test support only — no app code imports it) blanks comments and
+string/template literals **length-preservingly**, matches parens, and reports each revalidate call
+with the callee of the innermost call wrapping it. A raw call must report
+`guard === "refreshAfterWrite"`.
+
+The scanner has its own checks first, including the cases it must get *wrong-looking*: a call on the
+line after the thunk reports `guard=none`, and a call named in a comment or a string is not a call
+site at all. None of that is trusted — the negative test is on real code: a stray
+`revalidatePath("/stray")` added to the digest cron produced
+*"line 80 (revalidatePath, guard=none)"* and the budget failure, and the file was restored
+byte-identical. `test:cache-refresh` is **65 checks**, up from 51.
 
 ---
 
