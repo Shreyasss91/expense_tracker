@@ -32,8 +32,17 @@ const MONTH_RE = /^\d{4}-\d{2}$/;
 /**
  * All dashboard analytics are SQL aggregates (§7.2), fetched in as few round
  * trips as possible (totals + tag breakdown share one FILTER query) and cached
- * per month under the "transactions" tag — every mutation revalidates that
- * tag, so the cache is always invalidated on change.
+ * per month under the **ledger's** tag and the **categories'** tag.
+ *
+ * Two tags, because two tables answer for this screen: every amount is
+ * `transactions`, but every name, emoji and group rollup in the pie comes from
+ * a join on `categories`. With only the ledger tag, renaming or re-emoji-ing a
+ * category left the old label in the pie until the 60 s TTL — the settings
+ * actions revalidated "categories", which this cache did not listen to.
+ *
+ * The arguments are part of the cache key (`unstable_cache` appends them), so
+ * each month gets its own entry and switching months cannot serve another
+ * month's aggregates.
  */
 const getDashboardData = unstable_cache(
   async (monthKey: string) => {
@@ -297,7 +306,7 @@ const getDashboardData = unstable_cache(
     };
   },
   ["family-ledger", "dashboard"],
-  { tags: ["transactions"], revalidate: 60 },
+  { tags: ["transactions", "categories"], revalidate: 60 },
 );
 
 export default async function DashboardPage({

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { refreshAfterWrite } from "@/lib/cache-refresh";
 import { and, asc, eq, isNull, ne, or, sql } from "drizzle-orm";
 import { format, parse } from "date-fns";
 import { db } from "@/db";
@@ -140,6 +142,25 @@ export async function GET(request: Request) {
       .update(templates)
       .set({ lastAutoKey: null })
       .where(and(isNull(templates.autoDay), sql`${templates.lastAutoKey} IS NOT NULL`));
+
+    // §7.2 — this route is a MUTATION, and it was the one writer that
+    // invalidated nothing: it stamps transactions and updates templates (the
+    // last_auto_key cursor, a consumed skip_month, the housekeeping above),
+    // while the dashboard, the Recent-category chips, the recurring
+    // suggestions and the cached template list are all served from tags that
+    // only this call can clear. Until it did, the household's first dashboard
+    // view after the 06:00 IST stamp was up to a TTL behind its own ledger.
+    //
+    // Both tags, on the success path, whatever the counts: the housekeeping
+    // UPDATE is unconditional and we cannot know whether it matched a row
+    // without another query. The response is read by Vercel, so a refresh that
+    // throws must not turn a completed run into a failed job — hence
+    // `refreshAfterWrite`, which logs instead.
+    refreshAfterWrite(`recurring auto-stamp ${date} created=${created}`, () => {
+      revalidateTag("transactions");
+      revalidateTag("templates");
+      revalidatePath("/");
+    });
 
     return NextResponse.json({ ok: true, date, due: due.length, created, skipped });
   } catch (error) {

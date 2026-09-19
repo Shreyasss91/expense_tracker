@@ -163,13 +163,21 @@ async function detectRecurringSuggestions(): Promise<RecurringSuggestion[]> {
 }
 
 /**
- * Cached so the 6-month scan doesn't run on every dashboard paint. Tagged
- * "transactions" — every mutation revalidates that tag, so newly entered
- * bills make fresh suggestions appear (and a template created from a
- * suggestion suppresses it on the next refresh).
+ * Cached so the 6-month scan doesn't run on every dashboard paint.
+ *
+ * **Tagged for every table the read depends on, not just the obvious one.** The
+ * scan is nominally about the ledger, but two of its answers come from
+ * elsewhere: which clusters to suppress is decided by the existing `templates`
+ * rows, and each suggestion carries its category's name and emoji from a join
+ * on `categories`. With only the "transactions" tag, creating a template from a
+ * suggestion did NOT clear this cache — so the card the user had just acted on
+ * stayed on the dashboard until the 60 s TTL expired — and renaming a category
+ * left the old name in the card. The next ledger mutation cleared it, which is
+ * exactly why the gap was invisible: it only showed for a household that did
+ * nothing but act on the suggestion.
  */
 export const getRecurringSuggestions = unstable_cache(
   () => detectRecurringSuggestions(),
   ["family-ledger", "recurring-suggestions"],
-  { tags: ["transactions"], revalidate: 60 },
+  { tags: ["transactions", "templates", "categories"], revalidate: 60 },
 );
