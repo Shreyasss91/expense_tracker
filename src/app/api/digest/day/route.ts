@@ -171,8 +171,25 @@ export async function POST(request: Request) {
     }
 
     const sentAt = await recordFeedSent(windowKey);
-    // The digest cards render the marker, so the dashboard must re-render.
-    revalidatePath("/");
+    // The digest cards render the marker, so the dashboard should re-render —
+    // but a cache refresh is not part of the record, and it must never change
+    // what the caller is told. By this line the send IS recorded: Settings will
+    // show it and the 22:15 fallback is correctly suppressed, so a 500 here
+    // would make the agent log "the fallback push may fire" for a night that is
+    // already accounted for — a failure report for a write that succeeded.
+    //
+    // Deliberately NOT reordered: revalidating first would let a cache failure
+    // skip the record entirely, which is strictly worse. The marker is the
+    // contract; the refresh is cosmetic. The failure is logged rather than
+    // swallowed, so hardening does not hide it.
+    try {
+      revalidatePath("/");
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `digest/day recorded window=${windowKey} but the dashboard revalidation failed: ${reason.slice(0, 200)}`,
+      );
+    }
     return NextResponse.json({ ok: true, recorded: true, sentAt });
   } catch (error) {
     console.error("digest/day POST failed", error);

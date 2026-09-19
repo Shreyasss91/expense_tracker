@@ -62,10 +62,6 @@ function check(cond: boolean, msg: string) {
     console.error(`  ✗ ${msg}`);
   }
 }
-function note(msg: string) {
-  console.log(`  ⓘ ${msg}`);
-}
-
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** A dummy credential — the route compares against whatever the process holds. */
@@ -172,7 +168,26 @@ async function main() {
     check(badJson.status === 400, "a body that is not JSON → 400");
 
     // -------------------------------------------------------------- acceptance
-    const accepted = await postJson({ windowKey: acceptedKey, status: "sent" });
+    // `revalidatePath` cannot run in a bare Node process (no request store), which
+    // is precisely the condition the route must survive: the record is the
+    // contract, so the caller must still be told it succeeded — and the cache
+    // failure must reach the log rather than being swallowed by the hardening.
+    const warnings: string[] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((arg) => String(arg)).join(" "));
+    };
+    let accepted: { status: number; json: Record<string, unknown> };
+    try {
+      accepted = await postJson({ windowKey: acceptedKey, status: "sent" });
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    check(
+      accepted.status === 200 && accepted.json.recorded === true,
+      `a recorded send is reported as recorded even though the cache refresh cannot run (got ${accepted.status})`,
+    );
     const written = await markerRow(acceptedKey);
     check(written !== null, "a key that is real, adjacent and ended writes its marker row");
     check(
@@ -183,8 +198,9 @@ async function main() {
       (await getFeedSentAt(acceptedKey)) === written?.value,
       "getFeedSentAt reads it back — this is the gate that suppresses a second post",
     );
-    note(
-      `the response was ${accepted.status}: revalidatePath needs Next's request store, so here the marker is written and the cache refresh throws. The row is the contract; the status is not.`,
+    check(
+      warnings.some((line) => line.includes("revalidation failed")),
+      "the cache failure is logged, not swallowed — hardening must not hide it",
     );
 
     await postJson({ windowKey: acceptedKey, status: "sent" });
