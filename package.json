@@ -30,6 +30,7 @@
     "test:digest": "tsx src/lib/digest-test.ts",
     "test:ledger-feed": "tsx src/lib/ledger-feed-test.ts",
     "test:ledger-feed-netting": "tsx --conditions=react-server src/db/ledger-feed-netting-test.ts",
+    "test:restore-roundtrip": "tsx --conditions=react-server src/db/restore-roundtrip-test.ts",
     "test:agent-auth": "tsx src/lib/agent-auth-test.ts",
     "test:whatsapp-agent": "tsx tools/whatsapp-agent/agent-test.ts",
     "rehearse:whatsapp-agent": "node tools/whatsapp-agent/rehearse.mjs",

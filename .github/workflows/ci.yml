@@ -150,3 +150,9 @@ jobs:
       - name: Ledger-feed netting (real getLedgerFeed, pairwise deletions)
         if: ${{ env.HAS_CI_DB == 'true' }}
         run: npm run test:ledger-feed-netting
+      # §5.4.4 — only the database can show that the row a restore writes really
+      # carries the snapshot's created_at and reviewed_at, which is what the
+      # feed selects on. See the test's header.
+      - name: Restore round-trip (an Undo restores faithfully, timestamps included)
+        if: ${{ env.HAS_CI_DB == 'true' }}
+        run: npm run test:restore-roundtrip
