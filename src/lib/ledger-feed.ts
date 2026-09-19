@@ -9,11 +9,12 @@ import { rupeesToPaise } from "@/lib/money";
 import type { TransactionSnapshot, TransactionTag } from "@/lib/transaction-diff";
 import {
   buildFeedChanges,
+  netDeletedRows,
   type FeedAddedRow,
   type FeedCategoryRef,
-  type FeedDeletedRow,
   type FeedEditedRow,
   type FeedMergeSummary,
+  type FeedNetEvent,
   type LedgerFeed,
 } from "./ledger-feed-format";
 import type { FeedWindow } from "./ledger-feed-window";
@@ -35,6 +36,7 @@ export {
   buildLedgerFeedMessage,
   categoryLabel,
   isFeedKey,
+  netDeletedRows,
   sanitizeLogDetail,
   sanitizeWhatsAppText,
   UNCATEGORIZED_LABEL,
@@ -50,6 +52,7 @@ export type {
   FeedDeletedRow,
   FeedEditedRow,
   FeedMergeSummary,
+  FeedNetEvent,
   LedgerFeed,
 } from "./ledger-feed-format";
 export {
@@ -236,11 +239,43 @@ export async function getLedgerFeed(window: FeedWindow): Promise<LedgerFeed> {
         : categoryRef(row.categoryId),
   }));
 
-  const allDeleted: FeedDeletedRow[] = [];
-  const restoredIds = new Set<string>();
-  const legacyRestoreSources: string[] = [];
+  /** Delete/restore events in `created_at` order — the input to the D6 netting. */
+  const events: FeedNetEvent[] = [];
   const edited: FeedEditedRow[] = [];
   const merges: FeedMergeSummary[] = [];
+
+  /**
+   * Resolve the **legacy** restore payloads (`{ from }`, no `ids`) before the
+   * ordered walk. `ids` is the only field that names the rows a restore brought
+   * back, and the legacy form names the originating *delete entry* instead —
+   * which may sit outside this window. Resolving it up front is what lets a
+   * legacy restore net out at its own position in the walk, exactly like a
+   * modern one.
+   */
+  const legacyRestoreSources = [
+    ...new Set(
+      activityRows
+        .filter((entry) => entry.action === "restore_transactions")
+        .map((entry) => (entry.payload ?? {}) as RestorePayload)
+        .filter((payload) => !Array.isArray(payload.ids) && typeof payload.from === "string")
+        .map((payload) => payload.from as string),
+    ),
+  ];
+  const legacyIdsByEntry = new Map<string, string[]>();
+  if (legacyRestoreSources.length > 0) {
+    const legacyRows = await db
+      .select({ id: activityLog.id, payload: activityLog.payload })
+      .from(activityLog)
+      .where(inArray(activityLog.id, legacyRestoreSources));
+    for (const row of legacyRows) {
+      const snapshots = ((row.payload ?? {}) as DeletePayload).transactions;
+      if (!Array.isArray(snapshots)) continue;
+      legacyIdsByEntry.set(
+        row.id,
+        snapshots.flatMap((raw) => (raw && typeof raw.id === "string" ? [raw.id] : [])),
+      );
+    }
+  }
 
   for (const entry of activityRows) {
     const payload = (entry.payload ?? {}) as Record<string, unknown>;
@@ -279,13 +314,13 @@ export async function getLedgerFeed(window: FeedWindow): Promise<LedgerFeed> {
 
     if (entry.action === "restore_transactions") {
       const restore = payload as RestorePayload;
-      if (Array.isArray(restore.ids)) {
-        for (const id of restore.ids) if (typeof id === "string") restoredIds.add(id);
-      } else if (typeof restore.from === "string") {
-        // Legacy entry written before `ids` existed — resolve the originating
-        // delete entry after the loop (it may sit OUTSIDE this window).
-        legacyRestoreSources.push(restore.from);
-      }
+      events.push({
+        kind: "restore",
+        ids: Array.isArray(restore.ids)
+          ? restore.ids.filter((id): id is string => typeof id === "string")
+          : // Legacy entry written before `ids` existed — resolved above.
+            (typeof restore.from === "string" ? (legacyIdsByEntry.get(restore.from) ?? []) : []),
+      });
       continue;
     }
 
@@ -297,33 +332,22 @@ export async function getLedgerFeed(window: FeedWindow): Promise<LedgerFeed> {
       const snapshot = asSnapshot(raw);
       const id = raw && typeof raw.id === "string" ? raw.id : null;
       if (!snapshot || !id) continue;
-      allDeleted.push({
-        id,
-        amountPaise: rupeesToPaise(snapshot.amount),
-        note: snapshot.note,
-        category: categoryRef(snapshot.categoryId),
+      events.push({
+        kind: "delete",
+        row: {
+          id,
+          amountPaise: rupeesToPaise(snapshot.amount),
+          note: snapshot.note,
+          category: categoryRef(snapshot.categoryId),
+        },
       });
     }
   }
 
-  if (legacyRestoreSources.length > 0) {
-    const legacyRows = await db
-      .select({ payload: activityLog.payload })
-      .from(activityLog)
-      .where(inArray(activityLog.id, legacyRestoreSources));
-    for (const row of legacyRows) {
-      const snapshots = ((row.payload ?? {}) as DeletePayload).transactions;
-      if (!Array.isArray(snapshots)) continue;
-      for (const raw of snapshots) {
-        if (raw && typeof raw.id === "string") restoredIds.add(raw.id);
-      }
-    }
-  }
-
-  // D6 — a delete and its Undo inside one window net out: neither the deletion
-  // nor a synthetic re-add is reported. A restored row appears under Added only
-  // if its own created_at falls in this window, which is legitimate.
-  const deleted = allDeleted.filter((row) => !restoredIds.has(row.id));
+  // D6 — a deletion and its Undo inside one window net out, in TIME order: each
+  // restore cancels the most recent still-open deletion of the same id, so a
+  // re-delete after an Undo is still reported (`netDeletedRows`).
+  const deleted = netDeletedRows(events);
 
   const counts = {
     added: added.length,

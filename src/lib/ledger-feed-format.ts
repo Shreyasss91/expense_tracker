@@ -284,6 +284,58 @@ export function buildFeedChanges(
   return changes;
 }
 
+/**
+ * One event in the ordered delete/restore walk that produces the Deleted
+ * section. Built by ledger-feed.ts from `activity_log`, in `created_at` order.
+ */
+export type FeedNetEvent =
+  | { kind: "delete"; row: FeedDeletedRow }
+  | { kind: "restore"; ids: readonly string[] };
+
+/**
+ * D6 — collapse each deletion against the restore that Undid it, in time order.
+ *
+ * **Ordered, not set-based.** The obvious implementation collects every restored
+ * id into a `Set` and drops every deletion carrying one — the shape the spec's
+ * §5.4.4 step 2 describes. That is wrong for a re-delete: delete X, Undo X, then
+ * delete X again, all inside one window, and the set drops *both* deletions, so
+ * the family is told nothing even though X is deleted at close. Matching each
+ * restore against the most recent **still-open** deletion for the same id is
+ * what makes the outcome equal the net change. A restore therefore cancels one
+ * deletion, never all of them.
+ *
+ * A restore whose id has no open deletion — the row was deleted in an *earlier*
+ * window — cancels nothing (E5). It is genuinely this window's business only if
+ * it re-adds the row, which it must not: a restore is not a change of its own,
+ * and step 3 forbids synthesising an Added row. With `created_at` preserved on
+ * restore, such a row stays out of `added` too.
+ */
+export function netDeletedRows(events: readonly FeedNetEvent[]): FeedDeletedRow[] {
+  const deletions: FeedDeletedRow[] = [];
+  const cancelled = new Set<FeedDeletedRow>();
+  /** id → the deletions of it that no restore has claimed yet, oldest first. */
+  const open = new Map<string, FeedDeletedRow[]>();
+
+  for (const event of events) {
+    if (event.kind === "delete") {
+      deletions.push(event.row);
+      const stack = open.get(event.row.id);
+      if (stack) stack.push(event.row);
+      else open.set(event.row.id, [event.row]);
+      continue;
+    }
+    for (const id of event.ids) {
+      const stack = open.get(id);
+      if (!stack || stack.length === 0) continue;
+      cancelled.add(stack.pop() as FeedDeletedRow);
+    }
+  }
+
+  // Identity, not equality: two deletions can be structurally identical rows,
+  // and only the exact instance a restore claimed may be dropped.
+  return deletions.filter((row) => !cancelled.has(row));
+}
+
 function addedLine(row: FeedAddedRow, windowEndDate: string): string {
   const head = `${rowTimeLabel(row.date, row.time, windowEndDate)} · ${categoryLabel(row.category)} · ${formatINR(row.amountPaise)}`;
   const note = renderNote(row.note);

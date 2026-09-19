@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { activityLog, transactions } from "@/db/schema";
 import { idSchema } from "@/lib/validations";
 import { logActivity } from "@/db/activity-log";
+import { restoreValuesFromSnapshot } from "@/lib/transaction-diff";
 
 /**
  * §2.12 / §6.5 — the History surface shows deletes and merges. The daily
@@ -62,24 +63,18 @@ export async function restoreActivityEntry(id: string) {
   // net out. A count alone cannot say which rows came back.
   const restoredIds: string[] = [];
   for (const snap of snapshots) {
-    if (typeof snap.id !== "string") continue;
-    const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, snap.id));
+    // The snapshot's own `created_at` is carried through on purpose: without it
+    // the row would be stamped with the restore instant, and the daily feed —
+    // which selects on `created_at` — would report a deleted-and-undone expense
+    // as a brand-new Added entry. See `restoreValuesFromSnapshot`.
+    const values = restoreValuesFromSnapshot(snap);
+    if (!values) continue;
+    const [existing] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.id, values.id));
     if (existing) continue;
     try {
-      await db.insert(transactions).values({
-        id: snap.id as string,
-        memberId: snap.memberId as string,
-        categoryId: (snap.categoryId as string | null) ?? null,
-        tag: snap.tag as "one_time" | "recurring" | "lifestyle",
-        amount: snap.amount as string,
-        note: (snap.note as string | null) ?? null,
-        date: snap.date as string,
-        time: snap.time as string,
-        shared: (snap.shared as boolean) ?? false,
-        splitWith: (snap.splitWith as string[]) ?? [],
-      });
+      await db.insert(transactions).values(values);
       restored += 1;
-      restoredIds.push(snap.id);
+      restoredIds.push(values.id);
     } catch {
       // skip rows that no longer fit (e.g. member deleted) — restore the rest
     }

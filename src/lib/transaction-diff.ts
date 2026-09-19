@@ -1,7 +1,9 @@
 import { TRANSACTION_TAGS } from "./constants";
 
 /**
- * Pure snapshot diffing for the daily ledger-change feed's edit journal.
+ * Pure snapshot mapping for the daily ledger-change feed's edit journal — the
+ * row → snapshot direction used to detect changes, and the snapshot → row
+ * direction used to restore a deleted one.
  *
  * `activity_log` had no update action before this feature (D4 was not
  * derivable from existing data), so the four writers in
@@ -65,6 +67,80 @@ export function toSnapshot(row: SnapshotColumns): TransactionSnapshot {
     date: row.date,
     time: row.time,
     splitWith: row.splitWith ?? [],
+  };
+}
+
+/** `undefined` for anything that is not a usable non-empty string. */
+function nonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+/** A jsonb timestamp round-trips as an ISO string; only a parseable value is usable. */
+function restoreTimestamp(value: unknown): Date | undefined {
+  if (typeof value !== "string" && !(value instanceof Date)) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/** The row columns a restore writes back, derived from a delete snapshot. */
+export interface RestoreInsertValues {
+  id: string;
+  memberId: string;
+  categoryId: string | null;
+  tag: TransactionTag;
+  amount: string;
+  note: string | null;
+  date: string;
+  time: string;
+  shared: boolean;
+  splitWith: string[];
+  /** Omitted — so the column default applies — when the snapshot carries no usable instant. */
+  createdAt?: Date;
+}
+
+/**
+ * The inverse of `toSnapshot`, and the only place a delete snapshot is turned
+ * back into an insert.
+ *
+ * It exists as its own function because a restore must be **faithful**: a delete
+ * snapshot carries the row's `created_at`, and re-inserting without it (letting
+ * `defaultNow()` fire) stamps the row with the *restore* instant instead of the
+ * original one. That is not cosmetic — the daily feed decides window membership
+ * on `created_at`, so an unfaithful restore shows a deleted-and-undone expense
+ * as a brand-new **Added** entry, and D6 ("a delete plus its Undo reports
+ * neither") could never hold. See SPEC_DAILY_LEDGER_WHATSAPP_FEED §5.4.4 step 3,
+ * whose "only if its own created_at falls inside the window" presumes exactly
+ * this preservation.
+ *
+ * Returns `null` for a snapshot that cannot be re-inserted — the caller skips
+ * it, which is the behaviour the previous inline insert already produced through
+ * its try/catch.
+ */
+export function restoreValuesFromSnapshot(snapshot: Record<string, unknown>): RestoreInsertValues | null {
+  const id = nonEmptyString(snapshot.id);
+  const memberId = nonEmptyString(snapshot.memberId);
+  const amount = nonEmptyString(snapshot.amount);
+  const date = nonEmptyString(snapshot.date);
+  const time = nonEmptyString(snapshot.time);
+  if (!id || !memberId || !amount || !date || !time) return null;
+
+  const tag = nonEmptyString(snapshot.tag);
+  if (!tag || !(TRANSACTION_TAGS as readonly string[]).includes(tag)) return null;
+
+  return {
+    id,
+    memberId,
+    categoryId: nonEmptyString(snapshot.categoryId),
+    tag: tag as TransactionTag,
+    amount,
+    date,
+    time,
+    note: typeof snapshot.note === "string" ? snapshot.note : null,
+    shared: snapshot.shared === true,
+    splitWith: Array.isArray(snapshot.splitWith)
+      ? snapshot.splitWith.filter((value): value is string => typeof value === "string")
+      : [],
+    createdAt: restoreTimestamp(snapshot.createdAt),
   };
 }
 

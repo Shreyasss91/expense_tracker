@@ -1,19 +1,22 @@
 /**
  * Ledger-change feed tests — `npm run test:ledger-feed`.
  *
- * DB-free on purpose: the window arithmetic, the snapshot diff and the message
- * format are pure, and they are where the subtle bugs live. The DB-backed
- * aggregation in ledger-feed.ts (including delete/restore netting) is exercised
- * by `/api/digest/day` against real data — see the spec's §8 manual commands.
+ * DB-free on purpose: the window arithmetic, the snapshot mapping, the netting
+ * and the message format are pure, and they are where the subtle bugs live. The
+ * DB-backed aggregation in ledger-feed.ts is exercised by `/api/digest/day`
+ * against real data — see the spec's §8 manual commands.
  */
 import {
   buildFeedChanges,
   buildLedgerFeedMessage,
   categoryLabel,
   LOG_DETAIL_MAX_CHARS,
+  netDeletedRows,
   sanitizeLogDetail,
   sanitizeWhatsAppText,
   UNCATEGORIZED_LABEL,
+  type FeedDeletedRow,
+  type FeedNetEvent,
   type LedgerFeed,
 } from "./ledger-feed-format";
 import {
@@ -24,7 +27,12 @@ import {
   parseFeedKey,
   windowKeyLabel,
 } from "./ledger-feed-window";
-import { diffSnapshots, toSnapshot, type TransactionSnapshot } from "./transaction-diff";
+import {
+  diffSnapshots,
+  restoreValuesFromSnapshot,
+  toSnapshot,
+  type TransactionSnapshot,
+} from "./transaction-diff";
 
 let failures = 0;
 function check(cond: boolean, msg: string) {
@@ -409,6 +417,128 @@ check(
   !/[\uD800-\uDBFF]$/.test(emojiDetail.split("…")[0]!),
   "truncating mid-emoji drops the orphaned half of the surrogate pair",
 );
+
+/* --------------------------------------------------- delete/restore netting -- */
+
+console.log("\nDelete/restore netting (D6)");
+
+/** A deleted row, identified by its transaction id. */
+const deletedRow = (id: string): FeedDeletedRow => ({
+  id,
+  amountPaise: 45000,
+  note: null,
+  category: null,
+});
+type DeleteEvent = Extract<FeedNetEvent, { kind: "delete" }>;
+type RestoreEvent = Extract<FeedNetEvent, { kind: "restore" }>;
+const deletion = (id: string): DeleteEvent => ({ kind: "delete", row: deletedRow(id) });
+const restore = (...ids: string[]): RestoreEvent => ({ kind: "restore", ids });
+
+check(netDeletedRows([]).length === 0, "no events net to nothing");
+check(netDeletedRows([deletion("t1")]).length === 1, "an unrestored deletion survives");
+check(
+  netDeletedRows([deletion("t1"), restore("t1")]).length === 0,
+  "delete + Undo in one window nets out (E4) — neither is reported",
+);
+check(
+  netDeletedRows([restore("t1"), deletion("t1")]).length === 1,
+  "a restore followed by a NEW delete still reports the deletion — a Set would drop it",
+);
+check(
+  netDeletedRows([deletion("t1"), restore("t1"), deletion("t1")]).length === 1,
+  "delete + Undo + delete reports exactly one deletion",
+);
+check(
+  netDeletedRows([deletion("t1"), restore("t1"), deletion("t1"), restore("t1")]).length === 0,
+  "a second Undo nets the re-delete out again",
+);
+check(
+  netDeletedRows([deletion("t1"), restore("t1", "t2")]).length === 0,
+  "a restore naming a row this window never deleted cancels nothing extra",
+);
+check(
+  netDeletedRows([deletion("t1"), deletion("t2"), restore("t1")]).length === 1,
+  "netting is per-id — an unrelated deletion is untouched",
+);
+check(
+  netDeletedRows([deletion("t1"), deletion("t2")]).map((row) => row.id).join() === "t1,t2",
+  "surviving deletions keep their original order",
+);
+check(
+  netDeletedRows([deletion("t1"), deletion("t1"), restore("t1")]).length === 1,
+  "a restore cancels ONE deletion, not every deletion of that id",
+);
+check(
+  netDeletedRows([restore("t-other-window"), deletion("t1")]).length === 1,
+  "a restore of a row deleted in an EARLIER window nets nothing out here (E5)",
+);
+// Two structurally identical rows: identity, not equality, decides which one a
+// restore claimed, so the survivor must be the untouched instance.
+const firstDelete = deletion("t1");
+const secondDelete = deletion("t1");
+const survivor = netDeletedRows([firstDelete, secondDelete, restore("t1")]);
+check(
+  survivor.length === 1 && survivor[0] === firstDelete.row && survivor[0] !== secondDelete.row,
+  "a restore claims the NEWEST matching deletion, and identity decides which instance survives",
+);
+
+/* ---------------------------------------------- restore value mapping ------- */
+
+console.log("\nRestore value mapping (a delete snapshot → an insert)");
+
+/** The shape a delete writes into `activity_log.payload` (jsonb, so ISO strings). */
+const deleteSnapshot = {
+  id: "t-restored",
+  memberId: "m-dad",
+  categoryId: "c-fuel",
+  tag: "one_time",
+  amount: "450.00",
+  note: "Petrol at Shell",
+  date: "2026-09-17",
+  time: "09:14:00",
+  createdAt: "2026-09-17T03:44:00.000Z",
+  reviewedAt: null,
+  shared: false,
+  splitWith: [],
+};
+
+const restoredValues = restoreValuesFromSnapshot(deleteSnapshot);
+check(restoredValues?.id === "t-restored", "the id round-trips");
+check(restoredValues?.categoryId === "c-fuel" && restoredValues?.note === "Petrol at Shell", "the editable columns round-trip");
+const preservedCreatedAt = restoredValues?.createdAt;
+check(
+  preservedCreatedAt instanceof Date && preservedCreatedAt.toISOString() === "2026-09-17T03:44:00.000Z",
+  "the ORIGINAL created_at is preserved — without it the feed reports an Undo as a new addition",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, createdAt: undefined })?.createdAt === undefined,
+  "a snapshot with no created_at leaves the column default alone rather than inventing a date",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, createdAt: "not-a-date" })?.createdAt === undefined,
+  "an unparseable created_at is dropped, not written as an Invalid Date",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, categoryId: null })?.categoryId === null,
+  "an uncategorized deletion restores as uncategorized",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, shared: true, splitWith: ["m-dad", "m-mom"] })?.shared === true,
+  "the assignment round-trips",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, splitWith: ["m-dad", 7, null] })?.splitWith.join() === "m-dad",
+  "a non-string in split_with is dropped rather than inserted",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, tag: "nonsense" }) === null,
+  "an unknown tag is refused — the row is skipped, never written with a broken enum",
+);
+check(
+  restoreValuesFromSnapshot({ ...deleteSnapshot, memberId: undefined }) === null,
+  "a snapshot missing a required column is refused",
+);
+check(restoreValuesFromSnapshot({}) === null, "an empty payload object is refused");
 
 console.log(failures === 0 ? "\nAll ledger-feed checks passed.\n" : `\n${failures} ledger-feed check(s) failed.\n`);
 process.exit(failures === 0 ? 0 : 1);
