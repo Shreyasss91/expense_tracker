@@ -33,6 +33,7 @@
     "test:restore-roundtrip": "tsx --conditions=react-server src/db/restore-roundtrip-test.ts",
     "test:digest-day-post": "tsx --conditions=react-server src/db/digest-day-post-test.ts",
     "test:agent-auth": "tsx src/lib/agent-auth-test.ts",
+    "test:cache-refresh": "tsx --conditions=react-server src/lib/cache-refresh-test.ts",
     "test:whatsapp-agent": "tsx tools/whatsapp-agent/agent-test.ts",
     "rehearse:whatsapp-agent": "node tools/whatsapp-agent/rehearse.mjs",
     "generate:vapid": "node scripts/generate-vapid.mjs",

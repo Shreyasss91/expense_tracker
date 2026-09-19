@@ -54,6 +54,13 @@ jobs:
       # Sets its own AUTH_SECRET / FAMILY_MASTER_PASSWORD, so it needs no secret.
       - name: Master-password session revocation (DB-free auth callback regression)
         run: npm run test:password-session
+      # A write-then-revalidate path must never report a committed write as a
+      # failure. DB-free but not server-free: it imports the `server-only`
+      # cache-refresh helper under the react-server condition, where the
+      # framework's revalidatePath genuinely throws — the only way to exercise
+      # the failure path. It also pins the import source of every call site.
+      - name: Cache-refresh guard (a refresh failure is never a failed write)
+        run: npm run test:cache-refresh
 
   # §1.4 — the committed migration chain MUST replay from scratch on every
   # push: the 0004/0005 collision went unnoticed precisely because the only
