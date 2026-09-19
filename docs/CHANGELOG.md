@@ -98,6 +98,47 @@ an independent `SELECT count(*)` for `zz%test%` confirms **0 leftover rows** in 
 _two_ new lint warnings, from a destructuring trick used to drop the timestamp keys, which is the kind
 of thing that quietly accumulates; the fixture now deletes the keys instead.
 
+### `POST /api/digest/day`'s key rules, against the marker table — 19 September 2026
+
+The endpoint's `windowKey` rules are covered twice already — as pure functions (`parseFeedKey`,
+`feedKeyHasEnded`) and by the live verifier over HTTP — and **neither can see the thing the rules
+exist to protect.** The rejected key's real consequence is a row in `app_settings`, and an accepted
+key's is exactly one row that `getFeedSentAt` reads back; that marker is the gate the phone agent AND
+the 22:15 fallback both consult, which is why a marker written under a bad key silences a night.
+
+`test:digest-day-post` (`src/db/digest-day-post-test.ts`) drives the **real route handler**, so the
+validation order is exercised as shipped — shape → real calendar dates → adjacency → has-the-window
+-ended → status — and then pins both consequences against the real table: six kinds of bad key, a
+missing status, an unknown status and a non-JSON body each answer `400` **and leave no marker**;
+a well-formed past key writes one marker whose value is the ISO instant `getFeedSentAt` returns; a
+repeat upserts rather than duplicating; `status: "failed"` answers `200` with `recorded: false` and
+writes nothing, which is what keeps the fallback armed; and the auth ladder answers `401` for a
+wrong token and for none, `503` when the deployment has no token. **22 checks, 0 failures.**
+
+Three design decisions, each defending against a specific way this test could lie:
+
+- **The fixture key is a window 40 days in the past, never tonight's.** Writing a marker for the
+  current window would tell the agent tonight's feed was already sent and silence it — a test that
+  breaks the feature it tests. The key is asserted to differ from the current window's, and the whole
+  `digest_sent:whatsapp_feed:` row set is compared before and after (**0 → 0** on this run), so a
+  leaked marker fails the suite rather than quietly suppressing a post.
+- **The future-window fixture is asserted to be well-formed but unended** before it is used. A probe
+  that fails because it was malformed proves nothing about the ended-window rule — exactly the bug
+  the live verifier shipped and then caught in itself when its hard-coded key became a future window.
+- **A fresh `x-forwarded-for` per run.** The route throttles presented-but-wrong credentials at 20 per
+  5 minutes per client, so a fixed address would let repeated local runs inherit each other's
+  failures and answer `429` where the test expects `401`.
+
+> **One thing observed and deliberately NOT changed.** `revalidatePath` needs Next's request store, so
+> in a bare Node process the *accepted* path writes its marker and then throws, and the route's own
+> catch turns that into a `500`. So the accepted case asserts the **row**, not the status; the
+> `failed` case, which never reaches revalidation, asserts both. This is a test-context artefact — a
+> real route handler has the store — but it does describe a wart: a cache refresh that fails is
+> reported as a failed record even though the record was written. Nothing double-posts, because the
+> fallback consults the marker rather than the response, so this is recorded as a decision rather than
+> patched. Hardening it would mean wrapping `revalidatePath`, and reordering it before the write would
+> be strictly worse — the marker is the contract and the dashboard refresh is cosmetic.
+
 ---
 
 ## Daily ledger-change feed — review found five defects, all now fixed — 19 September 2026
