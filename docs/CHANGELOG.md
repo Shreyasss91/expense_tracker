@@ -170,6 +170,62 @@ them has a caller that branches on the response — two are Vercel crons whose b
 others are web forms — so a mis-reported refresh has no consumer there. Changing four more routes was
 not what was asked; recorded here so it is a decision rather than an oversight.
 
+> **Annotated 19 September 2026:** no longer true — those four were swept, and the sweep then extended
+> to the ~100 Server Action call sites. See **Every write path swept** below. What survives from the
+> paragraph above is the priority order it implies: the routes whose callers read the response first,
+> the rest after. Its claim that the others "have no consumer" was also too generous — see the two
+> action shapes below, where a mis-reported refresh reaches a *user*, not just a log.
+
+### Every write path swept, and the guard that keeps it that way — 19 September 2026
+
+**First the route handlers, closing the decision above.** `src/lib/cache-refresh.ts` now holds the rule
+— *the write is the contract, the refresh is cosmetic* — behind `refreshAfterWrite(label, fn)`, applied
+to all five handlers whose answer somebody reads: both crons, `/api/import`, the receipt delete, and the
+`digest/day` POST it was extracted from. Each passes a label naming what was written
+(`import committed 12 row(s)`), so the log names the operation rather than only the route.
+
+**Then the Server Action family, where the same argument is stronger rather than weaker.** The six
+modules under `src/actions/**` now import the wrappers **under the framework's own names** —
+`revalidatePath` / `revalidateTag` from `@/lib/cache-refresh` — so converting a module is a one-line
+import change and all **101** call sites are untouched. Two shapes were repaired, and the second is
+the one that mattered:
+
+- **Where the refresh sits after the action's `try`, its throw escaped the action entirely**, so the
+  caller's `result.ok` branch never ran and a committed write surfaced as a rejected Server Action.
+- **Where it sits inside the write's `try` — `createTemplate`, `saveSearch`, `deleteSavedSearch` — the
+  action's own `catch` answered *"Could not save the template"* for an insert that had already
+  committed.** That is worse than a wrong toast: the obvious response is to retry, which inserts a
+  second template or saved search, and nothing in the response says the first one landed.
+
+The cost of the other direction is stated rather than hidden: a refresh that fails is now logged
+instead, so the page keeps serving its cached render until something else revalidates it. Taken
+knowingly — a stale cache is corrected by time and named in the log, while a false failure is acted on
+at once and cannot be undone.
+
+**And a guard, because the difference is invisible at the call site.** `test:cache-refresh`
+(`src/lib/cache-refresh-test.ts`, **51 checks**, wired into CI's DB-free `checks` job) does two jobs:
+
+- **Behaviour.** It imports the helper under `--conditions=react-server` and calls a revalidator in a
+  bare Node process, where Next has no static-generation store and the real call throws — the only way
+  to reach the failure path at all, since inside a request the refresh succeeds and the guard is dead
+  code. It first calls the framework's function to capture the reason **it** throws, then requires the
+  wrapper's log to contain that exact reason: a stub logging a canned line could not produce it. (The
+  probe argument must equal the wrapped call's, because Next's invariant message embeds it — the first
+  version used a different probe path and failed its own comparison.) It also asserts the wrapper is
+  **synchronous**, since a returned promise would escape as an unhandled rejection instead of a log.
+- **Shape.** It reads every `src/**/*.ts(x)` file and pins where each revalidator name comes from: the
+  framework's, only in the five route handlers and only within a per-file call budget; the helper's,
+  everywhere else; and no file mixing the two.
+
+That second half is a **ratchet, not a proof** — it can see an import source but not whether a raw call
+sits inside the `refreshAfterWrite` thunk or beside it — and the file says so. It was checked to bite:
+reverting one action's import to `"next/cache"` fails on *"src/actions/digest.ts: does NOT import the
+framework's revalidators directly"* plus the budget diff, and the file was restored byte-identical
+(`diff` clean) with the suite re-run green. Its own first run failed **on the scanner** twice: it
+counted the helper's log labels (`revalidatePath("/settings")` inside a template literal) as calls, and
+it matched a `revalidatePath(` inside `src/lib/meta.ts`'s doc comment — so the scan now blanks string
+literals and comments before counting.
+
 ---
 
 ## Daily ledger-change feed — review found five defects, all now fixed — 19 September 2026
