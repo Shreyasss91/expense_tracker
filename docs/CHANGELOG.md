@@ -129,15 +129,46 @@ Three design decisions, each defending against a specific way this test could li
   5 minutes per client, so a fixed address would let repeated local runs inherit each other's
   failures and answer `429` where the test expects `401`.
 
-> **One thing observed and deliberately NOT changed.** `revalidatePath` needs Next's request store, so
-> in a bare Node process the *accepted* path writes its marker and then throws, and the route's own
-> catch turns that into a `500`. So the accepted case asserts the **row**, not the status; the
-> `failed` case, which never reaches revalidation, asserts both. This is a test-context artefact — a
-> real route handler has the store — but it does describe a wart: a cache refresh that fails is
-> reported as a failed record even though the record was written. Nothing double-posts, because the
-> fallback consults the marker rather than the response, so this is recorded as a decision rather than
-> patched. Hardening it would mean wrapping `revalidatePath`, and reordering it before the write would
-> be strictly worse — the marker is the contract and the dashboard refresh is cosmetic.
+> ~~**One thing observed and deliberately NOT changed.**~~ *(Superseded the same day — see **The record
+> path hardened** below.)* `revalidatePath` needs Next's request store, so in a bare Node process the
+> *accepted* path wrote its marker and then threw, and the route's own catch turned that into a `500` —
+> so the accepted case asserted the **row**, not the status, while the `failed` case, which never
+> reaches revalidation, asserted both. A test-context artefact, since a real route handler has the
+> store, ~~but it does describe a wart: a cache refresh that fails is reported as a failed record even
+> though the record was written. Nothing double-posts, because the fallback consults the marker rather
+> than the response, so this is recorded as a decision rather than patched.~~
+>
+> ~~Hardening it would mean wrapping `revalidatePath`, and reordering it before the write would be
+> strictly worse — the marker is the contract and the dashboard refresh is cosmetic.~~ The last
+> sentence is the argument that settled it: if the marker is the contract, a cache refresh must not be
+> able to call the record a failure.
+
+### The record path hardened — 19 September 2026
+
+`POST /api/digest/day` no longer lets a cache refresh decide what the caller is told. The
+`revalidatePath("/")` that follows `recordFeedSent` is wrapped: if it throws, the failure is **logged**
+and the route still answers `200` with `recorded: true`.
+
+The reasoning is the one the ordering already implied. By that line the send **is** recorded, so a `500`
+— which is what a bare Node process produced, and what any future revalidation failure would produce
+in production — makes the agent log *"the fallback push may fire"* for a night that is already
+accounted for: a failure report for a write that succeeded. That response is the only thing the
+agent's `confirm()` branches on, which is exactly why **this** route gets the treatment and its
+siblings below do not.
+
+It is deliberately **not** reordered. Revalidating before the write would let a cache failure skip the
+record entirely, which is strictly worse: the marker is the contract, the refresh is cosmetic.
+
+Hardening must not become hiding, so the failure is logged rather than swallowed and the suite asserts
+both halves — the accepted case now checks the `200`/`recorded: true` response **and** that a log line
+naming the failed revalidation appeared. `test:digest-day-post` is **24 checks**, up from 22, and the
+whole-marker-table safety assertion still holds (`0 → 0`).
+
+**Not swept, by decision:** the same `write → revalidatePath` ordering appears in
+`/api/cron/digest-fallback`, `/api/cron/digest`, `/api/import` and `/api/attachments/[id]`. None of
+them has a caller that branches on the response — two are Vercel crons whose bodies nobody reads, the
+others are web forms — so a mis-reported refresh has no consumer there. Changing four more routes was
+not what was asked; recorded here so it is a decision rather than an oversight.
 
 ---
 
