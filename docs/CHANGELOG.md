@@ -67,6 +67,37 @@ test reaching its first query and failing only on connectivity.
 *(Incidentally: the typechecker caught that `transactions.id` has no `defaultRandom()` — the fixture
 has to supply the id, unlike `activity_log`, which does.)*
 
+### The other half — a restore round-trip through the table — 19 September 2026
+
+The netting suite covers what the feed *reads*. It cannot cover what a restore
+*writes*, and that is the half the two defects actually lived in: the pure suite can show that
+`restoreValuesFromSnapshot` returns the original `created_at`, but only a database can show that the
+row which lands in `transactions` carries it — and `transactions.created_at` is what the feed selects
+on.
+
+`test:restore-roundtrip` (`src/db/restore-roundtrip-test.ts`) therefore drives the whole loop the way
+`deleteTransaction` and `restoreActivityEntry` do — insert, read, **snapshot through a `jsonb`
+round-trip**, delete, map, insert, read back — and asserts the timestamps survived. Two scenarios,
+because the assertion that matters is the *difference* between them:
+
+1. a faithful snapshot restores the **original** `created_at` and `reviewed_at`, under the original
+   id, with amount/note/tag/business-date/time/assignment intact, and the restored row is proved to
+   predate the current window — so undoing the deletion of an older expense is **not** announced as
+   tonight's addition; and
+2. a snapshot with no usable timestamps falls back to the column defaults — `created_at` = `now()`,
+   `reviewed_at` = NULL.
+
+Scenario 2 exists to stop scenario 1 passing vacuously: without it, "the timestamp was preserved"
+would still read as green in a world where nothing was ever preserved. The JSON pass in the fixture
+is not decoration either — it is what turns `created_at` into the ISO string the restore path has to
+re-parse, so skipping it would test a shape the app never writes.
+
+**Executed** against the database under the same authorisation: **14 checks, 0 failures, exit 0**, and
+an independent `SELECT count(*)` for `zz%test%` confirms **0 leftover rows** in both `transactions` and
+`activity_log` after both suites. `typecheck` and `lint` are clean — the first run of this file left
+_two_ new lint warnings, from a destructuring trick used to drop the timestamp keys, which is the kind
+of thing that quietly accumulates; the fixture now deletes the keys instead.
+
 ---
 
 ## Daily ledger-change feed — review found five defects, all now fixed — 19 September 2026
