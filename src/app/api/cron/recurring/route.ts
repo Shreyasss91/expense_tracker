@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { refreshAfterWrite } from "@/lib/cache-refresh";
 import { and, asc, eq, isNull, ne, or, sql } from "drizzle-orm";
-import { format, parse } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { db } from "@/db";
 import { members, templates, transactions } from "@/db/schema";
 import { isGenericNote } from "@/lib/generic-notes";
@@ -42,11 +42,17 @@ export async function GET(request: Request) {
     // §1.10 — the regex below accepts impossible calendar dates (e.g.
     // 2026-02-30); a round-trip parse+format rejects them so we return 400
     // instead of letting the later INSERT throw a 500.
+    //
+    // The `isValid` test is load-bearing, not decoration: an impossible date
+    // parses to an Invalid Date, and `format` THROWS a RangeError on one — so
+    // without it this branch produced an unhandled 500 for exactly the example
+    // in the sentence above, and never reached the 400 it exists for. Its two
+    // siblings (`cron/digest`, `ledger-feed-window`) both had the guard already.
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
       return NextResponse.json({ ok: false, error: "Invalid date format (expected YYYY-MM-DD)" }, { status: 400 });
     }
     const parsed = parse(dateParam, "yyyy-MM-dd", new Date());
-    if (format(parsed, "yyyy-MM-dd") !== dateParam) {
+    if (!isValid(parsed) || format(parsed, "yyyy-MM-dd") !== dateParam) {
       return NextResponse.json({ ok: false, error: "Invalid calendar date" }, { status: 400 });
     }
     date = dateParam;
