@@ -61,6 +61,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, renders the exact seeded totals, and checks every request is within the response-time budget (default 8s; `SMOKE_MAX_MS` overrides) |
 | `npm run verify:export-live` | Call the deployed app's `/api/export` route and prove the canonical CSV reproduces `seed.csv` |
 | `npm run verify:digest-feed` | Verify the deployed daily ledger feed over real HTTP: auth (401), the 22:00 IST window recomputed independently at pinned `?at=` instants, freshness, and the message contract. Needs `DIGEST_AGENT_TOKEN` in `.env.local` ([spec](docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md)) |
+| `npm run init:whatsapp-agent-config` | Write the phone agent's `tools/whatsapp-agent/config.json` from `.env.local` (`PROD_URL`, `DIGEST_AGENT_TOKEN`, `DIGEST_AGENT_PHONE`) — the token and the number are never typed on a phone keyboard. Keeps an existing `groupJid`; `--force` to overwrite |
 
 ## Architecture notes (spec highlights)
 
@@ -79,6 +80,34 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 4. Run `npm run db:push && npm run db:seed` against the production database (or via a build step).
 
 The seed data itself is immutable — `seed_data/seed.csv` must not be edited, reordered, deduplicated, or given a trailing newline (§8.3).
+
+## The daily WhatsApp ledger feed (phone agent)
+
+One message a night into a private family group: the ledger changes for the 24 hours ending **22:00 IST**. What the message *says* is rendered server-side; a small agent in Termux on Dad's phone decides *whether* there is anything to send, sends it, and records that it did — it does no formatting and touches no database.
+
+**Normative:** [`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`](docs/PLAN_WHATSAPP_AGENT_TERMUX.md) · **run sheet:** [`docs/PHONE_SETUP_CHECKLIST.md`](docs/PHONE_SETUP_CHECKLIST.md) · **tool:** [`tools/whatsapp-agent/README.md`](tools/whatsapp-agent/README.md). The four steps below are the shape of it; the run sheet is what you work from on the day.
+
+**1 · Server, once.** Set `DIGEST_AGENT_TOKEN` on Vercel (`openssl rand -hex 32`) and redeploy. Without it the route answers `503` — deliberately: the agent then fails loudly instead of posting nothing. The 22:15 `/api/cron/digest-fallback` push is the safety net if a night goes unsent, and it needs the VAPID keys to have somewhere to ping.
+
+**2 · A computer, once.** With `PROD_URL`, `DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE` in `.env.local`:
+
+```sh
+npm run init:whatsapp-agent-config     # writes tools/whatsapp-agent/config.json (0600, gitignored)
+```
+
+**3 · The phone.** Install the APKs, do the One UI battery steps, then get the file across and start it — the checklist has the detail, including why `Termux:Boot` must be opened once and why `/sdcard` copies must be deleted:
+
+```sh
+adb push tools/whatsapp-agent/config.json /sdcard/Download/config.json
+# in Termux:  cp /sdcard/Download/config.json ~/expense_tracker/tools/whatsapp-agent/ && chmod 600 config.json
+adb shell rm /sdcard/Download/config.json
+
+node agent.mjs --link      # 8-digit pairing code → WhatsApp → Linked devices → "Link with phone number instead"
+node agent.mjs --groups    # the group's JID → keep it in the LAPTOP config.json too, then re-run step 2
+./start.sh                 # not `node agent.mjs` — this holds the wake-lock and restarts after a crash
+```
+
+**4 · Prove it, don't assume it.** The checklist's eight acceptance checks are the ones worth doing on the day: a `--at "<past boundary>" --dry-run` that prints without sending, the same command for real, an immediate re-run reporting *already sent*, and a wrong token exiting `4` with no retry loop. Two things that are easy to get wrong, and neither reports itself as an error: `sendAt`/`timezone` are fixed server-side (`22:00` / `Asia/Kolkata` — a different value would not change the schedule, only mislead), and a group is addressed by **JID** (`1203630…@g.us`), never by name or by an invite link.
 
 ## CI (GitHub Actions)
 
