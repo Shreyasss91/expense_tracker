@@ -86,10 +86,10 @@ if (phoneVar === "PHONE_NUMBER") {
 
 /* ---------------------------------------------------- preserve an existing one */
 
-let existing = null;
+let previous = null;
 if (existsSync(CONFIG_PATH)) {
   try {
-    existing = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
+    previous = JSON.parse(readFileSync(CONFIG_PATH, "utf8"));
   } catch {
     fail(
       `${SHOWN} exists but is not valid JSON.`,
@@ -98,11 +98,12 @@ if (existsSync(CONFIG_PATH)) {
   }
 }
 
-const inheritedJid = typeof existing?.groupJid === "string" ? existing.groupJid.trim() : "";
-
 /* ------------------------------------------------------------------- build --- */
 
-const built = buildAgentConfig({ prodUrl, token, phone, groupJid: inheritedJid });
+// `previous` is passed whole: which of its fields may survive a regenerate — the
+// JID, and only the JID — is a rule of the config format, so it lives in the
+// builder where it can be tested, not here where it cannot.
+const built = buildAgentConfig({ prodUrl, token, phone, previous });
 
 if (!built.ok) {
   // Name the variable each rejection came from: the errors describe the config,
@@ -129,16 +130,16 @@ const next = built.config;
 
 /* ------------------------------------------------- would this change anything? */
 
-const changed = existing
-  ? FIELDS.filter((field) => (existing[field] ?? "") !== next[field])
+const changed = previous
+  ? FIELDS.filter((field) => (previous[field] ?? "") !== next[field])
   : FIELDS;
 
-if (existing && changed.length === 0) {
+if (previous && changed.length === 0) {
   console.log(`✓ ${SHOWN} already matches .env.local — nothing to do.`);
   process.exit(0);
 }
 
-if (existing && !force) {
+if (previous && !force) {
   fail(
     `${SHOWN} exists and these fields would change: ${changed.join(", ")}`,
     "  Re-run with --force to overwrite. (The token is a credential; a silent",

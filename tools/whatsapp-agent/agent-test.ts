@@ -268,11 +268,11 @@ rejects("an object that is not a config", null as unknown as Record<string, unkn
 
 console.log("\nConfig builder (init:whatsapp-agent-config)");
 
+const JID = "120363012345678901@g.us";
 const ENV_VALUES = {
   prodUrl: "https://tokenscript.vercel.app/",
   token: "b".repeat(64),
   phone: "919663322589",
-  groupJid: "120363012345678901@g.us",
 };
 
 const built = buildAgentConfig(ENV_VALUES);
@@ -290,12 +290,15 @@ check(
   "the key order matches config.example.json, so a generated file diffs cleanly",
 );
 
-const buildRejects = (
-  label: string,
-  inputs: Parameters<typeof buildAgentConfig>[0],
-  needle: string,
-) => {
-  const result = buildAgentConfig(inputs);
+// `agent.mjs` is plain JS, so TypeScript infers `previous`'s type from its `null`
+// default rather than from what `JSON.parse` can actually hand back. This is the
+// same trade-off the `parseArgs` view above makes: the real function is under
+// test, and every value passed through here is one the script can encounter.
+const asInputs = (inputs: Record<string, unknown>) =>
+  inputs as unknown as Parameters<typeof buildAgentConfig>[0];
+
+const buildRejects = (label: string, inputs: Record<string, unknown>, needle: string) => {
+  const result = buildAgentConfig(asInputs(inputs));
   const text = result.errors.join(" | ");
   check(!result.ok && text.includes(needle), `${label} (got: ${result.ok ? "accepted" : text.slice(0, 90)})`);
 };
@@ -309,15 +312,94 @@ buildRejects("a missing token", { ...ENV_VALUES, token: "" }, "token is required
 buildRejects("a missing deployment URL", { ...ENV_VALUES, prodUrl: "" }, "absolute http(s) URL");
 
 check(
-  buildAgentConfig({ ...ENV_VALUES, groupJid: "" }).ok,
-  "an empty groupJid builds — it is discovered later, on the phone",
+  built.ok && built.config?.groupJid === "",
+  "a JID is never invented — a first run leaves it empty, for the phone to fill",
 );
 check(
-  !buildAgentConfig({ prodUrl: "", token: "", phone: "", groupJid: "" }).errors.some(
+  !buildAgentConfig({ prodUrl: "", token: "", phone: "" }).errors.some(
     (error) => error.includes("sendAt") || error.includes("timezone"),
   ),
   "the constants can never be reported as wrong — they are not parameters",
 );
+
+/* ------------------------------------ a regenerate must not blank the JID -- */
+
+// The `--force` path is the one that can break a phone that is already working,
+// and it breaks SILENTLY: the JID goes back to empty, the next `adb push` carries
+// that to Termux, and the agent simply refuses to post at 22:00. Nothing reports
+// it, on either side, because the two copies of config.json never see each other.
+//
+// What is testable here is the rule the laptop's copy obeys: a JID it already
+// holds survives a regenerate. What is NOT testable is a JID that exists only on
+// the phone — this script cannot read the phone. That case is mitigated by the
+// inheritance below being the ONLY route a JID has into the file, by the warning
+// the script prints when it writes an empty one, and by `--groups` reproducing it
+// in seconds; it is a documentation problem rather than a code one, which is why
+// the checklist now says the JID belongs in the laptop's copy too.
+
+console.log("\nConfig builder — a regenerate must not blank the group JID");
+
+const inherited = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: { groupJid: JID } }));
+check(inherited.ok && inherited.config?.groupJid === JID, "an existing JID is inherited, not regenerated");
+check(
+  inherited.ok && inherited.config?.token === ENV_VALUES.token,
+  "while everything else is still rebuilt from .env.local",
+);
+
+// The real shape of the failure: a rotated token, a new number and a moved
+// deployment, all in one go, are what force the use of `--force`.
+const rotated = buildAgentConfig(
+  asInputs({
+    prodUrl: "https://other.vercel.app",
+    token: "c".repeat(64),
+    phone: "919600000000",
+    previous: { groupJid: JID },
+  }),
+);
+check(
+  rotated.ok && rotated.config?.groupJid === JID,
+  "rotating the token, the number AND the deployment — the --force case — still keeps the JID",
+);
+check(
+  rotated.ok && rotated.config?.token === "c".repeat(64),
+  "and the rotation really did happen — the JID is not preserved by ignoring the inputs",
+);
+
+const padded = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: { groupJid: `  ${JID}  ` } }));
+check(padded.ok && padded.config?.groupJid === JID, "a padded JID is trimmed");
+
+const stillEmpty = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: { groupJid: "" } }));
+check(
+  stillEmpty.ok && stillEmpty.config?.groupJid === "",
+  "an empty JID in the old file stays empty — still nothing invented",
+);
+
+// `JSON.parse` can hand back anything at all, and the worst case is a number:
+// `123` would stringify into something JID-shaped that is not a JID at all.
+for (const junk of [null, 42, "text", [], { groupJid: 123 }, { groupJid: null }]) {
+  const result = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: junk }));
+  check(
+    result.ok && result.config?.groupJid === "",
+    `a previous value that is not a JID is treated as absent (${JSON.stringify(junk)})`,
+  );
+}
+
+// A string that is present but malformed must be refused LOUDLY rather than
+// dropped quietly — the operator then knows the phone's JID needs re-discovering.
+buildRejects(
+  "a malformed JID already in config.json",
+  { ...ENV_VALUES, previous: { groupJid: "Family Ledger" } },
+  "@g.us",
+);
+
+// There is no `groupJid` input, so nothing a human can put in `.env.local` — a
+// future `DIGEST_AGENT_GROUP`, say — can arrive as an empty string and blank a JID
+// the phone is posting to. Casting past the input type is the only way to even
+// express this call, which is the point of the test.
+const blanking = buildAgentConfig(
+  asInputs({ ...ENV_VALUES, groupJid: "", previous: { groupJid: JID } }),
+);
+check(blanking.ok && blanking.config?.groupJid === JID, "no input exists that can blank an inherited JID");
 
 /* ---------------------------------------------------------------- args ----- */
 

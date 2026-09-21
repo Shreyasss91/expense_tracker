@@ -318,16 +318,39 @@ export function validateConfig(raw) {
  *
  * Returns the same shape as `validateConfig`; `config` is undefined on failure.
  */
-export function buildAgentConfig({ prodUrl = "", token = "", phone = "", groupJid = "" } = {}) {
+export function buildAgentConfig({ prodUrl = "", token = "", phone = "", previous = null } = {}) {
   const str = (value) => (typeof value === "string" ? value.trim() : "");
   return validateConfig({
     apiUrl: str(prodUrl),
     token: str(token),
     phone: str(phone),
-    groupJid: str(groupJid),
+    groupJid: inheritedGroupJid(previous),
     sendAt: "22:00",
     timezone: "Asia/Kolkata",
   });
+}
+
+/**
+ * The `groupJid` to carry over from the config being replaced.
+ *
+ * Note what this signature does NOT have: a way to SUPPLY a JID. A JID is
+ * discovered on the phone (`node agent.mjs --groups`) and no formula derives it
+ * from a group name or a number, so the only correct source is the file being
+ * replaced. An input that could carry an empty string — a future
+ * `DIGEST_AGENT_GROUP`, say — would be one `--force` regenerate away from
+ * blanking the JID a working phone is posting to, and the failure is silent: the
+ * next `adb push` carries the empty value to Termux and the agent just stops
+ * posting. Leaving the input out makes that unreachable rather than guarded.
+ *
+ * A value that is present but is not a string counts as absent, so a hand-edited
+ * `"groupJid": 123` cannot be stringified into something JID-shaped and sent to
+ * WhatsApp. A string that IS present but malformed is still passed through, so
+ * `validateConfig` refuses it loudly instead of the JID being dropped quietly.
+ */
+function inheritedGroupJid(previous) {
+  if (!previous || typeof previous !== "object") return "";
+  const jid = previous.groupJid;
+  return typeof jid === "string" ? jid.trim() : "";
 }
 
 /** Read + validate. Exits `2` on failure — a human must fix the file. */

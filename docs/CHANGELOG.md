@@ -38,13 +38,33 @@ scoped `DIGEST_AGENT_PHONE` is the name documented in `.env.example`. Note that 
 Vercel:** no route reads the sender's number, and the server's only WhatsApp-side secret remains
 `DIGEST_AGENT_TOKEN`.
 
-**Contract test 63 → 73 assertions**, which the count guard caught immediately and correctly —
+**Contract test 63 → 87 assertions**, which the count guard caught immediately and correctly —
 `PLAN_WHATSAPP_AGENT_TERMUX.md:881` and `:1021` and `SPEC_DAILY_LEDGER_WHATSAPP_FEED.md:1615` all
 said 63, and `npm run test:doc-counts` failed with both numbers before any of the three were edited.
-The ten new checks pin the builder to the same rules a hand-written file gets — a `+` or spaces in
-the number refused rather than repaired, a trailing slash on `PROD_URL` trimmed, the key order
-matching `config.example.json`, and `sendAt`/`timezone` never reported as wrong because they are not
-parameters. Nothing in the file is a laxer path into the agent's config than typing it by hand.
+The first ten pin the builder to the same rules a hand-written file gets — a `+` or spaces in the
+number refused rather than repaired, a trailing slash on `PROD_URL` trimmed, the key order matching
+`config.example.json`, and `sendAt`/`timezone` never reported as wrong because they are not
+parameters. Nothing in the generated file is a laxer path into the agent's config than typing it by
+hand.
+
+**The other fourteen are about the `--force` path, which is the one that can break a phone that is
+already working.** A regenerate that writes the JID back as empty is silent on both sides: the next
+`adb push` carries the empty value into Termux, and the agent merely refuses to post at 22:00 —
+nothing errors, because the laptop's copy and the phone's copy never see each other. The response is
+structural rather than a guard: **`buildAgentConfig` has no `groupJid` input at all**, so no value a
+human can put in `.env.local` — a future `DIGEST_AGENT_GROUP`, say — can arrive as an empty string
+and blank a JID, because the only route a JID has into the file is the one it already had, inherited
+from the file being replaced. The checks cover a rotated token, a new number and a moved deployment
+all at once (the shape that forces `--force`), a padded JID, an absent JID, and six values
+`JSON.parse` can genuinely return — including `"groupJid": 123`, which would otherwise stringify
+into something JID-shaped and be sent to WhatsApp. A JID that is present but malformed is refused
+loudly rather than dropped quietly.
+
+**What is not covered, and cannot be: a JID that exists only on the phone.** The script cannot read
+the phone, so no test can catch that one. It rests instead on the inheritance above being the only
+route in, on the warning the script prints when it writes an empty JID, and on `--groups`
+reproducing the value in seconds — and the checklist and the top-level README now say plainly that
+the JID belongs in the laptop's copy too.
 
 **Verified by running it, not by reading it.** In a scratch directory, so no real `config.json` was
 touched: the happy path wrote the six fields in order and `0600`; `+919663322589` refused with exit 1

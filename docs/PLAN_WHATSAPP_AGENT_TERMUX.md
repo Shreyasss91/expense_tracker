@@ -878,15 +878,16 @@ procedure.
 npm run test:whatsapp-agent     # from the REPOSITORY ROOT, not from this directory
 ```
 
-**73 assertions, green as of 21 September 2026.** It covers the one thing a mistake in would be
+**87 assertions, green as of 21 September 2026.** It covers the one thing a mistake in would be
 invisible until it silently double-posted a night: `windowKeyFor(lastBoundary(t))` must be
 byte-identical to the server's `feedWindowForInstant(t).key`, checked at hand-picked edge
 instants (the boundary, one millisecond either side of it, month and year rollovers, leap days)
 and across 400 seeded random instants — comparing the agent against the server's **real**
 implementation rather than against a copy of its own arithmetic. It also covers the retry
 ladder (including exhaustion and window roll-over), the pre-network gate, config validation, the
-`.env.local` → `config.json` builder behind `npm run init:whatsapp-agent-config`, and CLI parsing,
-all of which were factored out of `agent.mjs` to be testable without files, sockets
+`.env.local` → `config.json` builder behind `npm run init:whatsapp-agent-config` — including that a
+`--force` regenerate cannot blank a `groupJid` the file already holds — and CLI parsing, all of
+which were factored out of `agent.mjs` to be testable without files, sockets
 or a device.
 
 It is not a substitute for the table below. It cannot reach linking, sending, the socket 401
@@ -1019,7 +1020,7 @@ The two halves are independent; the app side must exist before the agent can do 
 ## 11. Open Items
 
 > **Where this stands, 18 September 2026.** The **code is written, committed and green** —
-> `agent.mjs`, the repo-side contract test (73 assertions), the laptop rehearsal (51 checks),
+> `agent.mjs`, the repo-side contract test (87 assertions), the laptop rehearsal (51 checks),
 > `start.sh`, the boot hook, the config template and the README are all in the repository. What
 > remains is **device work that no agent in a terminal can perform**: §3's one-time setup, the
 > two runs that need a linked WhatsApp session (`--link`, `--groups`), and the acceptance tests
