@@ -90,7 +90,8 @@ storage is readable by other apps, and that file holds a token.
 ## The phone checklist's check counts, corrected — 21 September 2026
 
 **Three live documents told a reader to expect the wrong number from the phone agent's contract
-test.** `npm run test:whatsapp-agent` prints **63** checks; `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`
+test.** `npm run test:whatsapp-agent` printed **63** checks when this was found — the suite is at
+**93** now, and this entry records the whole movement; `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`
 §7 said **51 assertions**, that plan's §11 status note said **51 assertions**, the companion spec's
 Phase 7 list said **51 assertions**, and `docs/PHONE_SETUP_CHECKLIST.md` — the printable run sheet
 for the phone sitting — said **51 checks pass**. The 12 extra checks are not new: they are the
