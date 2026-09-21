@@ -23,6 +23,7 @@
 import { feedWindowForInstant } from "../../src/lib/ledger-feed-window";
 import {
   advanceLadder,
+  buildAgentConfig,
   createCacheStore,
   freshState,
   gateFor,
@@ -258,6 +259,65 @@ rejects("a malformed groupJid", { ...GOOD, groupJid: "Family Ledger" }, "@g.us")
 rejects("sendAt 20:00", { ...GOOD, sendAt: "20:00" }, "fixed server-side");
 rejects("a different timezone", { ...GOOD, timezone: "America/New_York" }, "Asia/Kolkata");
 rejects("an object that is not a config", null as unknown as Record<string, unknown>, "must contain an object");
+
+/* --------------------------------------------------------- config builder -- */
+
+// `npm run init:whatsapp-agent-config` writes config.json on the laptop from
+// `.env.local`, so these pin the same rules a hand-written file gets — the
+// generator must not be a second, laxer path into the agent's config.
+
+console.log("\nConfig builder (init:whatsapp-agent-config)");
+
+const ENV_VALUES = {
+  prodUrl: "https://tokenscript.vercel.app/",
+  token: "b".repeat(64),
+  phone: "919663322589",
+  groupJid: "120363012345678901@g.us",
+};
+
+const built = buildAgentConfig(ENV_VALUES);
+check(built.ok, "the values in .env.local build a config");
+check(
+  built.ok && built.config?.apiUrl === "https://tokenscript.vercel.app",
+  "a trailing slash on PROD_URL is trimmed, exactly as it is for a hand-written config",
+);
+check(
+  built.ok && built.config?.sendAt === "22:00" && built.config?.timezone === "Asia/Kolkata",
+  "sendAt and timezone come out fixed — they are constants, not inputs",
+);
+check(
+  built.ok && Object.keys(built.config ?? {}).join(",") === "apiUrl,token,phone,groupJid,sendAt,timezone",
+  "the key order matches config.example.json, so a generated file diffs cleanly",
+);
+
+const buildRejects = (
+  label: string,
+  inputs: Parameters<typeof buildAgentConfig>[0],
+  needle: string,
+) => {
+  const result = buildAgentConfig(inputs);
+  const text = result.errors.join(" | ");
+  check(!result.ok && text.includes(needle), `${label} (got: ${result.ok ? "accepted" : text.slice(0, 90)})`);
+};
+buildRejects(
+  "a phone with a plus sign is refused, never repaired",
+  { ...ENV_VALUES, phone: "+919663322589" },
+  "digits only",
+);
+buildRejects("a phone with spaces is refused", { ...ENV_VALUES, phone: "91 96633 22589" }, "digits only");
+buildRejects("a missing token", { ...ENV_VALUES, token: "" }, "token is required");
+buildRejects("a missing deployment URL", { ...ENV_VALUES, prodUrl: "" }, "absolute http(s) URL");
+
+check(
+  buildAgentConfig({ ...ENV_VALUES, groupJid: "" }).ok,
+  "an empty groupJid builds — it is discovered later, on the phone",
+);
+check(
+  !buildAgentConfig({ prodUrl: "", token: "", phone: "", groupJid: "" }).errors.some(
+    (error) => error.includes("sendAt") || error.includes("timezone"),
+  ),
+  "the constants can never be reported as wrong — they are not parameters",
+);
 
 /* ---------------------------------------------------------------- args ----- */
 

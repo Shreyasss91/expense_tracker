@@ -23,6 +23,9 @@ On a computer, with the repository checked out:
       (the agent's behaviour, against a stub)
 - [ ] `npm run verify:digest-feed` → **0 failures, exit 0** (needs `DIGEST_AGENT_TOKEN` in
       `.env.local`; this one talks to the real deployment)
+- [ ] `.env.local` has `PROD_URL`, `DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE`, and
+      `npm run init:whatsapp-agent-config` has written `tools/whatsapp-agent/config.json`
+      (step 5 pushes it; add `--force` to overwrite an existing file)
 
 > **No check counts here, deliberately.** Each of these commands prints one, and this sheet used to
 > quote them — but a count moves whenever an assertion is added, for reasons that have nothing to do
@@ -39,6 +42,10 @@ time disappears:**
 | `DIGEST_AGENT_TOKEN` *(same value as Vercel; treat it as a secret)* | `_______________________________` |
 | Dad's number, **E.164 digits only — no `+`, no spaces** | `_______________________________` |
 | The new group's name (create it in step 6) | `_______________________________` |
+
+> The token and the number only need writing down if you fill `config.json` in **by hand**. The
+> generator in step 5 reads both from `.env.local`, which is also the version that cannot mangle
+> them on a phone keyboard.
 
 > **The group must be created from Dad's phone**, because his account is the sender — a group he
 > is not in cannot be posted to.
@@ -89,6 +96,28 @@ npm install
 
 ### 5 · Configure
 
+**Preferred — generate the file on the laptop from `.env.local`**, so the token and the number are
+never typed on a phone keyboard. A stray character in either is invisible on the phone: it shows
+up as a `401` on every fetch, or as a pairing code sent to a **different** phone.
+
+```sh
+npm run init:whatsapp-agent-config     # repo root; --force to overwrite an existing file
+```
+
+It keeps any `groupJid` already in the file, and prints the masked number to compare against the
+one `--link` prints in step 7. Then push it — and **delete the copy from shared storage**, because
+`/sdcard` is readable by other apps and this file holds the token:
+
+```sh
+adb push tools/whatsapp-agent/config.json /sdcard/Download/config.json
+# in Termux:
+#   cp /sdcard/Download/config.json ~/expense_tracker/tools/whatsapp-agent/
+#   chmod 600 config.json
+adb shell rm /sdcard/Download/config.json
+```
+
+By hand, if you prefer — the file is gitignored, and must never be committed:
+
 ```sh
 cp config.example.json config.json
 chmod 600 config.json
@@ -129,6 +158,16 @@ node agent.mjs --groups
 - [ ] That JID was pasted into `config.json`
 - [ ] Verified it resolves:
       `node agent.mjs --groups | grep "$(node -e "console.log(require('./config.json').groupJid)")"`
+
+- [ ] Kept the JID in the **laptop's** `config.json` too, if that is where step 5 generated it,
+      and pushed again
+
+> **Which copy holds the JID matters.** The generator preserves the `groupJid` from the **laptop's**
+> copy, because that is the file it reads and rewrites. Paste the JID there and re-run
+> `npm run init:whatsapp-agent-config` (a no-op except for that field) rather than editing only the
+> phone — a JID that lives on the phone alone is one `--force` regenerate away from being written
+> back as empty, and the push that follows leaves the agent refusing to post. Neither copy warns you;
+> they never see each other.
 
 > Group list incomplete? Immediately after a first link WhatsApp is still streaming history —
 > wait ~30 s and re-run. Do not conclude the group is unreachable.

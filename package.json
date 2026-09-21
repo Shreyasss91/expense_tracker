@@ -37,6 +37,7 @@
     "test:cache-refresh": "tsx --conditions=react-server src/lib/cache-refresh-test.ts",
     "test:cache-tags": "tsx src/lib/cache-tags-test.ts",
     "test:doc-counts": "node scripts/check-doc-counts.mjs",
+    "init:whatsapp-agent-config": "node scripts/init-agent-config.mjs",
     "test:whatsapp-agent": "tsx tools/whatsapp-agent/agent-test.ts",
     "rehearse:whatsapp-agent": "node tools/whatsapp-agent/rehearse.mjs",
     "generate:vapid": "node scripts/generate-vapid.mjs",

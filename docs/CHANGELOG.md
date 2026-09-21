@@ -7,6 +7,55 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## `config.json` generated from `.env.local` — 21 September 2026
+
+**The phone agent's config was the one step in the setup that could only be done on a phone
+keyboard, and it is now generated on the laptop instead.** `tools/whatsapp-agent/config.json` lives
+in Termux's home directory — `/data/data/com.termux`, which nothing on the laptop can write to,
+because `adb` runs as the `shell` user and Termux's home is not reachable as `shell` without root.
+So it was pushed, and before this it was typed: a 64-character token and a phone number, on glass.
+That is where this component's two worst failure modes are born. A token with a stray character
+reads as *production rejects us* and sends the investigation to Vercel instead of to the config. A
+mangled number is worse: it requests a pairing code for a **different phone**, which can succeed and
+link the wrong account — and nothing detects that until the feed posts to the wrong place.
+
+**`npm run init:whatsapp-agent-config`** (`scripts/init-agent-config.mjs`) reads `PROD_URL`,
+`DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE` from `.env.local` — through `loadLiveEnv`, so a stale
+exported `PROD_URL` cannot silently generate a config aimed at another deployment — and writes the
+file `0600`. Three properties are deliberate. **`sendAt` and `timezone` are not inputs:** the builder
+in `agent.mjs` supplies the fixed server-side constants, so a generated file cannot express the drift
+`validateConfig` refuses (a config claiming another hour would not change the schedule, only
+mislead). **`groupJid` is never generated:** it is discovered on the phone with `--groups` and an
+existing value is preserved, because no formula derives a JID from a group name and an invented one
+can only fail at 22:00. **An existing config is not overwritten without `--force`,** and the refusal
+names the fields that would change — a silent rewrite of a working config is how a phone setup breaks
+with no diff to read. The token is never printed; the number appears only in the same masked form
+`--link` prints, so the two can be compared by eye before the pairing code is trusted.
+
+**`PHONE_NUMBER` is accepted, with a rename warning.** It is what a first attempt reaches for, and it
+is a dangerously generic name for a global env file — anything else in the stack may claim it. The
+scoped `DIGEST_AGENT_PHONE` is the name documented in `.env.example`. Note that **neither belongs on
+Vercel:** no route reads the sender's number, and the server's only WhatsApp-side secret remains
+`DIGEST_AGENT_TOKEN`.
+
+**Contract test 63 → 73 assertions**, which the count guard caught immediately and correctly —
+`PLAN_WHATSAPP_AGENT_TERMUX.md:881` and `:1021` and `SPEC_DAILY_LEDGER_WHATSAPP_FEED.md:1615` all
+said 63, and `npm run test:doc-counts` failed with both numbers before any of the three were edited.
+The ten new checks pin the builder to the same rules a hand-written file gets — a `+` or spaces in
+the number refused rather than repaired, a trailing slash on `PROD_URL` trimmed, the key order
+matching `config.example.json`, and `sendAt`/`timezone` never reported as wrong because they are not
+parameters. Nothing in the file is a laxer path into the agent's config than typing it by hand.
+
+**Verified by running it, not by reading it.** In a scratch directory, so no real `config.json` was
+touched: the happy path wrote the six fields in order and `0600`; `+919663322589` refused with exit 1
+and wrote **nothing**; an unchanged re-run was a no-op at exit 0; a changed phone without `--force`
+refused at exit 1 naming `phone`; and the same change with `--force` wrote while the discovered
+`groupJid` survived. `docs/PHONE_SETUP_CHECKLIST.md` step 5 and the agent's `README.md` now lead with
+the generator and the `adb push`, including the reminder to delete the `/sdcard` copy — shared
+storage is readable by other apps, and that file holds a token.
+
+---
+
 ## The phone checklist's check counts, corrected — 21 September 2026
 
 **Three live documents told a reader to expect the wrong number from the phone agent's contract

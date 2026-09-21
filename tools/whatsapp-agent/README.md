@@ -102,6 +102,21 @@ npm install
 
 ### 4. Configure
 
+**Preferred: generate the file on the laptop from `.env.local`.** `config.json` lives in Termux's
+home directory, which nothing on the laptop can write to (`adb` runs as `shell` and cannot reach
+`/data/data/com.termux` without root), so it is generated here and pushed — see
+`docs/PHONE_SETUP_CHECKLIST.md` step 5. Typing the token and the number by hand is exactly where
+the two failures this setup fears most come from: a token with a stray character reads as
+"production rejects us", and a mangled number requests a pairing code for a **different** phone.
+
+```sh
+npm run init:whatsapp-agent-config    # from the repository root; --force to overwrite
+```
+
+It reads `PROD_URL`, `DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE`, keeps any `groupJid` already
+in the file (it is discovered on the phone, never generated), and writes `0600`. By hand, if you
+prefer:
+
 ```sh
 cp config.example.json config.json
 chmod 600 config.json

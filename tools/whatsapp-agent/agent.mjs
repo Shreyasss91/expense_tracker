@@ -301,6 +301,35 @@ export function validateConfig(raw) {
   return { ok: true, errors: [], config: { apiUrl, token, phone, groupJid, sendAt, timezone } };
 }
 
+/**
+ * Build a complete `config.json` from the values a human already has in
+ * `.env.local` — used by `npm run init:whatsapp-agent-config`, which writes the
+ * file on the LAPTOP for pushing to the phone.
+ *
+ * Pure, like `validateConfig`: it touches no filesystem and reads no
+ * `process.env`, so `agent-test.ts` can check it and the script stays the only
+ * thing that does I/O.
+ *
+ * Note what is NOT a parameter: `sendAt` and `timezone`. They are the fixed
+ * server-side boundary, so a generator that let the environment override them
+ * would reintroduce exactly the drift `validateConfig` refuses — a config
+ * claiming a different hour would not change when the post happens, only
+ * mislead. This function therefore cannot express them incorrectly.
+ *
+ * Returns the same shape as `validateConfig`; `config` is undefined on failure.
+ */
+export function buildAgentConfig({ prodUrl = "", token = "", phone = "", groupJid = "" } = {}) {
+  const str = (value) => (typeof value === "string" ? value.trim() : "");
+  return validateConfig({
+    apiUrl: str(prodUrl),
+    token: str(token),
+    phone: str(phone),
+    groupJid: str(groupJid),
+    sendAt: "22:00",
+    timezone: "Asia/Kolkata",
+  });
+}
+
 /** Read + validate. Exits `2` on failure — a human must fix the file. */
 function loadConfig() {
   let raw;
