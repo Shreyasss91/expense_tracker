@@ -104,9 +104,12 @@ up as a `401` on every fetch, or as a pairing code sent to a **different** phone
 npm run init:whatsapp-agent-config     # repo root; --force to overwrite an existing file
 ```
 
-It keeps any `groupJid` already in the file, and prints the masked number to compare against the
-one `--link` prints in step 7. Then push it — and **delete the copy from shared storage**, because
-`/sdcard` is readable by other apps and this file holds the token:
+It keeps any `groupJid` already in the file **as long as `PROD_URL` has not changed**, and prints
+the masked number to compare against the one `--link` prints in step 7. A changed deployment drops
+the JID deliberately — a JID names a **group**, not a server, so carrying one across would feed the
+ew deployment's ledger to the old group's audience. `--keep-jid` overrides that when the move really
+is the same family. Then push it — and **delete the copy from shared storage**, because `/sdcard` is
+readable by other apps and this file holds the token:
 
 ```sh
 adb push tools/whatsapp-agent/config.json /sdcard/Download/config.json

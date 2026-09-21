@@ -38,7 +38,7 @@ scoped `DIGEST_AGENT_PHONE` is the name documented in `.env.example`. Note that 
 Vercel:** no route reads the sender's number, and the server's only WhatsApp-side secret remains
 `DIGEST_AGENT_TOKEN`.
 
-**Contract test 63 → 87 assertions**, which the count guard caught immediately and correctly —
+**Contract test 63 → 93 assertions**, which the count guard caught immediately and correctly —
 `PLAN_WHATSAPP_AGENT_TERMUX.md:881` and `:1021` and `SPEC_DAILY_LEDGER_WHATSAPP_FEED.md:1615` all
 said 63, and `npm run test:doc-counts` failed with both numbers before any of the three were edited.
 The first ten pin the builder to the same rules a hand-written file gets — a `+` or spaces in the
@@ -47,7 +47,7 @@ number refused rather than repaired, a trailing slash on `PROD_URL` trimmed, the
 parameters. Nothing in the generated file is a laxer path into the agent's config than typing it by
 hand.
 
-**The other fourteen are about the `--force` path, which is the one that can break a phone that is
+**The other twenty are about the `--force` path, which is the one that can break a phone that is
 already working.** A regenerate that writes the JID back as empty is silent on both sides: the next
 `adb push` carries the empty value into Termux, and the agent merely refuses to post at 22:00 —
 nothing errors, because the laptop's copy and the phone's copy never see each other. The response is
@@ -59,6 +59,17 @@ all at once (the shape that forces `--force`), a padded JID, an absent JID, and 
 `JSON.parse` can genuinely return — including `"groupJid": 123`, which would otherwise stringify
 into something JID-shaped and be sent to WhatsApp. A JID that is present but malformed is refused
 loudly rather than dropped quietly.
+
+**A JID is also refused across a changed deployment** — the second way one can end up in the wrong
+place, and the same silence surrounds it. A JID names a WhatsApp **group**; it says nothing about
+which server rendered the text going into it. So a JID carried from one `apiUrl` to another posts the
+new deployment's ledger to the old deployment's audience, which is a leak with nothing attached to
+it. The default is therefore to drop the JID and say so loudly, with `--keep-jid` as the explicit way
+past it for a move that really is the same family; a previous file that records no `apiUrl` is treated
+as a different deployment, because it cannot be shown to be the same one. This is why
+`normalizeApiUrl` now lives in `agent.mjs` and is used by `validateConfig` as well — the two must
+never disagree about which URLs are equal, since they disagree silently. Six checks cover the drop,
+the override, and the trailing-slash case that must NOT count as a change.
 
 **What is not covered, and cannot be: a JID that exists only on the phone.** The script cannot read
 the phone, so no test can catch that one. It rests instead on the inheritance above being the only

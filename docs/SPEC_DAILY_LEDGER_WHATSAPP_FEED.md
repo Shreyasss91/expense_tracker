@@ -1612,7 +1612,7 @@ work left**
 - [x] `.gitignore` entries for `config.json`, `auth/`, `sent/` — **done 18 September 2026**.
       Still **verify with `git status`** before any commit that touches that directory.
 - [x] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5** — **done**, including the
-      repo-side contract test (`npm run test:whatsapp-agent`, **87 assertions**) and the laptop
+      repo-side contract test (`npm run test:whatsapp-agent`, **93 assertions**) and the laptop
       rehearsal (`npm run rehearse:whatsapp-agent`, **51 checks**), both green.
 - [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →

@@ -113,9 +113,10 @@ the two failures this setup fears most come from: a token with a stray character
 npm run init:whatsapp-agent-config    # from the repository root; --force to overwrite
 ```
 
-It reads `PROD_URL`, `DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE`, keeps any `groupJid` already
-in the file (it is discovered on the phone, never generated), and writes `0600`. By hand, if you
-prefer:
+It reads `PROD_URL`, `DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE`, keeps any `groupJid` already in
+the file (it is discovered on the phone, never generated) **as long as `PROD_URL` is unchanged** — a
+new deployment drops it, because a JID names a group and not a server, and `--keep-jid` overrides that
+for a deliberate move. It writes `0600`. By hand, if you prefer:
 
 ```sh
 cp config.example.json config.json

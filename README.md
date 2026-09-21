@@ -61,7 +61,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, renders the exact seeded totals, and checks every request is within the response-time budget (default 8s; `SMOKE_MAX_MS` overrides) |
 | `npm run verify:export-live` | Call the deployed app's `/api/export` route and prove the canonical CSV reproduces `seed.csv` |
 | `npm run verify:digest-feed` | Verify the deployed daily ledger feed over real HTTP: auth (401), the 22:00 IST window recomputed independently at pinned `?at=` instants, freshness, and the message contract. Needs `DIGEST_AGENT_TOKEN` in `.env.local` ([spec](docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md)) |
-| `npm run init:whatsapp-agent-config` | Write the phone agent's `tools/whatsapp-agent/config.json` from `.env.local` (`PROD_URL`, `DIGEST_AGENT_TOKEN`, `DIGEST_AGENT_PHONE`) — the token and the number are never typed on a phone keyboard. Keeps an existing `groupJid`; `--force` to overwrite |
+| `npm run init:whatsapp-agent-config` | Write the phone agent's `tools/whatsapp-agent/config.json` from `.env.local` (`PROD_URL`, `DIGEST_AGENT_TOKEN`, `DIGEST_AGENT_PHONE`) — the token and the number are never typed on a phone keyboard. Keeps an existing `groupJid` only while `PROD_URL` is unchanged (`--keep-jid` to carry it across a deliberate move); `--force` to overwrite |
 
 ## Architecture notes (spec highlights)
 

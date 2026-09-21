@@ -32,7 +32,9 @@
  * The token is never printed. The phone number appears only in the same masked
  * form the agent prints at `--link`, so the two can be compared by eye.
  *
- * Flags: `--force` overwrites an existing config.json that would otherwise change.
+ * Flags: `--force` overwrites an existing config.json that would otherwise change;
+ * `--keep-jid` carries the existing `groupJid` across a changed `apiUrl`, which is
+ * refused by default (see `inheritedGroupJid` in agent.mjs for why).
  */
 import { chmodSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -54,6 +56,7 @@ const DEFAULT_PROD_URL = "https://tokenscript.vercel.app";
 const FIELDS = ["apiUrl", "token", "phone", "groupJid", "sendAt", "timezone"];
 
 const force = process.argv.includes("--force");
+const keepJid = process.argv.includes("--keep-jid");
 
 function fail(...lines) {
   console.error(`✗ ${lines[0]}`);
@@ -103,7 +106,7 @@ if (existsSync(CONFIG_PATH)) {
 // `previous` is passed whole: which of its fields may survive a regenerate — the
 // JID, and only the JID — is a rule of the config format, so it lives in the
 // builder where it can be tested, not here where it cannot.
-const built = buildAgentConfig({ prodUrl, token, phone, previous });
+const built = buildAgentConfig({ prodUrl, token, phone, previous, keepGroupJid: keepJid });
 
 if (!built.ok) {
   // Name the variable each rejection came from: the errors describe the config,
@@ -127,6 +130,13 @@ if (!built.ok) {
 }
 
 const next = built.config;
+
+// A JID that the replaced file held and the new one does not is either a genuine
+// drop (the deployment changed — reported below) or nothing at all. Telling those
+// apart is the whole point: the first is a decision the operator has to make, and
+// silence is how it gets made wrongly.
+const previousJid = typeof previous?.groupJid === "string" ? previous.groupJid.trim() : "";
+const droppedJid = Boolean(previousJid) && !next.groupJid;
 
 /* ------------------------------------------------- would this change anything? */
 
@@ -169,18 +179,29 @@ console.log(`  apiUrl    ${next.apiUrl}   (${urlNote})`);
 console.log(`  token     set, ${next.token.length} chars   (DIGEST_AGENT_TOKEN — never printed)`);
 console.log(`  phone     ${maskPhone(next.phone)}   (${phoneVar ?? "unset"})`);
 console.log(`  groupJid  ${next.groupJid || "(empty — discovered on the phone with `node agent.mjs --groups`)"}`);
-console.log("");
-console.log("  Compare that masked number with the one `node agent.mjs --link` prints");
-console.log(`  ("Connected as ${maskPhone(next.phone)}"). If they differ, the pairing code`);
-console.log("  went to the wrong phone. Nothing else can catch that.");
 
-if (!next.groupJid) {
+if (droppedJid) {
+  console.log("");
+  console.log("⚠ the old groupJid was NOT carried over — this is not the same deployment:");
+  console.log(`    old apiUrl  ${previous.apiUrl || "(none recorded)"}`);
+  console.log(`    new apiUrl  ${next.apiUrl}`);
+  console.log("  A JID names a WhatsApp GROUP, not a deployment, so carrying one across a");
+  console.log("  changed URL would post THIS server's ledger into whatever group the other");
+  console.log("  deployment was feeding — with nothing to report it. If the move is deliberate,");
+  console.log("  re-run with --keep-jid; otherwise `node agent.mjs --groups` on the phone gives");
+  console.log("  you the right one.");
+} else if (!next.groupJid) {
   console.log("");
   console.log("  groupJid is still empty HERE: the agent will refuse to post until one is set. Run");
   console.log("  `node agent.mjs --link`, then `--groups` on the phone, then keep that JID in THIS");
   console.log("  file and push again. This is the copy `--force` reads, so a JID that exists only");
   console.log("  on the phone is one changed field away from being blanked by the next push.");
 }
+
+console.log("");
+console.log("  Compare that masked number with the one `node agent.mjs --link` prints");
+console.log(`  ("Connected as ${maskPhone(next.phone)}"). If they differ, the pairing code`);
+console.log("  went to the wrong phone. Nothing else can catch that.");
 
 console.log("");
 console.log("Next — push it to the phone, then remove the copy from shared storage");

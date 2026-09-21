@@ -264,7 +264,7 @@ export function validateConfig(raw) {
   const errors = [];
   if (!raw || typeof raw !== "object") return { ok: false, errors: ["config.json must contain an object"] };
 
-  const apiUrl = typeof raw.apiUrl === "string" ? raw.apiUrl.trim().replace(/\/+$/, "") : "";
+  const apiUrl = normalizeApiUrl(raw.apiUrl);
   if (!/^https?:\/\/\S+$/.test(apiUrl)) errors.push("apiUrl must be an absolute http(s) URL");
 
   const token = typeof raw.token === "string" ? raw.token.trim() : "";
@@ -318,13 +318,32 @@ export function validateConfig(raw) {
  *
  * Returns the same shape as `validateConfig`; `config` is undefined on failure.
  */
-export function buildAgentConfig({ prodUrl = "", token = "", phone = "", previous = null } = {}) {
+/**
+ * Normalise an `apiUrl` / `PROD_URL` to the one form used both in the written
+ * config and when deciding whether a JID belongs to the same deployment.
+ *
+ * It lives out here so "the same deployment" has exactly one definition:
+ * `validateConfig` and the JID inheritance below must never disagree about which
+ * URLs are equal, because they disagree silently.
+ */
+export function normalizeApiUrl(value) {
+  return typeof value === "string" ? value.trim().replace(/\/+$/, "") : "";
+}
+
+export function buildAgentConfig({
+  prodUrl = "",
+  token = "",
+  phone = "",
+  previous = null,
+  keepGroupJid = false,
+} = {}) {
   const str = (value) => (typeof value === "string" ? value.trim() : "");
+  const apiUrl = normalizeApiUrl(prodUrl);
   return validateConfig({
-    apiUrl: str(prodUrl),
+    apiUrl,
     token: str(token),
     phone: str(phone),
-    groupJid: inheritedGroupJid(previous),
+    groupJid: inheritedGroupJid(previous, apiUrl, keepGroupJid),
     sendAt: "22:00",
     timezone: "Asia/Kolkata",
   });
@@ -346,11 +365,28 @@ export function buildAgentConfig({ prodUrl = "", token = "", phone = "", previou
  * `"groupJid": 123` cannot be stringified into something JID-shaped and sent to
  * WhatsApp. A string that IS present but malformed is still passed through, so
  * `validateConfig` refuses it loudly instead of the JID being dropped quietly.
+ *
+ * **And a JID is only inherited within the same deployment.** A JID names a
+ * WhatsApp GROUP; it says nothing about which server rendered the text going into
+ * it. So when `apiUrl` changes — a staging or preview URL typed into `PROD_URL`, a
+ * typo, or a genuine move to a new domain — carrying the old JID over would post
+ * THIS server's ledger into whatever group the other deployment was feeding. That
+ * is a leak with no error attached to it, so the default is to drop the JID and
+ * let the CLI say so loudly. `keepGroupJid` (`--keep-jid` on the command line) is
+ * the deliberate override for a move that really is the same audience, and
+ * `node agent.mjs --groups` on the phone is the other remedy.
+ *
+ * A file that records no `apiUrl` cannot be shown to be the same deployment, so it
+ * is treated as a different one — fail-closed, because the cost of guessing wrong
+ * is a message delivered to the wrong group.
  */
-function inheritedGroupJid(previous) {
+function inheritedGroupJid(previous, apiUrl, keepGroupJid) {
   if (!previous || typeof previous !== "object") return "";
   const jid = previous.groupJid;
-  return typeof jid === "string" ? jid.trim() : "";
+  const jidText = typeof jid === "string" ? jid.trim() : "";
+  if (!jidText) return "";
+  if (keepGroupJid) return jidText;
+  return normalizeApiUrl(previous.apiUrl) === apiUrl ? jidText : "";
 }
 
 /** Read + validate. Exits `2` on failure — a human must fix the file. */

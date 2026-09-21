@@ -339,44 +339,101 @@ check(
 
 console.log("\nConfig builder — a regenerate must not blank the group JID");
 
-const inherited = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: { groupJid: JID } }));
+// A previous file that was really there: it recorded the deployment it was built
+// for, which is what makes these checks sharp instead of accidental.
+const PREVIOUS_API = "https://tokenscript.vercel.app";
+const previousFile = (over: Record<string, unknown> = {}) => ({ apiUrl: PREVIOUS_API, groupJid: JID, ...over });
+
+const inherited = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: previousFile() }));
 check(inherited.ok && inherited.config?.groupJid === JID, "an existing JID is inherited, not regenerated");
 check(
   inherited.ok && inherited.config?.token === ENV_VALUES.token,
   "while everything else is still rebuilt from .env.local",
 );
 
-// The real shape of the failure: a rotated token, a new number and a moved
-// deployment, all in one go, are what force the use of `--force`.
+// The real shape of the failure: a rotated token and a new number on the SAME
+// deployment are what force the use of `--force`.
 const rotated = buildAgentConfig(
   asInputs({
-    prodUrl: "https://other.vercel.app",
+    prodUrl: PREVIOUS_API,
     token: "c".repeat(64),
     phone: "919600000000",
-    previous: { groupJid: JID },
+    previous: previousFile(),
   }),
 );
 check(
   rotated.ok && rotated.config?.groupJid === JID,
-  "rotating the token, the number AND the deployment — the --force case — still keeps the JID",
+  "rotating the token and the number — the --force case — still keeps the JID",
 );
 check(
   rotated.ok && rotated.config?.token === "c".repeat(64),
   "and the rotation really did happen — the JID is not preserved by ignoring the inputs",
 );
 
-const padded = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: { groupJid: `  ${JID}  ` } }));
+const slashy = buildAgentConfig(
+  asInputs({ ...ENV_VALUES, previous: previousFile({ apiUrl: `${PREVIOUS_API}/` }) }),
+);
+check(slashy.ok && slashy.config?.groupJid === JID, "a trailing slash in the old apiUrl is still the same deployment");
+
+const padded = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: previousFile({ groupJid: `  ${JID}  ` }) }));
 check(padded.ok && padded.config?.groupJid === JID, "a padded JID is trimmed");
 
-const stillEmpty = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: { groupJid: "" } }));
+/* ----------------------------------------------- the deployment must match -- */
+
+// A JID names a WhatsApp GROUP, not a deployment. Inheriting one across a changed
+// `apiUrl` would post THIS server's ledger into whatever group the other
+// deployment was feeding — a leak with no error attached to it — so the default is
+// a refusal and the way past it has to be explicit.
+
+const newDeployment = buildAgentConfig(
+  asInputs({ ...ENV_VALUES, prodUrl: "https://staging.vercel.app", previous: previousFile() }),
+);
+check(newDeployment.ok, "a changed deployment still builds a valid config");
+check(
+  newDeployment.ok && newDeployment.config?.groupJid === "",
+  "but the JID is NOT carried across it — that group is the other server's audience",
+);
+check(
+  newDeployment.ok && newDeployment.config?.apiUrl === "https://staging.vercel.app",
+  "and the written apiUrl is the new one",
+);
+
+const deliberateMove = buildAgentConfig(
+  asInputs({
+    ...ENV_VALUES,
+    prodUrl: "https://staging.vercel.app",
+    previous: previousFile(),
+    keepGroupJid: true,
+  }),
+);
+check(
+  deliberateMove.ok && deliberateMove.config?.groupJid === JID,
+  "--keep-jid carries it over anyway, for a move that really is the same audience",
+);
+
+const noApiUrl = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: previousFile({ apiUrl: undefined }) }));
+check(
+  noApiUrl.ok && noApiUrl.config?.groupJid === "",
+  "an old file recording no apiUrl cannot be shown to be the same deployment → fail closed",
+);
+
+const stillEmpty = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: previousFile({ groupJid: "" }) }));
 check(
   stillEmpty.ok && stillEmpty.config?.groupJid === "",
   "an empty JID in the old file stays empty — still nothing invented",
 );
 
 // `JSON.parse` can hand back anything at all, and the worst case is a number:
-// `123` would stringify into something JID-shaped that is not a JID at all.
-for (const junk of [null, 42, "text", [], { groupJid: 123 }, { groupJid: null }]) {
+// `123` would stringify into something JID-shaped that is not a JID at all. The
+// apiUrl matches here, so the ONLY reason each of these is absent is its type.
+for (const junk of [
+  null,
+  42,
+  "text",
+  [],
+  { apiUrl: PREVIOUS_API, groupJid: 123 },
+  { apiUrl: PREVIOUS_API, groupJid: null },
+]) {
   const result = buildAgentConfig(asInputs({ ...ENV_VALUES, previous: junk }));
   check(
     result.ok && result.config?.groupJid === "",
@@ -388,7 +445,7 @@ for (const junk of [null, 42, "text", [], { groupJid: 123 }, { groupJid: null }]
 // dropped quietly — the operator then knows the phone's JID needs re-discovering.
 buildRejects(
   "a malformed JID already in config.json",
-  { ...ENV_VALUES, previous: { groupJid: "Family Ledger" } },
+  { ...ENV_VALUES, previous: previousFile({ groupJid: "Family Ledger" }) },
   "@g.us",
 );
 
@@ -397,7 +454,7 @@ buildRejects(
 // the phone is posting to. Casting past the input type is the only way to even
 // express this call, which is the point of the test.
 const blanking = buildAgentConfig(
-  asInputs({ ...ENV_VALUES, groupJid: "", previous: { groupJid: JID } }),
+  asInputs({ ...ENV_VALUES, groupJid: "", previous: previousFile() }),
 );
 check(blanking.ok && blanking.config?.groupJid === JID, "no input exists that can blank an inherited JID");
 
