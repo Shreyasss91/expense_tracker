@@ -878,7 +878,7 @@ procedure.
 npm run test:whatsapp-agent     # from the REPOSITORY ROOT, not from this directory
 ```
 
-**51 assertions, green as of 18 September 2026.** It covers the one thing a mistake in would be
+**63 assertions, green as of 21 September 2026.** It covers the one thing a mistake in would be
 invisible until it silently double-posted a night: `windowKeyFor(lastBoundary(t))` must be
 byte-identical to the server's `feedWindowForInstant(t).key`, checked at hand-picked edge
 instants (the boundary, one millisecond either side of it, month and year rollovers, leap days)
@@ -1018,7 +1018,7 @@ The two halves are independent; the app side must exist before the agent can do 
 ## 11. Open Items
 
 > **Where this stands, 18 September 2026.** The **code is written, committed and green** —
-> `agent.mjs`, the repo-side contract test (51 assertions), the laptop rehearsal (51 checks),
+> `agent.mjs`, the repo-side contract test (63 assertions), the laptop rehearsal (51 checks),
 > `start.sh`, the boot hook, the config template and the README are all in the repository. What
 > remains is **device work that no agent in a terminal can perform**: §3's one-time setup, the
 > two runs that need a linked WhatsApp session (`--link`, `--groups`), and the acceptance tests

@@ -7,6 +7,37 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## The phone checklist's check counts, corrected — 21 September 2026
+
+**Three live documents told a reader to expect the wrong number from the phone agent's contract
+test.** `npm run test:whatsapp-agent` prints **63** checks; `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`
+§7 said **51 assertions**, that plan's §11 status note said **51 assertions**, the companion spec's
+Phase 7 list said **51 assertions**, and `docs/PHONE_SETUP_CHECKLIST.md` — the printable run sheet
+for the phone sitting — said **51 checks pass**. The 12 extra checks are not new: they are the
+message store and the counter cache, added on 19 September (`63 checks, up from 51`), which updated
+this file's own summary line and nothing else. The rehearsal's **51** is correct in all three
+documents and was left alone; the discrepancy was only ever the contract test.
+
+**Why a wrong number there is worse than it looks.** The checklist's rule is *"tick nothing you
+have not verified"* — so a number that cannot appear makes a correct run look like a failure, and
+the reader has two bad options: tick it anyway, or conclude the suite is broken and skip the check
+that pins the byte-identical window key everything else rests on. It was found before the sitting it
+would have been used in, by running the two pre-phone commands exactly as the checklist tells the
+reader to.
+
+**Corrected in the three live documents, not in the record.** The four edits are the plan's §7 and
+§11 (§7 now reads *63 assertions, green as of 21 September 2026*), the spec's Phase 7 list and the
+checklist; §7's rehearsal figure, the spec's, and every 18 September count in this file are
+untouched. That is `9b445ef`'s rule applied — *"the earlier data point stays in the record rather
+than being overwritten"* — so the 51 → 63 progression stays legible here even though the live docs
+now state one number.
+
+**Verified:** `npm run test:whatsapp-agent` **63 checks, exit 0** and
+`npm run rehearse:whatsapp-agent` **51 checks, exit 0**, both re-run while correcting them. This is
+a documentation-only change — no source file is touched, so `typecheck`, `lint` and `build` are
+unaffected. The standard limit still applies: these are all laptop checks, and `--link`,
+`--groups`, delivery, the socket 401 path and the boot hook still need Dad's phone.
+
 ## `/api/cron/recurring` driven for real, and the 500 it was hiding — 19 September 2026
 
 **The route that writes to the ledger unattended is now exercised.** `test:recurring-cron`

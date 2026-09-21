@@ -17,7 +17,7 @@ On a computer, with the repository checked out:
 
 - [ ] **The app side is deployed and configured.** `DIGEST_AGENT_TOKEN` is set on Vercel and the
       deployment for the current `main` is **READY**.
-- [ ] `npm run test:whatsapp-agent` → 51 checks pass (the agent's window maths matches the server's)
+- [ ] `npm run test:whatsapp-agent` → 63 checks pass (the agent's window maths matches the server's)
 - [ ] `npm run rehearse:whatsapp-agent` → 51 checks pass (the agent's behaviour, against a stub)
 - [ ] `npm run verify:digest-feed` → **0 failures, exit 0** (needs `DIGEST_AGENT_TOKEN` in
       `.env.local`; this one talks to the real deployment)
