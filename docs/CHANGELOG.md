@@ -32,6 +32,13 @@ untouched. That is `9b445ef`'s rule applied — *"the earlier data point stays i
 than being overwritten"* — so the 51 → 63 progression stays legible here even though the live docs
 now state one number.
 
+**And the run sheet no longer quotes a count at all.** The checklist's two agent commands now read
+*all checks pass, exit 0* where they quoted 63 and 51; its third already read *0 failures, exit 0*.
+The number is the one part of that sentence that moves for reasons unrelated to the phone — a new
+assertion anywhere re-stales a run sheet between sittings, and a stale count makes a *correct* run
+read as a broken one. So the sheet now states the invariant instead, which is this file's own rule:
+**compare failures and the exit code, never the count.**
+
 **Verified:** `npm run test:whatsapp-agent` **63 checks, exit 0** and
 `npm run rehearse:whatsapp-agent` **51 checks, exit 0**, both re-run while correcting them. This is
 a documentation-only change — no source file is touched, so `typecheck`, `lint` and `build` are

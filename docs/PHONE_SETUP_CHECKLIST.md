@@ -17,10 +17,18 @@ On a computer, with the repository checked out:
 
 - [ ] **The app side is deployed and configured.** `DIGEST_AGENT_TOKEN` is set on Vercel and the
       deployment for the current `main` is **READY**.
-- [ ] `npm run test:whatsapp-agent` → 63 checks pass (the agent's window maths matches the server's)
-- [ ] `npm run rehearse:whatsapp-agent` → 51 checks pass (the agent's behaviour, against a stub)
+- [ ] `npm run test:whatsapp-agent` → **all checks pass, exit 0**
+      (the agent's window maths matches the server's)
+- [ ] `npm run rehearse:whatsapp-agent` → **all checks pass, exit 0**
+      (the agent's behaviour, against a stub)
 - [ ] `npm run verify:digest-feed` → **0 failures, exit 0** (needs `DIGEST_AGENT_TOKEN` in
       `.env.local`; this one talks to the real deployment)
+
+> **No check counts here, deliberately.** Each of these commands prints one, and this sheet used to
+> quote them — but a count moves whenever an assertion is added, for reasons that have nothing to do
+> with this phone. A run sheet that quotes one goes stale between sittings, and then a *correct* run
+> reads as a broken one. **Exit 0 and an empty failure list are the invariant**; if a command exits
+> non-zero it prints exactly which check failed, which is what you actually need to read.
 
 **Fill these in now — you will need them on the phone, and looking them up mid-session is how
 time disappears:**
