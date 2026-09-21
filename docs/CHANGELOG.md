@@ -32,6 +32,20 @@ untouched. That is `9b445ef`'s rule applied — *"the earlier data point stays i
 than being overwritten"* — so the 51 → 63 progression stays legible here even though the live docs
 now state one number.
 
+**Held by a guard now, not by care.** `npm run test:doc-counts`
+(`scripts/check-doc-counts.mjs`, in CI's `checks` job) runs each suite the documents quote, reads the
+count the suite itself printed, and fails if the plan or the spec disagrees — naming the file, the
+line and both numbers. It is fail-closed on the two ways it could have rotted silently: a suite that
+stops printing a parseable count fails rather than matching nothing, and a document whose sentence is
+reworded so the claim's pattern no longer matches fails rather than being skipped. Both were
+confirmed by mutation, because a guard that cannot fail is worth nothing: the plan's count swapped to
+51 (`PLAN_WHATSAPP_AGENT_TERMUX.md:881 says 51, npm run test:whatsapp-agent prints 63`), the §11
+sentence reworded (`no longer contains this claim`), and the contract test's summary stripped of its
+count (`printed no … summary`) — each exit 1, each then restored. The contract test had to start
+printing its count to be checkable at all, which is exactly how the wrong 51 survived: the rehearsal
+printed one, the contract test printed only a verdict. Dated counts in this file stay unscanned — they
+are history, not claims.
+
 **And the run sheet no longer quotes a count at all.** The checklist's two agent commands now read
 *all checks pass, exit 0* where they quoted 63 and 51; its third already read *0 failures, exit 0*.
 The number is the one part of that sentence that moves for reasons unrelated to the phone — a new
@@ -40,10 +54,11 @@ read as a broken one. So the sheet now states the invariant instead, which is th
 **compare failures and the exit code, never the count.**
 
 **Verified:** `npm run test:whatsapp-agent` **63 checks, exit 0** and
-`npm run rehearse:whatsapp-agent` **51 checks, exit 0**, both re-run while correcting them. This is
-a documentation-only change — no source file is touched, so `typecheck`, `lint` and `build` are
-unaffected. The standard limit still applies: these are all laptop checks, and `--link`,
-`--groups`, delivery, the socket 401 path and the boot hook still need Dad's phone.
+`npm run rehearse:whatsapp-agent` **51 checks, exit 0**, both re-run while correcting them. The count
+correction itself is documentation-only; the guard that now holds it adds one summary line to the
+contract test plus one DB-free script and one CI step, over which `typecheck` and `lint` are clean.
+The standard limit still applies: these are all laptop checks, and `--link`, `--groups`, delivery, the
+socket 401 path and the boot hook still need Dad's phone.
 
 ## `/api/cron/recurring` driven for real, and the 500 it was hiding — 19 September 2026
 

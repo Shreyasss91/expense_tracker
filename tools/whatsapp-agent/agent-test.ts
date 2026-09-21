@@ -56,7 +56,9 @@ type ParsedArgs = {
 const args = (argv: string[]): ParsedArgs => parseArgs(argv) as ParsedArgs;
 
 let failures = 0;
+let checks = 0;
 function check(cond: boolean, msg: string) {
+  checks += 1;
   if (cond) console.log(`  ✓ ${msg}`);
   else {
     failures += 1;
@@ -330,5 +332,12 @@ console.log("\nLog hygiene helpers");
 check(maskPhone("919876543210") === "91••••••3210", "the phone number is masked for logs");
 check(!maskPhone("919876543210").includes("98765"), "the masked form does not contain the middle digits");
 
-console.log(failures === 0 ? "\nAll whatsapp-agent checks passed.\n" : `\n${failures} whatsapp-agent check(s) failed.\n`);
+// The count is printed, not just the verdict: `scripts/check-doc-counts.mjs` reads it
+// to hold the plan and the spec to what this suite really runs. A bare "all passed"
+// is how the docs came to claim 51 checks for a suite that ran 63.
+console.log(
+  failures === 0
+    ? `\nAll ${checks} whatsapp-agent checks passed.\n`
+    : `\n${failures} of ${checks} whatsapp-agent check(s) failed.\n`,
+);
 process.exit(failures === 0 ? 0 : 1);

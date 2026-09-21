@@ -67,6 +67,14 @@ jobs:
       # each route-handler write against the tag it must clear. DB-free.
       - name: Cache-tag guard (cached reads and route-handler writes)
         run: npm run test:cache-tags
+      # The plan and the spec quote the phone agent's check counts, and a count
+      # that drifts turns into a lie a reader acts on: the phone run sheet once
+      # said 51 where the contract test prints 63, which makes a correct run look
+      # broken. Runs both agent suites (no phone, no network — a local stub
+      # server only) and compares their printed counts against the documents.
+      # Needs the tsx devDependency, so it belongs here and not in a lean job.
+      - name: Documented check counts (agent suites vs the plan and the spec)
+        run: npm run test:doc-counts
 
   # §1.4 — the committed migration chain MUST replay from scratch on every
   # push: the 0004/0005 collision went unnoticed precisely because the only
