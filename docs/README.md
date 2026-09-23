@@ -8,7 +8,7 @@ dated because a point-in-time record is the whole point of it.
 |---|---|---|
 | [`specs/`](specs/) | The normative specification, its numbered amendments, and the per-feature companion spec | **Normative.** `specs/master-spec.md` is ❄️ **FROZEN** |
 | [`plans/`](plans/) | Implementation plans and runbooks for one component, with the reasoning attached | Normative for the component it covers |
-| [`runbooks/`](runbooks/) | Printable, tick-box procedures for a sitting at a device | Normative; defers to its plan on every point of substance |
+| [`runbooks/`](runbooks/) | Printable, tick-box procedures for a sitting at a device, each step labelled with the device and tool it belongs to | Normative; defers to its plan on every point of substance |
 | [`audits/`](audits/) | Dated full-project audits and their findings | **Historical.** A snapshot of the day it names, never updated |
 | [`changelog.md`](changelog.md) | The amendment log: every authorized deviation from the frozen spec | **Governance record.** Annotated, never rewritten |
 
@@ -46,7 +46,7 @@ dated because a point-in-time record is the whole point of it.
 
 | File | What it is |
 |---|---|
-| [`phone-setup-checklist.md`](runbooks/phone-setup-checklist.md) | The printable, tick-box run sheet for the one sitting on Dad's phone — derived from the plan's §3, §4 and §7 |
+| [`phone-setup-checklist.md`](runbooks/phone-setup-checklist.md) | The printable, tick-box run sheet for the one sitting on Dad's phone — derived from the plan's §3, §4 and §7, with a *Where:* line on every step so it is clear which machine takes each command |
 
 ### `audits/`
 

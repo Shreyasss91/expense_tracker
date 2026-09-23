@@ -9,9 +9,27 @@ Print this. Work top to bottom. **Tick nothing you have not verified** — an un
 useful information; a ticked box that was never checked is how a two-hour session becomes a
 two-week mystery.
 
+### Where each step happens
+
+Every step below carries a **Where:** line. Most of the confusion this sheet creates is not about
+*what* to type but *which machine* takes it, because the two vocabularies collide:
+
+| Icon | Device | Tool |
+|---|---|---|
+| 💻 | Laptop (dev machine) | bash terminal, at the repository root — Git Bash on Windows |
+| 🔌 | Laptop, targeting the phone | `adb` (Android platform-tools) over USB |
+| 📟 | **Dad's phone** | **Termux** app — every `node`, `npm` and `pkg` command goes here |
+| 💬 | Dad's phone | **WhatsApp** app |
+| ⚙️ | Dad's phone | **Android Settings** / app drawer / F-Droid |
+
+> **`npm run …` (repository scripts) belong on the 💻 laptop. `node agent.mjs …` and `npm install`
+> belong in 📟 Termux on the phone.** Same words, different machines.
+
 ---
 
-## Before touching the phone
+## Before touching the phone — 💻 laptop
+
+**Where:** 💻 the laptop's terminal, at the repository root.
 
 On a computer, with the repository checked out:
 
@@ -26,6 +44,8 @@ On a computer, with the repository checked out:
 - [ ] `.env.local` has `PROD_URL`, `DIGEST_AGENT_TOKEN` and `DIGEST_AGENT_PHONE`, and
       `npm run init:whatsapp-agent-config` has written `tools/whatsapp-agent/config.json`
       (step 5 pushes it; add `--force` to overwrite an existing file)
+- [ ] 🔌 **`adb` is installed (Android platform-tools) and the phone is connected** — `adb devices`
+      lists it. Step 5 pushes `config.json` over it, so this is a prerequisite, not a convenience.
 
 > **No check counts here, deliberately.** Each of these commands prints one, and this sheet used to
 > quote them — but a count moves whenever an assertion is added, for reasons that have nothing to do
@@ -56,6 +76,8 @@ time disappears:**
 
 ### 1 · Install the apps — **from F-Droid, not the Play Store**
 
+**Where:** ⚙️ F-Droid on the phone, then the app drawer, to open Termux:Boot once.
+
 - [ ] **Termux** from F-Droid (or the GitHub releases page). The Play Store build is deprecated
       and will not install a current Node.
 - [ ] **Termux:Boot** from F-Droid — the *same source* as Termux, or the boot hook silently
@@ -64,6 +86,8 @@ time disappears:**
       least once. This is the single most common reason a boot hook fails.
 
 ### 2 · Samsung / One UI background settings — **do not skip**
+
+**Where:** ⚙️ Android Settings on the phone.
 
 - [ ] Battery → **Unrestricted** for Termux
 - [ ] Settings → Battery → Background usage limits → **Never sleeping apps** → add Termux
@@ -75,6 +99,8 @@ and when it stops, there is no error anywhere, because the process simply stops 
 
 ### 3 · Packages
 
+**Where:** 📟 Termux on the phone.
+
 ```sh
 pkg update && pkg upgrade -y
 pkg install -y nodejs-lts git
@@ -84,6 +110,8 @@ node --version          # expect a current LTS major (20 or newer)
 - [ ] `node --version` reports **≥ 20**
 
 ### 4 · Get the agent onto the phone
+
+**Where:** 📟 Termux on the phone.
 
 ```sh
 git clone https://github.com/Shreyasss91/expense_tracker.git ~/expense_tracker
@@ -96,32 +124,43 @@ npm install
 
 ### 5 · Configure
 
+**Where:** three of them in one step — 💻 the generator runs on the laptop at the repo root; 🔌
+`adb push` and `adb shell rm` run on the laptop against the connected phone; 📟 the `cp` and
+`chmod` run in Termux on the phone. The commands below are grouped in that order.
+
 **Preferred — generate the file on the laptop from `.env.local`**, so the token and the number are
 never typed on a phone keyboard. A stray character in either is invisible on the phone: it shows
 up as a `401` on every fetch, or as a pairing code sent to a **different** phone.
 
 ```sh
-npm run init:whatsapp-agent-config     # repo root; --force to overwrite an existing file
+# 💻 laptop, repo root
+npm run init:whatsapp-agent-config     # --force to overwrite an existing file
 ```
 
 It keeps any `groupJid` already in the file **as long as `PROD_URL` has not changed**, and prints
 the masked number to compare against the one `--link` prints in step 7. A changed deployment drops
 the JID deliberately — a JID names a **group**, not a server, so carrying one across would feed the
-ew deployment's ledger to the old group's audience. `--keep-jid` overrides that when the move really
+new deployment's ledger to the old group's audience. `--keep-jid` overrides that when the move really
 is the same family. Then push it — and **delete the copy from shared storage**, because `/sdcard` is
 readable by other apps and this file holds the token:
 
 ```sh
+# 🔌 laptop, targeting the phone over USB
 adb push tools/whatsapp-agent/config.json /sdcard/Download/config.json
-# in Termux:
-#   cp /sdcard/Download/config.json ~/expense_tracker/tools/whatsapp-agent/
-#   chmod 600 config.json
+
+# 📟 Termux on the phone — land it and lock it down
+cp /sdcard/Download/config.json ~/expense_tracker/tools/whatsapp-agent/
+cd ~/expense_tracker/tools/whatsapp-agent
+chmod 600 config.json
+
+# 🔌 laptop again — /sdcard is readable by other apps
 adb shell rm /sdcard/Download/config.json
 ```
 
 By hand, if you prefer — the file is gitignored, and must never be committed:
 
 ```sh
+# 📟 Termux on the phone
 cp config.example.json config.json
 chmod 600 config.json
 ```
@@ -130,14 +169,21 @@ Fill in `apiUrl`, `token` and **`phone`** from the table above. Leave `groupJid`
 
 - [ ] `config.json` has `apiUrl`, `token`, `phone` — and `phone` has **no `+`, no spaces**
 - [ ] `chmod 600 config.json` done
+- [ ] The `/sdcard/Download/config.json` copy is **deleted**
 
 ### 6 · Create the group
+
+**Where:** 💬 WhatsApp on Dad's phone.
 
 - [ ] From **Dad's phone**: new WhatsApp group with Mom and Son, named clearly
 
 ### 7 · Link the device (pairing code)
 
+**Where:** 📟 Termux to request the code, 💬 WhatsApp on the phone to enter it. Both are on the
+phone, but only one of them is a terminal.
+
 ```sh
+# 📟 Termux on the phone
 node agent.mjs --link
 ```
 
@@ -153,7 +199,11 @@ node agent.mjs --link
 
 ### 8 · Discover the group JID
 
+**Where:** 📟 Termux for `--groups`; 💻 the laptop's `config.json` for the copy the generator
+preserves.
+
 ```sh
+# 📟 Termux on the phone
 node agent.mjs --groups
 ```
 
@@ -177,6 +227,8 @@ node agent.mjs --groups
 
 ### 9 · Install the boot hook — and **test** it
 
+**Where:** 📟 Termux on the phone, except the reboot itself, which is ⚙️ the phone.
+
 ```sh
 mkdir -p ~/.termux/boot
 cp ~/expense_tracker/tools/whatsapp-agent/boot/termux-boot.sh ~/.termux/boot/
@@ -190,6 +242,8 @@ An untested boot hook is not a feature.
 
 ### 10 · Start it
 
+**Where:** 📟 Termux on the phone.
+
 ```sh
 cd ~/expense_tracker/tools/whatsapp-agent
 ./start.sh
@@ -199,7 +253,9 @@ cd ~/expense_tracker/tools/whatsapp-agent
 
 ---
 
-## Prove it before trusting it
+## Prove it before trusting it — 📟 Termux (phone)
+
+**Where:** 📟 every command below runs in Termux on the phone.
 
 **Stop the scheduler first** — every one-shot command takes the lock and will exit `7` otherwise:
 
@@ -230,13 +286,36 @@ To erase a rehearsal's trace afterwards: delete the server marker
 
 ---
 
+## After the sitting — 📟 Termux (phone)
+
+Not part of the sitting, but the next thing you will want, and all of it is on the phone:
+
+| I want to… | Run |
+|---|---|
+| Watch the agent's decisions | `tail -f agent.log` |
+| Watch the wrapper, and any crash stack | `tail -f boot.log` |
+| Check it is alive | `pgrep -f agent.mjs` |
+| Stop it | `pkill -f agent.mjs` **and** `pkill -f start.sh` — the wrapper restarts node within 30 s |
+
+`pkill` comes from Android's toybox; if it is missing, `pkg install procps`. The always-available
+alternative is to pull down the wake-lock notification in the shade and tap **Exit**.
+
+Which exit codes `start.sh` restarts and which it refuses to restart is tabulated in
+`tools/whatsapp-agent/README.md` → *Exit codes* (and the plan's §5.8). The short version: only `0`
+and `1` come back on their own.
+
+---
+
 ## When something misbehaves
+
+**Where:** 📟 almost all of this is Termux on the phone; `tools/whatsapp-agent/README.md` below is
+the tool's own README, in the repository.
 
 | Symptom | Where to look |
 |---|---|
-| No post, and `agent.log` has no line for the day | One UI killed it → redo step 2 (`README.md` → Troubleshooting) |
+| No post, and `agent.log` has no line for the day | One UI killed it → redo step 2 (`tools/whatsapp-agent/README.md` → Troubleshooting) |
 | `RE-LINK REQUIRED` in the log | `node agent.mjs --link`, then find out *why* it was unlinked |
-| `401` on every fetch / `503` on every fetch | Token mismatch / not set on Vercel (`README.md` → Troubleshooting) |
+| `401` on every fetch / `503` on every fetch | Token mismatch / not set on Vercel (`tools/whatsapp-agent/README.md` → Troubleshooting) |
 | The 22:15 push fires **every** night | The confirmation POST never succeeds — check token and connectivity. Do **not** disable the fallback |
 | Two messages in one night | A marker was deleted by hand, or the keys disagree — compare the log's `windowKey` with the marker's |
 | Anything else | Plan §9 *Failure-Mode Runbook* |
