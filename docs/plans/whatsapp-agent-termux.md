@@ -193,10 +193,10 @@ Termux. Names shift slightly between One UI versions; the setting is always one 
 | Setting | Where (One UI) | Set it to |
 |---|---|---|
 | Battery usage | Settings → **Apps → Termux → Battery** | **Unrestricted** |
-| Remove from "Sleeping apps" | Settings → **Battery and device care → Battery → Background usage limits** | Ensure Termux is **not** in *Sleeping apps*; add it to **Never sleeping apps** |
+| Remove from "Sleeping apps" | Settings → **Battery → Background usage limits** (older One UI: **Battery and device care → Battery** → *Background usage limits*) | Ensure Termux is **not** in *Sleeping apps* or *Deep sleeping apps*; add it to **Never sleeping apps** |
 | Unused-app sleeping | Same screen → *Put unused apps to sleep* | **Off** — or confirm Termux is exempted |
-| Auto-optimise daily | Battery and device care → ⋮ → **Automation** | **Off** (or confirm Termux is excluded) |
-| Keep the app in memory | Open **Recents**, tap the Termux card's icon → **Keep open** / *Lock this app* | **On** |
+| Auto-optimise daily | **Battery and device care** → ⋮ → **Automation** (newer One UI: the same screen under **Battery**) | **Off** (or confirm Termux is excluded) |
+| Keep the app in memory | Open **Recents**, then tap the **app icon at the top of the Termux card** (not the card) → **Keep open** — *Lock this app* / *Keep open for quick launching* on older One UI | **On** (the card then shows a padlock) |
 | Auto time | Settings → **General management → Date and time** | **Automatic date and time** on |
 | Repeat for Termux:Boot | Same battery screens | **Unrestricted** |
 
@@ -220,12 +220,20 @@ so the two have to be told apart when a night is missed.
 
 | Android | How |
 |---|---|
-| **14+** | Settings → System → **Developer options** → **Disable child process restrictions**, then reboot. Unlock *Developer options* by tapping *Build number* seven times. Disabling Developer options again re-arms the killer |
-| **12L / 13** | `adb shell "settings put global settings_enable_monitor_phantom_procs false"`, once, then reboot |
-| **12** | `adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"` |
+| **14+** | Settings → **Developer options** → **Disable child process restrictions**, then reboot. On **One UI it is a top-level Settings entry** near the bottom of the list — *not* under *System*, which is where stock Android puts it. Unlock *Developer options* with Settings → **About phone → Software information → Build number**, tapped **seven** times. **Turning Developer options back off re-arms the killer**, and an OS update can too |
+| **13 / 12L** | `adb shell "settings put global settings_enable_monitor_phantom_procs false"`, once, then reboot. A global setting, so it survives |
+| **12** | `adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"`, then reboot |
 
-On Android 12L and 12 there is **no toggle at all** — the property is the only route, and `adb`
-is already a prerequisite here (§3.5 pushes `config.json` with it), so it costs nothing extra.
+The toggle exists **only from Android 14**, which is worth stating plainly: *"Android 12 and
+later"* is how this is often repeated, and it sends an Android 12, 12L or 13 user looking for a
+switch that is not on their phone. On those versions the property is the only route, and `adb` is
+already a prerequisite here (§3.5 pushes `config.json` with it), so it costs nothing extra.
+
+Note the asymmetry in robustness: the **toggle** is a developer-option state, so switching
+Developer options off — or an OTA that resets them — silently restores the killer; the **`adb`
+global setting is not undone that way** and is the better route wherever the Android version allows
+it. Whichever is used, **re-apply both §3.2 fixes after an OS update** (the One UI battery settings
+are per-install state too).
 
 The wake-lock is the other half of this defence: a foreground service with a visible notification
 is what keeps Termux out of the killable category, which is the second reason `start.sh` acquires

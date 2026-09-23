@@ -117,8 +117,13 @@ date/time). Re-apply them after any OS update.
 
 **On Android 12+ there is a second, independent killer** that no battery setting covers: AOSP's own
 process limits, which produce the same symptom — a night with no line in `agent.log` (and
-`[Process completed (signal 9) - press Enter]` in the terminal). The plan's §3.2 tabulates the fix
-(a Developer-options toggle on Android 14+, an `adb` property on 12L/13/12).
+`[Process completed (signal 9) - press Enter]` in the terminal). The plan's §3.2 tabulates the fix,
+and the runbook's step 2 has the taps in order. Three details there are worth knowing before you go
+looking: the toggle is **Android 14+ only** (it does *not* exist on 12, 12L or 13, where an `adb`
+global setting is the only route); on **Samsung** it lives at Settings → **Developer options** as a
+top-level entry, unlocked from **About phone → Software information → Build number** tapped seven
+times; and on 14+ **turning Developer options back off re-arms the killer**, as can an OS update —
+so re-check it after any One UI update, and re-apply the battery settings in this step too.
 
 ### 3. Get the agent onto the phone
 

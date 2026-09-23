@@ -7,6 +7,85 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Step 2 of the run sheet sent you looking for a switch the phone does not have — 24 September 2026 (owner request)
+
+**The owner asked for the run sheet's on-phone steps to be checked against the real screens, because
+One UI's wording moves.** So each one was looked up rather than re-read, and the most important finding
+is a defect in the direction that wastes an afternoon.
+
+**The run sheet told every phone to look in Developer options, and the toggle exists only from
+Android 14.** It read *“**Android 12 or later:** Settings → System → Developer options → Disable child
+process restrictions”*. Upstream's documentation on phantom processes is unambiguous: the toggle is
+the **Android 14 and higher** route; **Android 12L and 13** have **no toggle** and use
+`settings put global settings_enable_monitor_phantom_procs false`; **Android 12** uses
+`device_config put activity_manager max_phantom_processes 2147483647`. So on an Android 12, 12L or 13
+phone the sheet sent a human hunting for a switch that is not there — while the fix that *does* apply
+costs nothing extra, because `adb` is already a prerequisite of this setup (the pre-flight check and
+step 5 both use it). The plan's §3.2 table had the mapping right; the run sheet and this repo's own tool
+README had each drifted away from it in different directions. All three now agree, and the plan states
+the version floor explicitly rather than leaving it to a table's first row.
+
+**A second defect: the Samsung path was the stock-Android path.** Both documents said Settings →
+**System** → Developer options. On One UI, Developer options is a **top-level entry near the bottom of
+Settings**, not under *System* — that is where stock Android puts it — and unlocking it is Settings →
+**About phone → Software information** → **Build number**, tapped **seven** times (Samsung's own support
+instructions, including the PIN prompt if a lock screen is set). The plan previously said only
+*“tapping Build number seven times”*, which is true and unusable if you do not know which screen it is
+on. Both are now exact, with the reason stated: nothing on the phone tells you where it lives, which is
+why this is the most-missed step in the section.
+
+**Third: that toggle is fragile in a way worth writing down.** Upstream notes that disabling Developer
+options again **re-enables the killer automatically** — and that the `setprop persist.*` variant is
+*“not recommended as it will revert to its default value `true` if Developer options are disabled on
+Android >= 14”*. So the docs now say the `adb` global setting is the **sturdier route wherever the
+version allows it** — it is not undone that way — that the toggle must be re-checked after any One UI
+update, and that an OS update is a reason to redo **both** halves of §3.2 — the One UI battery settings
+are per-install state too.
+
+**What the check confirmed as already correct**, recorded so the next reader does not repeat it:
+per-app battery is `Settings → Apps → <app> → Battery → Unrestricted`; the sleeping lists are under
+**Background usage limits**, with *Never sleeping apps → ＋ Add* to exempt an app; **Keep open** is
+*Recents → tap the **app icon at the top of the card** (not the card) → Keep open*, called *Lock this
+app* on older builds; **Auto optimize daily** is under Battery and device care's **⋮ → Automation**;
+**Install unknown apps** is reached through the **⋮ (three-dot)** menu on the Apps screen rather than a
+plain list item, which is what step 1a now says; and date and time live under **General management**.
+
+**One UI version drift is now handled in the text instead of being a footnote about it.** One UI 7 and
+8 surface *Settings → Battery → Background usage limits*, while older builds nest the same screen under
+*Battery and device care → Battery*; the run sheet gives both paths and says either will do, rather than
+picking one and being right on half the phones.
+
+**Three additions came out of the same pass:** **Termux:Boot** must be in *Never sleeping apps* too — it
+is the plugin that starts the agent after a reboot, so if *it* is allowed to sleep, §3.8's boot hook
+fails silently, which is the failure mode that section exists to prevent; ***Auto optimize daily*** is
+listed as **off** because it is a scheduled process-killer; and the **notification** permission is now
+an explicit tick, since the wake-lock that keeps the socket alive surfaces a persistent notification.
+
+**What this is not: a test on the actual phone.** These are Samsung's published paths and upstream's
+phantom-process documentation, read on 24 September 2026 — not a rehearsal on a device. One UI wording
+is precisely the thing that can move under them, which is why step 2 now offers two paths where the
+wording differs and why the acceptance tests in §7 remain the only real proof. One third-party claim
+was **dropped rather than repeated**: that an app set to *Unrestricted* stops appearing in the
+*Never sleeping apps* picker. It could not be corroborated, so the sheet gives both routes and says
+either will do instead of inventing UI behaviour.
+
+**Files:** `docs/runbooks/phone-setup-checklist.md` — step 2 split into **2a** (One UI's battery
+manager, with both version wordings and every path named) and **2b** (AOSP's killer, as an
+Android-version table with the unlock path, the `adb` equivalents, and the ≥14 fragility warning;
+`adb` noted as already available). `docs/plans/whatsapp-agent-termux.md` §3.2 — the same corrections in
+the normative table and its surrounding prose. `tools/whatsapp-agent/README.md` — the 14+ floor, the
+Samsung location, and the re-arming caveat, since that file is where a reader looks first.
+
+**Deliberately not changed:** the plan's Android→fix mapping, which was right; the One UI-versus-Xiaomi
+comparison; and the choice to keep the manual settings the *primary* remedy — the alternative (a
+Debuggable-build exemption or a root tweak) buys less than it costs on a phone that must be handed back
+to its owner as an ordinary phone. No code was touched.
+
+**Verified:** `npm run test:doc-counts` — **OK, 2 suites and 6 documented counts**, after the edits.
+Every relative markdown link resolves. Docs-only, so `typecheck` and `lint` are not implicated.
+
+---
+
 ## The F-Droid install step, checked against F-Droid itself — 24 September 2026 (owner request)
 
 **The owner went to install Termux on Dad's phone and reported that F-Droid offers Termux:Boot but

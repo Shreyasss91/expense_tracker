@@ -159,26 +159,73 @@ Google Play* below. The two builds cannot coexist, and switching costs a re-link
 
 ### 2 · Samsung / One UI background settings — **do not skip**
 
-**Where:** ⚙️ Android Settings on the phone.
+**Where:** ⚙️ Android Settings on the phone, ⚙️ **Recents** (the app switcher) for one item, and —
+for 2b on Android 13 and below — 🔌 the 💻 laptop running `adb` against the connected phone.
 
-- [ ] Battery → **Unrestricted** for Termux
-- [ ] Settings → Battery → Background usage limits → **Never sleeping apps** → add Termux
-- [ ] Recents → Termux → **Keep open**
-- [ ] Date and time → **automatic**
-- [ ] **Android 12 or later:** Settings → System → **Developer options** → **Disable child
-      process restrictions** → **reboot**. (Unlock Developer options by tapping *Build number*
-      seven times.) AOSP kills processes independently of One UI, and the symptom is identical —
-      a day with no line in `agent.log`. On **Android 12L/13 there is no toggle**: use
-      `adb shell "settings put global settings_enable_monitor_phantom_procs false"`, then reboot
-      (Android 12: `adb shell "/system/bin/device_config put activity_manager
-      max_phantom_processes 2147483647"`).
+This is the step that decides whether the agent runs for months or quietly stops on day three — and
+when it stops there is no error anywhere, because the process simply stops being scheduled.
 
-This is the step that decides whether the agent runs for months or quietly stops on day three —
-and when it stops, there is no error anywhere, because the process simply stops being scheduled.
+**There are two independent killers, and they look identical from `agent.log`:** One UI's battery
+manager (**2a**) and AOSP's own process limits (**2b**, Android 12+). A missed night means checking
+both, because they are fixed in different places.
 
-There are **two independent killers** behind that symptom: One UI's battery manager (the first four
-settings) and AOSP's own process limits (the last one, Android 12+). A missed night means checking
-both — they look the same from `agent.log`.
+#### 2a · One UI's battery manager — ⚙️ Settings
+
+**Menu names move between One UI versions.** Where two paths are given, either will do — the second
+is the older wording.
+
+- [ ] ⚙️ **Per-app battery:** Settings → **Apps → Termux → Battery** → **Unrestricted** (the choices
+      are *Unrestricted / Optimised / Restricted*).
+- [ ] ⚙️ **Keep it out of the sleeping lists:** Settings → **Battery → Background usage limits**
+      (older One UI: Settings → **Battery and device care → Battery** → *Background usage limits*).
+      - [ ] *Sleeping apps* **and** *Deep sleeping apps*: **remove Termux** if it appears in either.
+      - [ ] *Never sleeping apps* → **＋ Add** → **Termux** — and **Termux:Boot** as well.
+- [ ] ⚙️ Same screen → ***Put unused apps to sleep*** → **off**, or confirm Termux is exempt.
+- [ ] ⚙️ Settings → **Battery and device care** → **⋮ (More options) → Automation** →
+      ***Auto optimize daily***: **off**. (Newer One UI may show that screen as *Battery* rather than
+      *Battery and device care* — either wording, same screen. *Restart when needed* lives there too; an
+      automatic reboot is survivable — step 9's boot hook is what brings the agent back — but the
+      first one after this sitting is worth watching.)
+- [ ] ⚙️ **Keep it in memory — Recents:** open Termux, press **Recents** (three vertical lines),
+      then on the Termux card tap the **app icon at the top of the card** — not the card itself —
+      → **Keep open**. Older One UI calls it *Lock this app* / *Keep open for quick launching*. The
+      card then carries a small padlock.
+- [ ] ⚙️ **Date and time:** Settings → **General management → Date and time** →
+      ***Automatic date and time*** on.
+- [ ] ⚙️ **Repeat the battery items for Termux:Boot.** It is the plugin that starts the agent after
+      a reboot, so if *it* is allowed to sleep, step 9's boot hook can fail silently. (Termux:Boot
+      has no `Battery → Unrestricted` of its own worth setting — the two list items above are what
+      matter.)
+- [ ] ⚙️ Allow the **notification** permission when Android asks for it on Termux. `start.sh` takes
+      a wake-lock, which surfaces a persistent notification, and the wake-lock is what keeps the
+      WhatsApp socket alive; a denied permission makes both harder to reason about.
+
+#### 2b · AOSP's own process killer — the second, independent cause
+
+From **Android 12** onward the OS kills processes on its own account, with nothing to do with One UI
+or its battery settings. Upstream's description: *"Android OS will kill any (phantom) processes
+**greater than 32** (limit is for all apps combined) and also kill any processes using excessive
+CPU"*. In the terminal it shows as `[Process completed (signal 9) - press Enter]`; in `agent.log` it
+is just a day with no line.
+
+**What you do depends only on the Android version — and the toggle does *not* exist before 14:**
+
+| Android | What to do | Notes |
+|---|---|---|
+| **14 or newer** | ⚙️ Settings → **Developer options** → ***Disable child process restrictions*** → **reboot** | On **Samsung it is a top-level Settings entry** near the bottom, not under *System* as on stock Android |
+| **13 or 12L** | 🔌 `adb shell "settings put global settings_enable_monitor_phantom_procs false"`, once, then reboot | **No toggle on these versions.** A global setting, so it survives reboots |
+| **12** | 🔌 `adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"`, then reboot | Same; no toggle |
+
+- [ ] ⚙️ **Unlock Developer options first, if you need the toggle:** Settings → **About phone →
+      Software information** → tap **Build number** **seven times**. (Samsung's own instructions;
+      if a lock screen is set you are asked for your PIN.) Nothing on the phone says where this
+      lives, which is why it is the most-missed step in this section.
+- [ ] 🔌 `adb` is already a prerequisite — the pre-flight check and step 5 both use it, so the USB
+      connection you need for Android 13 and below is the one you already have.
+- [ ] ⚠️ **On Android 14+, this fix is fragile in a specific way: turning Developer options back
+      **off** silently re-arms the killer**, and an OS update can do the same. Re-check the toggle
+      after any One UI update — or prefer the `adb` command above, which is a global setting and is
+      not undone that way. **This is also why an OS update is a reason to re-do 2a and 2b both.**
 
 ### 3 · Packages
 
