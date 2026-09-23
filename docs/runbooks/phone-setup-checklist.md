@@ -78,12 +78,19 @@ time disappears:**
 
 **Where:** ⚙️ F-Droid on the phone, then the app drawer, to open Termux:Boot once.
 
-- [ ] **Termux** from F-Droid (or the GitHub releases page). The Play Store build is deprecated
-      and will not install a current Node.
-- [ ] **Termux:Boot** from F-Droid — the *same source* as Termux, or the boot hook silently
-      does nothing.
+- [ ] **Termux** from **F-Droid**. Not the Play Store — that is not an older Termux but a
+      separate, policy-stripped fork (**Android 11+ only**, *"missing functionality and bugs"*
+      by upstream's own description). F-Droid is also preferred over the GitHub releases, whose
+      APKs upstream signs with a **published test key**, so anyone can forge an update over them.
+- [ ] **Termux:Boot from F-Droid — the same source as Termux.** The app and every plugin share
+      one Android identity (`sharedUserId com.termux`) and must be signed with the same key, so a
+      mixed pair is refused by Android. The symptom is not an error message: **the boot hook
+      silently does nothing** — by permission, not by mistake.
 - [ ] **Open Termux:Boot once** from the app drawer. It does nothing until it has been launched at
-      least once. This is the single most common reason a boot hook fails.
+      least once. This is the other common reason a boot hook fails.
+- [ ] **Termux already came from the Play Store?** Stop here and work *If Termux is already
+      installed from Google Play* below. The two builds cannot coexist, and switching costs a
+      re-link.
 
 ### 2 · Samsung / One UI background settings — **do not skip**
 
@@ -93,9 +100,20 @@ time disappears:**
 - [ ] Settings → Battery → Background usage limits → **Never sleeping apps** → add Termux
 - [ ] Recents → Termux → **Keep open**
 - [ ] Date and time → **automatic**
+- [ ] **Android 12 or later:** Settings → System → **Developer options** → **Disable child
+      process restrictions** → **reboot**. (Unlock Developer options by tapping *Build number*
+      seven times.) AOSP kills processes independently of One UI, and the symptom is identical —
+      a day with no line in `agent.log`. On **Android 12L/13 there is no toggle**: use
+      `adb shell "settings put global settings_enable_monitor_phantom_procs false"`, then reboot
+      (Android 12: `adb shell "/system/bin/device_config put activity_manager
+      max_phantom_processes 2147483647"`).
 
 This is the step that decides whether the agent runs for months or quietly stops on day three —
 and when it stops, there is no error anywhere, because the process simply stops being scheduled.
+
+There are **two independent killers** behind that symptom: One UI's battery manager (the first four
+settings) and AOSP's own process limits (the last one, Android 12+). A missed night means checking
+both — they look the same from `agent.log`.
 
 ### 3 · Packages
 
@@ -253,6 +271,54 @@ cd ~/expense_tracker/tools/whatsapp-agent
 
 ---
 
+## If Termux is already installed from Google Play
+
+**Where:** 💻 the laptop, ⚙️ Android Settings, 📟 Termux — noted per step below.
+
+**This cannot be patched from where you are.** Termux and its plugins share one Android identity
+and must all be signed with the same key, so a Play Termux and an F-Droid Termux:Boot are refused
+by Android — and the Play build removed `sharedUserId` outright. Step 9's boot hook *cannot* work
+on a Play install, and it fails silently. Switching is the only fix, and its real cost is **a
+re-link**, so plan for that rather than discovering it.
+
+### Rescue what exists only on the phone
+
+Only two things are not reproducible, and both are on the 💻 laptop side of the work:
+
+- [ ] **The group JID.** It is discovered on the phone and no formula derives it. Paste it into the
+      **laptop's** `tools/whatsapp-agent/config.json` *now*, before wiping anything — the generator
+      preserves it from that copy, so the reinstall needs a re-link but **not** a second JID
+      discovery. (This is step 8's rule, applied early.)
+- [ ] Anything under `~/expense_tracker` that is not in git. The clone is reproducible and the
+      agent regenerates `config.json`; `auth/`, `sent/` and the logs are state that is *meant* to be
+      rebuilt, and `auth/` is the one that will not survive.
+
+Termux's own backup can carry `~/` across, but this runbook does not rely on a restored `auth/`
+from a different Termux build. Assume you are redoing `--link`.
+
+### Uninstall everything Termux — ⚙️ Android Settings
+
+- [ ] Android Settings → **Applications**, search `termux`, and uninstall **Termux *and* every
+      plugin** — Termux:Boot, and Termux:API / :Styling / :Widget if you ever installed them.
+      Upstream's uninstall section insists on the double-check even when you are sure.
+- [ ] After the F-Droid install, Google Play may keep trying to "update" Termux and keep failing
+      (the Play build has no `sharedUserId` to update into). To stop the noise: open the Termux
+      page in Google Play → ⋮ → disable **Enable auto update**.
+
+### Reinstall and re-enter the sheet
+
+- [ ] **⚙️** Reinstall **Termux and Termux:Boot from F-Droid**, open Termux:Boot once, and re-apply
+      **step 2** — the battery settings and the Android 12+ restriction are per-install.
+- [ ] **📟** Work **step 3 → step 10**. Step 5 does **not** need a new config: the laptop's
+      `config.json` still holds the token, the number and now the JID, so it is one
+      `npm run init:whatsapp-agent-config` and one `adb push`.
+- [ ] **📟** `node agent.mjs --link` is required — `auth/` went with the uninstall.
+- [ ] **📟** Step 9's boot-hook test (reboot, then `pgrep -f agent.mjs`) is the check that proves
+      the source rules are now satisfied. If it still does nothing, the cause is one of the two in
+      step 1.
+
+---
+
 ## Prove it before trusting it — 📟 Termux (phone)
 
 **Where:** 📟 every command below runs in Termux on the phone.
@@ -313,7 +379,9 @@ the tool's own README, in the repository.
 
 | Symptom | Where to look |
 |---|---|
-| No post, and `agent.log` has no line for the day | One UI killed it → redo step 2 (`tools/whatsapp-agent/README.md` → Troubleshooting) |
+| No post, and `agent.log` has no line for the day | **Two** independent killers — One UI's battery manager, or AOSP's process limits on Android 12+ → redo step 2 |
+| `[Process completed (signal 9) - press Enter]` in the terminal | AOSP's phantom-process killer (Android 12+) → step 2's last item |
+| Boot hook did nothing after a reboot, and Termux came from the Play Store | Play and F-Droid builds cannot be mixed → *If Termux is already installed from Google Play* |
 | `RE-LINK REQUIRED` in the log | `node agent.mjs --link`, then find out *why* it was unlinked |
 | `401` on every fetch / `503` on every fetch | Token mismatch / not set on Vercel (`tools/whatsapp-agent/README.md` → Troubleshooting) |
 | The 22:15 push fires **every** night | The confirmation POST never succeeds — check token and connectivity. Do **not** disable the fallback |

@@ -59,10 +59,18 @@ deliberately preferred over two copies of the ledger in a family group.
 
 ## Requirements
 
-- **Termux** from **F-Droid** or the GitHub releases page — **not** the Play Store build, which
-  is deprecated and will not install a current Node.
-- **Termux:Boot**, also from **F-Droid**. It only works when installed from the *same* source as
-  Termux.
+- **Termux** from **F-Droid** — **not** the Play Store build. That one is not an older Termux but a
+  separate, policy-stripped fork (**Android 11+ only**, *"missing functionality and bugs"* by
+  upstream's description), and it drops the shared identity the plugins rely on. F-Droid is also
+  preferred over the GitHub releases: upstream signs those with a **published test key** and warns
+  that anyone can forge an update over them, and they are `debuggable`. Upstream's `v0.118.0`+
+  additionally fixes a **critical world-readable vulnerability** in the app's data directory —
+  which is the entire basis for this agent's `chmod 600` on a file holding the token. Already
+  installed from Play? See the runbook's migration section; the two cannot coexist.
+- **Termux:Boot** from **the same source as Termux.** The app and every plugin share
+  `sharedUserId com.termux` and must be signed with one key — Termux:Boot needs that identity
+  *"to have the permission to execute scripts"* — so a mismatched pair gives a boot hook that
+  **silently does nothing**.
 - **Node.js ≥ 20.** Baileys enforces this with a `preinstall` check, so an old Node fails at
   install rather than at 22:00.
 - **No native build toolchain.** Baileys is pure JavaScript and this agent installs none of its
@@ -88,6 +96,11 @@ Without it One UI freezes Termux in the background and no message is ever sent �
 anywhere, because the process simply stops being scheduled. The plan's §3.2 lists the exact
 toggles (Unrestricted battery usage, *Never sleeping apps*, Keep open in Recents, automatic
 date/time). Re-apply them after any OS update.
+
+**On Android 12+ there is a second, independent killer** that no battery setting covers: AOSP's own
+process limits, which produce the same symptom — a night with no line in `agent.log` (and
+`[Process completed (signal 9) - press Enter]` in the terminal). The plan's §3.2 tabulates the fix
+(a Developer-options toggle on Android 14+, an `adb` property on 12L/13/12).
 
 ### 3. Get the agent onto the phone
 
@@ -332,7 +345,9 @@ window so tonight's genuine post is untouched.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| No post, and `agent.log` has no line for the day | One UI killed the process | Re-apply §3.2, then `./start.sh` |
+| No post, and `agent.log` has no line for the day | **Two** independent killers: One UI's battery manager, or AOSP's process limits on Android 12+ | Re-apply §3.2 — both halves of it — then `./start.sh` |
+| `[Process completed (signal 9) - press Enter]` in the terminal | AOSP's phantom-process killer (Android 12+) | Set *Disable child process restrictions*, or the `adb` property, then reboot (plan §3.2) |
+| Boot hook does nothing after a reboot, and Termux came from the Play Store | The Play and F-Droid builds cannot be mixed — the signature differs, and Termux:Boot needs a matching one | Uninstall Termux **and every plugin**, reinstall all from F-Droid. This costs a re-link: see the runbook's migration section |
 | Log stops mid-run | Node crashed | `start.sh` restarts within 30 s; check `boot.log` for the stack |
 | `RE-LINK REQUIRED` | Device unlinked from WhatsApp | `node agent.mjs --link` — and find out *why* it was unlinked |
 | `401` on every fetch | Token rotated on one side only | Rotate **both** (Vercel env + `config.json`), restart |

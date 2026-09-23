@@ -1138,9 +1138,12 @@ The **authoritative, ordered, step-by-step version is
 **`docs/runbooks/phone-setup-checklist.md`** as its printable tick-box run sheet. Summary of what it
 entails and the points this section makes normative:
 
-1. Install **Termux from F-Droid or GitHub** — **not** the Play Store build, which is
-   deprecated and will not install a current Node. Also install **Termux:Boot** from the
-   *same* source (it only works when both come from the same place).
+1. Install **Termux from F-Droid** — **not** the Play Store build, which is not an older Termux
+   but a separate policy-stripped fork (Android 11+ only; upstream: *"missing functionality and
+   bugs"*), and F-Droid is preferred over the GitHub releases, whose APKs upstream signs with a
+   **published test key**. Install **Termux:Boot** from the *same* source: the app and every
+   plugin share `sharedUserId com.termux` and must be signed with one key, so a mixed pair gives a
+   boot hook that **silently does nothing**. (`docs/plans/whatsapp-agent-termux.md` §3.1.)
 2. `pkg update && pkg upgrade`, then `pkg install nodejs-lts git`.
 3. `git clone` the repo (or copy the `tools/whatsapp-agent` folder), then `npm install`
    inside it. The dependency is **`@whiskeysockets/baileys`** — the scoped package Baileys is

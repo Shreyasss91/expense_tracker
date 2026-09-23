@@ -131,10 +131,29 @@ whether this runs for months or dies on day three.
 
 ### 3.1 Install the apps
 
-1. **Termux** — from **F-Droid** or the GitHub releases page. **Not** the Play Store build:
-   it is deprecated and will not install a current Node.
-2. **Termux:Boot** — also from F-Droid (see §3.8). Termux:Boot only works when it is
-   installed from the *same* source as Termux, so install both from F-Droid.
+1. **Termux** — from **F-Droid**. **Not** the Play Store build, and F-Droid is preferred over
+   the GitHub releases page. Three reasons, in the order they cost:
+   - **The Play build is not an older Termux — it is a different app.** It is built from a
+     separate, policy-stripped repository (`termux-play-store`), is **Android 11+ only**, and is
+     described by upstream as *"under development"* with *"missing functionality and bugs"*.
+   - **Sources cannot be mixed, and this setup depends on that.** The Termux app and every
+     plugin share the Android identity `sharedUserId com.termux`, so all of them must be signed
+     with the same key and therefore installed from the same source. Termux:Boot needs that
+     shared identity *"to have the permission to execute scripts"*. Pair a Play Termux with an
+     F-Droid Termux:Boot and **the boot hook silently does nothing** — §3.8's failure mode,
+     caused by permissions rather than by a mistake.
+   - **The token depends on a current build.** Upstream urges `v0.118.0`+ specifically to fix a
+     **critical world-readable vulnerability** in the app's data directory. `config.json` holds
+     `DIGEST_AGENT_TOKEN`, which reads the household ledger, and the whole argument for
+     `chmod 600` (§3.5) presumes that directory is private.
+
+   GitHub builds are an acceptable fallback but **not an equal one**: upstream signs them with a
+   **test key it has published**, and warns that *"everyone is able to use it to forge a
+   malicious Termux update installable over the GitHub build."* They are also `debuggable`.
+2. **Termux:Boot** — from the **same source as Termux** (see §3.8). Both from F-Droid.
+3. **Already installed Termux from the Play Store?** It cannot be patched into a working setup —
+   the sources cannot coexist. Follow *If Termux is already installed from Google Play* in
+   `docs/runbooks/phone-setup-checklist.md` before going further.
 
 ### 3.2 Samsung (One UI) background-killer settings — **do not skip**
 
@@ -157,6 +176,30 @@ Termux. Names shift slightly between One UI versions; the setting is always one 
 Also grant Termux **notification** permission when asked; `start.sh` acquires a wake-lock,
 which surfaces a persistent notification, and a denied notification permission makes the
 wake-lock harder to reason about.
+
+#### Android 12+ has a second killer — set it while you are already in Settings
+
+One UI's settings (above) are necessary but not sufficient from Android 12 onward, because AOSP
+kills processes on its own account, independent of any vendor battery manager. Upstream's notice:
+*"Android OS will kill any (phantom) processes greater than 32 (limit is for all apps combined)
+and also kill any processes using excessive CPU"*, surfacing in the terminal as
+`[Process completed (signal 9) - press Enter]`.
+
+It produces **exactly the same symptom** as the One UI kill — a day with no line in `agent.log` —
+so the two have to be told apart when a night is missed.
+
+| Android | How |
+|---|---|
+| **14+** | Settings → System → **Developer options** → **Disable child process restrictions**, then reboot. Unlock *Developer options* by tapping *Build number* seven times. Disabling Developer options again re-arms the killer |
+| **12L / 13** | `adb shell "settings put global settings_enable_monitor_phantom_procs false"`, once, then reboot |
+| **12** | `adb shell "/system/bin/device_config put activity_manager max_phantom_processes 2147483647"` |
+
+On Android 12L and 12 there is **no toggle at all** — the property is the only route, and `adb`
+is already a prerequisite here (§3.5 pushes `config.json` with it), so it costs nothing extra.
+
+The wake-lock is the other half of this defence: a foreground service with a visible notification
+is what keeps Termux out of the killable category, which is the second reason `start.sh` acquires
+one rather than running `node agent.mjs` bare.
 
 ### 3.3 Termux packages
 
