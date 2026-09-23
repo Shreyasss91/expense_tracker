@@ -7,6 +7,77 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## The boot hook's prerequisites, and an executable bit that was never committed — 24 September 2026 (owner request)
+
+**Checking steps 9 and 10 the way step 2 was checked turned up the most consequential defect of the
+three: `git ls-files -s tools/whatsapp-agent/` showed mode `100644` on every file in the directory,
+including `start.sh` and `boot/termux-boot.sh`.** The working tree *looks* executable — `ls -l` shows
+`-rwxr-xr-x` — because this is a Windows checkout where `core.fileMode` is off, so the bit was never
+recorded in the index and would never have reached the phone. On the phone that is not cosmetic:
+step 10's `./start.sh` fails immediately with `Permission denied`, and step 9's hook fails the same way
+**only after a reboot**, which is the worst possible time. Both files are now `100755` in the index
+(`git update-index --chmod=+x`, so a clone restores them), and the run sheet, the plan and the tool
+README all carry `chmod +x start.sh` as well, because the *copy* route — `adb push`, My Files, a zip —
+does not carry a mode at all. The boot hook was already `chmod +x`'d by the sheet, which is precisely
+why only `start.sh` was exposed: the difference was in what the docs happened to remember.
+
+**A prerequisite the documents only implied.** Upstream's own how-to for Termux:Boot is three steps:
+install it, **start it once**, and **turn off battery optimisations for Termux *and* Termux:Boot**. The
+second was documented (and prominent); the third was left as an inference from §3.2's never-sleeping
+list, and it deserves better than that — a sleeping app **does not receive the boot broadcast**, so the
+hook cannot run at all. It is now stated in step 9 and §3.8 as the third of three things that must all
+be true, each of which fails silently on its own.
+
+**The wake-lock line in the hook turned out to be load-bearing, and nothing said so.** Upstream's
+tracker records the rule: **the Termux service stops when it has neither a running task, a held
+wake-lock nor an open session**, regardless of what is running underneath it — and a `:boot` script
+that finishes without one therefore lets the service stop and takes the agent with it, hours later,
+with nothing in the log. Our `termux-boot.sh` already takes a wake-lock before launching the wrapper,
+and `start.sh` takes its own, so the design was right; what was missing was the *reason*, which is
+precisely the kind of line a later tidy-up deletes as redundant. §3.8 now says it is the part that must
+survive refactoring. The same source corrected an over-claim this entry was about to make: the
+**notification permission is not what keeps the service alive** — the reporter notes their workaround
+works *"even if notifications for the app are disabled"* — so step 2a now says the permission is for
+*seeing* the notification and using its **Exit**, while the wake-lock is the mechanism.
+
+**The boot test's timing was wrong for any phone with a lock screen.** `BOOT_COMPLETED` reaches an app
+that is not *direct-boot aware* only **after the device has been unlocked once**. So "reboot, wait two
+minutes, check `pgrep`" is incomplete: the phone must be **unlocked**. On a phone with no lock screen it
+fires at boot. This is also a second reason *Auto optimize daily* is switched off in step 2a — an
+automatic 3 a.m. reboot would leave the feed down until somebody unlocked the phone — and it makes the
+sheet's own warning about automatic reboots concrete rather than generic.
+
+**Two logs, and the failure lands in the quieter one.** A wrong `AGENT_DIR` is written by the hook to
+**`~/boot.log`**, a different file from the wrapper's `~/expense_tracker/tools/whatsapp-agent/boot.log`.
+Debugging a silent boot from the second shows nothing, because the hook never got that far. Step 9 and
+§3.8 now name both and say which to read first.
+
+**And the way to *stop* it was never written down either.** Swiping Termux out of **Recents** or tapping
+**Exit** on its notification stops the Termux service, and the agent with it — while pressing Home or
+switching apps is safe. Step 10 now distinguishes the two, which matters because the natural instinct
+when tidying a phone is to swipe everything away.
+
+**Files:** `docs/runbooks/phone-setup-checklist.md` — step 9 gained the three prerequisites, the
+`ls -l` check, the wake-lock rationale, the unlock timing, the two logs and a real test sequence; step
+10 gained `chmod +x start.sh` with the clone-versus-copy reason, plus what is and is not safe to do to
+the session. `docs/plans/whatsapp-agent-termux.md` §3.8 and §3.9 — the same in plan voice.
+`tools/whatsapp-agent/README.md` steps 7 and 8 — the three prerequisites, the unlock, the two logs and
+the `chmod`. `tools/whatsapp-agent/{start.sh,boot/termux-boot.sh}` — the executable bit, which is the
+only change to a file that runs, and changes no byte of its contents.
+
+**Deliberately not changed:** the boot script's design, which the check confirmed is right — wake-lock
+first, an explicit `AGENT_DIR` guard that logs rather than failing silently, and `nohup` rather than
+`setsid` (which is not in a default Termux install, and would have failed only after a reboot). No
+claim was added about the *order* Termux:Boot runs files in beyond upstream's "sorted order", which
+step 9 states because it is upstream's wording. And nothing here was tested on a device.
+
+**Verified:** `git ls-files -s` now reports **`100755`** for `start.sh` and `boot/termux-boot.sh` — the
+check that would have caught the mode defect, and the one to run after any change in that directory.
+`npm run test:doc-counts` — **OK, 2 suites and 6 documented counts**, after the edits. Every relative
+markdown link resolves. Docs plus one file-mode change, so `typecheck` and `lint` are not implicated.
+
+---
+
 ## Step 2 of the run sheet sent you looking for a switch the phone does not have — 24 September 2026 (owner request)
 
 **The owner asked for the run sheet's on-phone steps to be checked against the real screens, because

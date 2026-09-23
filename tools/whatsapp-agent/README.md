@@ -247,19 +247,36 @@ cp ~/expense_tracker/tools/whatsapp-agent/boot/termux-boot.sh ~/.termux/boot/
 chmod +x ~/.termux/boot/termux-boot.sh
 ```
 
-Then **open Termux:Boot once** from the app drawer. The app does nothing until it has been
-launched at least once — the single most common reason a boot hook silently does nothing.
+Three things must all be true, and each fails silently on its own:
 
-**Test it, do not assume it:** reboot the phone, wait two minutes, then `pgrep -f agent.mjs`. The
-boot script also fails *only* on reboot if its path is wrong, which is exactly when nobody is
-watching — so check that too.
+- **Open Termux:Boot once** from the app drawer. The app does nothing until it has been launched at
+  least once — the single most common reason a boot hook silently does nothing.
+- **Battery optimisations off for Termux *and* Termux:Boot** (step 2). A sleeping app does not get
+  the boot broadcast.
+- **The script is executable** — check `ls -l ~/.termux/boot/` shows `-rwxr-xr-x`. A boot script
+  without the bit does nothing and says nothing.
+
+**Test it, do not assume it:** reboot, **unlock the phone** (see below), wait ~2 minutes, then
+`pgrep -f agent.mjs`. Two things also fail *only* on reboot, when nobody is watching: a wrong path in
+`AGENT_DIR`, which is written to **`~/boot.log`** — a *different* file from the wrapper's own
+`boot.log` in the agent directory — and the hook's reliance on `termux-wake-lock`, which is what stops
+the Termux service from stopping itself once the boot script has finished.
+
+`BOOT_COMPLETED` reaches an app that is not *direct-boot aware* only **after the device is unlocked
+once**, so a phone with a lock screen must be unlocked before the hook can run — not just rebooted.
 
 ### 8. Start it
 
 ```sh
 cd ~/expense_tracker/tools/whatsapp-agent
+chmod +x start.sh
 ./start.sh
 ```
+
+`chmod +x` is a no-op after a clone and required after a copy: the executable bit is recorded in the
+repository, so `git clone` restores it, but `adb push`, My Files or a zip delivers `0644` and
+`./start.sh` fails with `Permission denied`. Then **do not** swipe Termux out of **Recents** or tap
+**Exit** on its notification — both stop the Termux service and the agent with it.
 
 Run `./start.sh`, **not** `node agent.mjs`, for the long-running scheduler: the wrapper holds the
 wake-lock (so Android does not freeze the socket) and restarts the agent after an ordinary crash.

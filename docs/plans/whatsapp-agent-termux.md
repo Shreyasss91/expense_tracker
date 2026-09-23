@@ -409,12 +409,47 @@ boot hook silently does nothing.
 > **Test it, do not assume it.** Reboot the phone, wait two minutes, and confirm the process is
 > alive (§7, Test 8). An untested boot hook is not a feature.
 
+Upstream's own three steps are: install Termux:Boot, **start it once**, and **turn off battery
+optimisations for Termux *and* Termux:Boot**. The second is why §3.1 ends by opening the app from the
+drawer; the third is what §3.2's never-sleeping list does, and it matters because a sleeping app does
+not receive the boot broadcast.
+
+**The wake-lock line in the hook is load-bearing, not ceremony.** Termux:Boot runs every file in
+`~/.termux/boot/` in sorted order on `BOOT_COMPLETED`, and the script takes a `termux-wake-lock`
+*before* launching the wrapper. Upstream's tracker records the reason this is required: **the Termux
+service stops when it has neither a running task, a held wake-lock nor an open session**, regardless
+of what is running underneath it. A `:boot` script that finishes without one therefore lets the
+service stop — and takes the agent with it, hours later, with nothing in the log to say why. Should
+this hook ever be refactored, that line is the part that must survive.
+
+**Timing, for the test in §7:** `BOOT_COMPLETED` is delivered to an app that is not *direct-boot
+aware* only **after the device has been unlocked once**. So a phone with a lock screen must be
+**unlocked**, not merely rebooted, before the hook can run. On a phone with no lock screen it fires at
+boot. This is the second reason §3.2 switches *Auto optimize daily* off: an automatic 3 a.m. reboot
+would leave the feed down until somebody unlocked the phone.
+
+**Two logs, and the failure lands in the quieter one.** A wrong `AGENT_DIR` is written to
+**`~/boot.log`** by the hook itself — and can only ever surface after a reboot. Everything the wrapper
+logs goes to `~/expense_tracker/tools/whatsapp-agent/boot.log`. Debugging a silent boot from the
+second file alone will show nothing, because the hook never got that far.
+
 ### 3.9 Start it
 
 ```sh
 cd ~/expense_tracker/tools/whatsapp-agent
+chmod +x start.sh
 ./start.sh
 ```
+
+`chmod +x` is a no-op after a `git clone` and a necessity after any other route: the executable bit is
+**recorded in the repository** for `start.sh` and `boot/termux-boot.sh`, so a clone restores it, but a
+folder copied by `adb push`, My Files or a zip arrives `0644` and `./start.sh` then fails with
+`Permission denied` — on the first command, and again at boot for §3.8's hook.
+
+Once it is running, **leave the Termux session alone.** Pressing Home or switching apps is fine; but
+swiping the Termux card out of **Recents** or tapping **Exit** on its notification stops the Termux
+service, and the agent stops with it. §3.2's *Keep open* is what prevents the Recents eviction, and
+the wake-lock notification is what makes deliberate stopping possible instead of guesswork.
 
 ---
 
