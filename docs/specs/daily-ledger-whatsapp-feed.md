@@ -1195,7 +1195,11 @@ entails and the points this section makes normative:
    bugs"*), and F-Droid is preferred over the GitHub releases, whose APKs upstream signs with a
    **published test key**. Install **Termux:Boot** from the *same* source: the app and every
    plugin share `sharedUserId com.termux` and must be signed with one key, so a mixed pair gives a
-   boot hook that **silently does nothing**. (`docs/plans/whatsapp-agent-termux.md` §3.1.)
+   boot hook that **silently does nothing**. The F-Droid builds require **Android 7.0+**
+   (Termux:Boot needs only 5.0+), so on an older phone F-Droid shows the plugin and hides the app;
+   where the app will not appear, the F-Droid **website** APK is the correct fallback because it
+   carries the same signing key, while a GitHub or mirror APK does not.
+   (`docs/plans/whatsapp-agent-termux.md` §3.1.)
 2. `pkg update && pkg upgrade`, then `pkg install nodejs-lts git`.
 3. `git clone` the repo (or copy the `tools/whatsapp-agent` folder), then `npm install`
    inside it. The dependency is **`@whiskeysockets/baileys`** — the scoped package Baileys is

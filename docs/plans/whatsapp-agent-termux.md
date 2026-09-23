@@ -157,6 +157,29 @@ whether this runs for months or dies on day three.
    GitHub builds are an acceptable fallback but **not an equal one**: upstream signs them with a
    **test key it has published**, and warns that *"everyone is able to use it to forge a
    malicious Termux update installable over the GitHub build."* They are also `debuggable`.
+
+   **The exact packages, and what F-Droid actually serves** (checked against F-Droid's index on
+   **24 September 2026**, because a version in prose goes stale):
+
+   | Package | Suggested | Also available | Requires |
+   |---|---|---|---|
+   | `com.termux` | **0.118.3** | `0.119.0-beta.3`, `0.119.0-beta.2` — betas, shown only with *Include unstable versions* | **Android 7.0+**, ~108 MiB |
+   | `com.termux.boot` | **0.8.1** | `0.8.0`, `0.7` | Android **5.0+** only, ~25 KiB |
+
+   Take the **suggested** versions. Two consequences of that table are worth knowing *before* the
+   sitting, because both look like a fault and neither is one:
+
+   - **On Android 5 or 6, F-Droid shows Termux:Boot and hides Termux.** Termux is marked
+     *incompatible with your device* and filtered out of search, while the plugin — which needs
+     only 5.0+ — remains listed. That is a **stop, not a workaround**: below 7.0 this project
+     cannot run anyway (Node ≥ 20).
+   - **If Termux will not appear at all, the correct fallback is F-Droid's own website — not
+     GitHub.** `https://f-droid.org/packages/com.termux/` → *Download APK* for 0.118.3. That APK
+     is *"built and signed by F-Droid"*, i.e. the **same signing key** as anything the F-Droid
+     app installs, so `sharedUserId com.termux` still matches Termux:Boot and §3.8's boot hook
+     still works. Its only cost is F-Droid's own caveat: **no update notifications**. An APK
+     *mirror* is not this — its signature is unverifiable, and its symptom is §3.8's silent one
+     rather than an error message.
 2. **Termux:Boot** — from the **same source as Termux** (see §3.8). Both from F-Droid.
 3. **Already installed Termux from the Play Store?** It cannot be patched into a working setup —
    the sources cannot coexist. Follow *If Termux is already installed from Google Play* in

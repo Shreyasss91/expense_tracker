@@ -20,7 +20,7 @@ Every step below carries a **Where:** line. Most of the confusion this sheet cre
 | 🔌 | Laptop, targeting the phone | `adb` (Android platform-tools) over USB |
 | 📟 | **Dad's phone** | **Termux** app — every `node`, `npm` and `pkg` command goes here |
 | 💬 | Dad's phone | **WhatsApp** app |
-| ⚙️ | Dad's phone | **Android Settings** / app drawer / F-Droid |
+| ⚙️ | Dad's phone | **Android Settings**, the app drawer, the **F-Droid** app, and the phone's **browser** (Chrome) — anything that is a tap rather than a command |
 
 > **`npm run …` (repository scripts) belong on the 💻 laptop. `node agent.mjs …` and `npm install`
 > belong in 📟 Termux on the phone.** Same words, different machines.
@@ -76,21 +76,86 @@ time disappears:**
 
 ### 1 · Install the apps — **from F-Droid, not the Play Store**
 
-**Where:** ⚙️ F-Droid on the phone, then the app drawer, to open Termux:Boot once.
+**Where:** ⚙️ the phone's **browser**, then the **F-Droid** app, then ⚙️ Android Settings for one
+permission at 1a and again at 1d, then ⚙️ the app drawer to open Termux:Boot once. **Nothing in
+this step happens on the 💻 laptop.**
 
-- [ ] **Termux** from **F-Droid**. Not the Play Store — that is not an older Termux but a
-      separate, policy-stripped fork (**Android 11+ only**, *"missing functionality and bugs"*
-      by upstream's own description). F-Droid is also preferred over the GitHub releases, whose
-      APKs upstream signs with a **published test key**, so anyone can forge an update over them.
-- [ ] **Termux:Boot from F-Droid — the same source as Termux.** The app and every plugin share
-      one Android identity (`sharedUserId com.termux`) and must be signed with the same key, so a
-      mixed pair is refused by Android. The symptom is not an error message: **the boot hook
-      silently does nothing** — by permission, not by mistake.
-- [ ] **Open Termux:Boot once** from the app drawer. It does nothing until it has been launched at
-      least once. This is the other common reason a boot hook fails.
-- [ ] **Termux already came from the Play Store?** Stop here and work *If Termux is already
-      installed from Google Play* below. The two builds cannot coexist, and switching costs a
-      re-link.
+**First, the gate — confirm the phone can run any of this:**
+
+- [ ] ⚙️ **Android Settings → About phone → Software information → Android version.** Everything
+      here needs **Android 7.0 or newer**: Termux's current F-Droid builds all require it, and the
+      agent needs Node ≥ 20, which is what 7.0+ makes possible. **On Android 5 or 6, F-Droid hides
+      Termux while still showing Termux:Boot** — Termux:Boot needs only Android 5.0+ — so a phone
+      below 7.0 produces exactly the *"only Termux:Boot appears"* symptom in *When something
+      misbehaves*. If that is what the version says, **stop here**: nothing below installs, and no
+      amount of retrying changes it.
+
+#### 1a · Get F-Droid onto the phone — ⚙️ the browser
+
+- [ ] Open **`https://f-droid.org`** in the phone's browser (Chrome) and tap **Download F-Droid**,
+      then install the APK it downloads.
+- [ ] Android will refuse that install until you allow it: ⚙️ **Settings → Apps → Special access →
+      Install unknown apps → Chrome → Allow**. The wording moves around between One UI versions;
+      it is the switch that permits *that app* to install APKs, and **you will need it again in
+      1d** if Termux has to come from the website.
+
+#### 1b · Install Termux — ⚙️ F-Droid
+
+- [ ] Open **F-Droid → Search** and type the exact package name **`com.termux`** (the name search
+      for "Termux" usually works too; the package name is what is reliable).
+- [ ] What you should see — **verified against F-Droid on 24 September 2026**: version **0.118.3**,
+      marked **suggested**, ~108 MiB, *"requires Android 7.0 or newer"*, architectures
+      arm64-v8a / armeabi-v7a / x86 / x86_64. Tap **Install** and let it finish.
+- [ ] Take the **suggested 0.118.3**, not the betas (`0.119.0-beta.2` / `-beta.3`). The betas only
+      appear once *Include unstable versions* is enabled in F-Droid's settings, and nothing here
+      needs them. 0.118.3 is also already past the `0.118.0` security fix that the token's
+      `chmod 600` presumes.
+
+#### 1c · Install Termux:Boot — ⚙️ F-Droid
+
+- [ ] Still in **F-Droid → Search** → **`com.termux.boot`** → **0.8.1**, marked *suggested*, ~25 KiB
+      → **Install**. It must come from **this same app** — the blockquote at the end of this step
+      says why.
+
+#### 1d · If Termux does not appear in F-Droid — ⚙️ F-Droid, then ⚙️ the browser
+
+Three causes, in the order worth trying:
+
+| Cause | What to do |
+|---|---|
+| **The phone is below Android 7.0** | The gate at the top of this step. F-Droid marks Termux *incompatible with your device* and filters it out of search, while Termux:Boot (5.0+) stays visible. Nothing fixes this |
+| **F-Droid's index is stale** | ⚙️ F-Droid → **Updates** tab → **pull down to refresh**, and confirm ⚙️ F-Droid → Settings → Repositories has ***F-Droid*** enabled. Termux's listing was last published 29 May 2025, so an index from before then will simply not have it |
+| **The app is filtered out of the listing** | Search the **exact package name `com.termux`** rather than the word "Termux" |
+
+- [ ] **Then, and only then, the supported fallback:** open
+      **`https://f-droid.org/packages/com.termux/`** in the phone's browser and tap **Download
+      APK** on the **0.118.3** entry (~108 MiB — do it on wifi).
+- [ ] **This is signature-safe, and that is the entire reason it is allowed.** The page says of
+      that APK *"It is built and signed by F-Droid"* — the **same signing key** as the Termux:Boot
+      you installed in 1c, so `sharedUserId com.termux` still matches and step 9's boot hook can
+      run. Installing it is the same **Install unknown apps** permission as 1a.
+- [ ] **Do not substitute any other source.** The **GitHub releases** are signed with upstream's
+      **published test key** (and are `debuggable`), and **APK mirrors** — APKMirror, APKPure,
+      Softonic and the like — cannot be verified at all. A mismatched signature gives you a Termux
+      whose identity does not match Termux:Boot, and the symptom is not an error: **the boot hook
+      silently does nothing.**
+- [ ] F-Droid's own caveat about this route: installed from the website you get **no update
+      notifications**, so re-check that page now and then.
+
+#### 1e · Open Termux:Boot once — ⚙️ the app drawer
+
+- [ ] Launch **Termux:Boot** from the app drawer. It does nothing until it has been started at
+      least once, and that is the other common reason a boot hook fails — step 9 is the test.
+
+**Termux already came from the Play Store?** Stop here and work *If Termux is already installed from
+Google Play* below. The two builds cannot coexist, and switching costs a re-link.
+
+> **Why F-Droid, and not the Play Store**, in the order the reasons cost: the Play build is **not an
+> older Termux** but a separate, policy-stripped app (`termux-play-store`, **Android 11+ only**,
+> *"missing functionality and bugs"* by upstream's description) which drops the shared identity the
+> plugins need; **sources cannot be mixed**, so a Play Termux beside an F-Droid Termux:Boot gives a
+> boot hook that fails **silently, by permission**; and Play auto-updates on its own schedule against
+> a fork upstream does not support. The plan's §3.1 carries the full argument.
 
 ### 2 · Samsung / One UI background settings — **do not skip**
 
@@ -315,8 +380,11 @@ from a different Termux build. Assume you are redoing `--link`.
 
 ### Reinstall and re-enter the sheet
 
-- [ ] **⚙️** Reinstall **Termux and Termux:Boot from F-Droid**, open Termux:Boot once, and re-apply
-      **step 2** — the battery settings and the Android 12+ restriction are per-install.
+- [ ] **⚙️** Reinstall **Termux and Termux:Boot from F-Droid** — if Termux will not appear in the
+      F-Droid app, use the F-Droid **website** APK exactly as **step 1d** describes (it is the same
+      signing key, so the plugins still match; a GitHub or mirror APK is not). Then open Termux:Boot
+      once, and re-apply **step 2** — the battery settings and the Android 12+ restriction are
+      per-install.
 - [ ] **📟** Work **step 3 → step 10**. Step 5 does **not** need a new config: the laptop's
       `config.json` still holds the token, the number and now the JID, so it is one
       `npm run init:whatsapp-agent-config` and one `adb push`.
@@ -413,6 +481,8 @@ the tool's own README, in the repository.
 | No post, and `agent.log` has no line for the day | **Two** independent killers — One UI's battery manager, or AOSP's process limits on Android 12+ → redo step 2 |
 | `[Process completed (signal 9) - press Enter]` in the terminal | AOSP's phantom-process killer (Android 12+) → step 2's last item |
 | Boot hook did nothing after a reboot, and Termux came from the Play Store | Play and F-Droid builds cannot be mixed → *If Termux is already installed from Google Play* |
+| **Termux does not appear in F-Droid at all, but Termux:Boot does** | Termux needs **Android 7.0+** while Termux:Boot needs only 5.0+, so F-Droid hides the one and shows the other on an older phone — or the index is stale | Check ⚙️ Settings → About phone → Android version first. Then ⚙️ F-Droid → *Updates* → pull down to refresh, and search the exact name `com.termux`. Still missing → the F-Droid website APK (step 1d) |
+| Termux is installed, but the boot hook never runs | The APK came from **GitHub, a mirror, or Play**, so its signature does not match Termux:Boot's | Uninstall Termux **and every plugin**, reinstall both from F-Droid (step 1, and the migration section above) |
 | `RE-LINK REQUIRED` in the log | `node agent.mjs --link`, then find out *why* it was unlinked |
 | `RE-LINK REQUIRED`, and the feed has been silent for days | Check when Dad's phone was **last used** — WhatsApp logs every linked device out after 14 days of it going unused (P13). Use the phone, then re-run step 7 |
 | `401` on every fetch / `503` on every fetch | Token mismatch / not set on Vercel (`tools/whatsapp-agent/README.md` → Troubleshooting) |

@@ -67,6 +67,17 @@ deliberately preferred over two copies of the ledger in a family group.
   additionally fixes a **critical world-readable vulnerability** in the app's data directory —
   which is the entire basis for this agent's `chmod 600` on a file holding the token. Already
   installed from Play? See the runbook's migration section; the two cannot coexist.
+  - **Concretely, as checked on 24 September 2026:** `com.termux` → suggested **0.118.3**
+    (`0.119.0-beta.2` / `-beta.3` appear only once *Include unstable versions* is on), requires
+    **Android 7.0+**, ~108 MiB; `com.termux.boot` → suggested **0.8.1** (~25 KiB), requires only
+    Android **5.0+**. Take the **suggested** versions.
+  - **If Termux will not appear in F-Droid but Termux:Boot does:** Termux needs Android 7.0+ and
+    the plugin only 5.0+, so on an older phone F-Droid hides the one and lists the other — and a
+    stale index looks the same. Check the Android version, refresh F-Droid's *Updates* tab, and
+    search the exact name `com.termux`. Still missing: download the APK from
+    **`https://f-droid.org/packages/com.termux/`** — it is **signed by F-Droid**, so it keeps the
+    key match with Termux:Boot. A **GitHub or mirror** APK does **not**, and the only symptom is a
+    boot hook that silently does nothing (step 7).
 - **Termux:Boot** from **the same source as Termux.** The app and every plugin share
   `sharedUserId com.termux` and must be signed with one key — Termux:Boot needs that identity
   *"to have the permission to execute scripts"* — so a mismatched pair gives a boot hook that
@@ -363,6 +374,8 @@ window so tonight's genuine post is untouched.
 | `[Process completed (signal 9) - press Enter]` in the terminal | AOSP's phantom-process killer (Android 12+) | Set *Disable child process restrictions*, or the `adb` property, then reboot (plan §3.2) |
 | Boot hook does nothing after a reboot, and Termux came from the Play Store | The Play and F-Droid builds cannot be mixed — the signature differs, and Termux:Boot needs a matching one | Uninstall Termux **and every plugin**, reinstall all from F-Droid. This costs a re-link: see the runbook's migration section |
 | Log stops mid-run | Node crashed | `start.sh` restarts within 30 s; check `boot.log` for the stack |
+| **Termux is missing from F-Droid while Termux:Boot is listed** | Termux requires **Android 7.0+** and Termux:Boot only 5.0+, so F-Droid hides the app and shows the plugin on an older phone. A stale index looks identical | Check the Android version first; then refresh F-Droid's *Updates* tab and search the exact name `com.termux`. Still missing → the F-Droid **website** APK (Requirements) |
+| Termux is installed, but the boot hook never runs | The APK came from **GitHub, a mirror or Play**, so its signature does not match Termux:Boot's | Uninstall Termux **and every plugin**, then reinstall both from F-Droid — the runbook's migration section |
 | `RE-LINK REQUIRED` | Device unlinked from WhatsApp | `node agent.mjs --link` — and find out *why* it was unlinked |
 | `RE-LINK REQUIRED`, and the feed has been silent for days | The phone has not been used for over 14 days — WhatsApp logs **every** linked device out | Use WhatsApp on the phone, then `--link`. Nothing here can prevent it (plan P13) |
 | `401` on every fetch | Token rotated on one side only | Rotate **both** (Vercel env + `config.json`), restart |

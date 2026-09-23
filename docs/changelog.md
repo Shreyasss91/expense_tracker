@@ -7,6 +7,68 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## The F-Droid install step, checked against F-Droid itself — 24 September 2026 (owner request)
+
+**The owner went to install Termux on Dad's phone and reported that F-Droid offers Termux:Boot but
+no Termux.** Checked against F-Droid's own index rather than from memory, and the docs had a gap and
+one wrong sentence.
+
+**Termux is on F-Droid, with a stable version.** F-Droid's package API, read on 24 September 2026:
+`com.termux` → `suggestedVersionCode: 1002` = **0.118.3** (with `0.119.0-beta.3` and `-.beta.2` also
+published), requiring **Android 7.0+**; `com.termux.boot` → `suggestedVersionCode: 1000` = **0.8.1**,
+requiring only **Android 5.0+**. So the instruction "install Termux from F-Droid" was correct and
+three things short: it never named a version, never stated the Android floor, and never said what to
+do when the app is simply not listed.
+
+**The asymmetry explains the symptom exactly, and it is a stop rather than a puzzle.** Termux needs
+Android **7.0+** while Termux:Boot needs **5.0+**, so on an older phone F-Droid marks the app
+*incompatible with your device*, filters it out of search, and still lists the plugin — which is
+precisely "only Termux:Boot appears". A stale index looks identical: Termux's F-Droid listing dates
+from 29 May 2025, so a client that has not refreshed since then does not have it either. Both causes
+are now in the runbook (the gate at the top of step 1, and a troubleshooting row), and the Android
+floor is now stated as the hard prerequisite it is — below 7.0 this project cannot run at all,
+because the agent needs Node ≥ 20.
+
+**One sentence in the plan was wrong, and it was the sentence about signing keys.** §3.1 said the
+GitHub releases are "an acceptable fallback but **not an equal one**". That is still true of GitHub —
+but there is a fallback that **is** equal, and the docs did not name it: **F-Droid's own website**
+(`https://f-droid.org/packages/com.termux/`, *Download APK*). Its page states the APK is *"built and
+signed by F-Droid"*, so it carries the **same signing key** as anything the F-Droid app installs,
+`sharedUserId com.termux` still matches Termux:Boot, and §3.8's boot hook still works. That
+distinction is the whole subject of §3.1 — a GitHub or mirror APK does **not** share the key, and its
+failure is silent — so the website is now named as the correct fallback, with GitHub and mirrors
+explicitly excluded and F-Droid's own caveat (no update notifications) stated alongside. The
+runbook's migration section points at the same route.
+
+**Also recorded:** take the **suggested** version, `0.118.3`, not the betas — they need *Include
+unstable versions* enabled and nothing here needs them, and 0.118.3 is already past the `0.118.0`
+security fix that the token's `chmod 600` presumes. And there is **no `Termux:Root`** plugin; the
+only ones are `:API`, `:Boot`, `:Styling`, `:Tasker` and `:Widget`, and nothing in this setup needs
+root.
+
+**Files:** `docs/runbooks/phone-setup-checklist.md` — step 1 restructured into an explicit Android
+version gate and sub-steps **1a–1e**, each labelled with its device and tool (the phone's **browser**
+for F-Droid and for the fallback APK, the **F-Droid** app to search, **Settings** for the *Install
+unknown apps* permission, the app drawer to open Termux:Boot once), including the exact package names
+to search, the versions to expect, and a table of the three reasons the app can be missing; two new
+rows in *When something misbehaves*; the ⚙️ legend row now lists the browser. The plan's §3.1 gained
+a package table and the two consequences; the companion spec's §6.4 item 1 gained the Android floor
+and the signature-safe fallback; the tool's README gained the same detail under Requirements and two
+troubleshooting rows.
+
+**Deliberately not changed:** the F-Droid-over-Play ruling, which stands and is now better sourced;
+nothing pins Termux to a version in a build file — the runbook says *take the suggested*, and the
+version numbers appear as **dated observations**, so they can go stale without becoming a lie the way
+the quoted check counts once did; and no code was touched.
+
+**Verified:** `npm run test:doc-counts` — **OK, 2 suites and 6 documented counts**, run after the
+edits because two of the documents it scans were edited. Every relative markdown link resolves.
+The version and Android claims were read from F-Droid's package pages and its
+`api/v1/packages/<id>` endpoint on 24 September 2026, so each one is checkable rather than recalled.
+Docs-only, so `typecheck` and `lint` are not implicated.
+
+---
+
 ## Pair once from a server, and the 14-day rule nobody had written down — 24 September 2026 (owner request)
 
 **The owner asked whether Dad's WhatsApp could be paired once from a server — with a QR code — and
