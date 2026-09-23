@@ -76,6 +76,13 @@ deliberately preferred over two copies of the ledger in a family group.
 - **No native build toolchain.** Baileys is pure JavaScript and this agent installs none of its
   optional peer dependencies. That is not an accident — see `.npmrc`, which is load-bearing:
   removing it makes `npm install` pull `sharp`, a native module, and fail on Android.
+- **The Baileys line is pinned to what npm now tags `legacy`.** `package.json` asks for `^6.7.24`;
+  the registry's current `latest` is **`7.0.0-rc14`**, a release candidate. That is a deliberate pin,
+  not an oversight — but it does mean no further fixes land on this line, and **v7 is a migration
+  rather than an upgrade**: it makes JIDs LID-based (`@lid`) by default, which touches anything that
+  addresses a group by JID. Written up in the plan's §13, with the two upstream recommendations this
+  agent should adopt (`markOnlineOnConnect: false`; do **not** call `fetchLatestWaWebVersion` on every
+  connect) and the two it already satisfies (`cachedGroupMetadata`, never `printQRInTerminal`).
 
 ---
 
@@ -167,6 +174,13 @@ It prints an **8-digit pairing code** and the number it is requesting it for. On
 type the code. On success the session is written to `auth/` and the process exits `0`.
 
 This is **one-time**. The session survives reboots, Termux restarts and config edits.
+
+**One standing obligation, and it is on the phone.** WhatsApp logs a linked device out when the
+primary phone is **unused for more than 14 days** — *"Linked devices work without your phone online,
+but will log out if your phone is unused for over 14 days."* So this agent never needs the phone at
+22:00, and it does need the phone to have been used at least once a fortnight. Open WhatsApp on it now
+and then; if you do not, the session dies as a `401` (exit `3`), not as anything this agent can
+predict. Plan **P13**.
 
 Things that make it fail, and why:
 
@@ -306,7 +320,7 @@ is ever delivered.
 | `0` | Clean finish (one-shot modes) | yes |
 | `1` | Unexpected crash — **not** "retries exhausted" | yes, after 30 s |
 | `2` | `config.json` missing or invalid | **no** — fix the file |
-| `3` | **RE-LINK REQUIRED** — WhatsApp returned 401 | **no** — run `--link` |
+| `3` | **RE-LINK REQUIRED** — WhatsApp returned 401 (removed by hand, or the phone unused for over 14 days) | **no** — run `--link` |
 | `4` | API 401/503 — wrong or missing token | **no** — fix the token |
 | `7` | Another instance holds `sent/agent.lock` | **no** — stop the running one |
 | `8` | `--link` timed out | one-shot; just re-run it |
@@ -350,6 +364,7 @@ window so tonight's genuine post is untouched.
 | Boot hook does nothing after a reboot, and Termux came from the Play Store | The Play and F-Droid builds cannot be mixed — the signature differs, and Termux:Boot needs a matching one | Uninstall Termux **and every plugin**, reinstall all from F-Droid. This costs a re-link: see the runbook's migration section |
 | Log stops mid-run | Node crashed | `start.sh` restarts within 30 s; check `boot.log` for the stack |
 | `RE-LINK REQUIRED` | Device unlinked from WhatsApp | `node agent.mjs --link` — and find out *why* it was unlinked |
+| `RE-LINK REQUIRED`, and the feed has been silent for days | The phone has not been used for over 14 days — WhatsApp logs **every** linked device out | Use WhatsApp on the phone, then `--link`. Nothing here can prevent it (plan P13) |
 | `401` on every fetch | Token rotated on one side only | Rotate **both** (Vercel env + `config.json`), restart |
 | `503` on every fetch | `DIGEST_AGENT_TOKEN` not set on Vercel | Set it and redeploy |
 | "stale, not posting" | The phone was off through a boundary | Working as designed — the 22:15 push is the alert |

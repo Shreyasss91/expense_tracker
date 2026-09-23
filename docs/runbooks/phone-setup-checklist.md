@@ -215,6 +215,14 @@ node agent.mjs --link
 > just re-run. If Dad's number already has a pairing-code device, remove it first; WhatsApp allows
 > only 4 linked devices.
 
+> **The one standing obligation this step creates.** WhatsApp logs a linked device out when the
+> primary phone goes **unused for more than 14 days** (*"Linked devices work without your phone
+> online, but will log out if your phone is unused for over 14 days"*). The agent does **not** need
+> the phone at 22:00 — but it does need the phone to have been *used* at least once a fortnight. A
+> phone in daily use satisfies this by itself; a phone in a drawer does not, and the feed then stops
+> with `RE-LINK REQUIRED` and exit `3`. Nothing in this setup can remove that; it is in the plan as
+> **P13**.
+
 ### 8 · Discover the group JID
 
 **Where:** 📟 Termux for `--groups`; 💻 the laptop's `config.json` for the copy the generator
@@ -354,6 +362,10 @@ To erase a rehearsal's trace afterwards: delete the server marker
 
 ## After the sitting — 📟 Termux (phone)
 
+**Once a fortnight:** open WhatsApp on **Dad's phone**. That is the whole task — opening it is the
+requirement (step 7's note, plan P13). Miss it and WhatsApp logs the agent out along with every other
+linked device, and the feed stops until step 7 is re-run.
+
 Not part of the sitting, but the next thing you will want, and all of it is on the phone:
 
 | I want to… | Run |
@@ -372,6 +384,25 @@ and `1` come back on their own.
 
 ---
 
+## Could this run somewhere other than the phone?
+
+**Yes — and it is written up in the plan's §12 — but it is not what this sheet sets up.** A linked
+device does not need the phone online to send, so a home machine (Raspberry Pi, old laptop, mini PC,
+NAS) could post the nightly message instead, and that deletes the whole family of silent-death causes
+in step 2.
+
+Two facts decide whether it is worth it:
+
+- the primary phone must still be **used once every 14 days** (§7's note) — moving the runtime does
+  *not* remove that dependency; and
+- the host must hold a **long-lived socket**, so it cannot be Vercel, and a cloud VPS remains rejected
+  (a datacenter IP is what gets flagged).
+
+Pair on the machine that will run it — `auth/` is a live session and must never be copied between
+hosts. **D12 still says Dad's phone**, so nothing here changes unless that decision does.
+
+---
+
 ## When something misbehaves
 
 **Where:** 📟 almost all of this is Termux on the phone; `tools/whatsapp-agent/README.md` below is
@@ -383,6 +414,7 @@ the tool's own README, in the repository.
 | `[Process completed (signal 9) - press Enter]` in the terminal | AOSP's phantom-process killer (Android 12+) → step 2's last item |
 | Boot hook did nothing after a reboot, and Termux came from the Play Store | Play and F-Droid builds cannot be mixed → *If Termux is already installed from Google Play* |
 | `RE-LINK REQUIRED` in the log | `node agent.mjs --link`, then find out *why* it was unlinked |
+| `RE-LINK REQUIRED`, and the feed has been silent for days | Check when Dad's phone was **last used** — WhatsApp logs every linked device out after 14 days of it going unused (P13). Use the phone, then re-run step 7 |
 | `401` on every fetch / `503` on every fetch | Token mismatch / not set on Vercel (`tools/whatsapp-agent/README.md` → Troubleshooting) |
 | The 22:15 push fires **every** night | The confirmation POST never succeeds — check token and connectivity. Do **not** disable the fallback |
 | Two messages in one night | A marker was deleted by hand, or the keys disagree — compare the log's `windowKey` with the marker's |

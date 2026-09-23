@@ -40,7 +40,7 @@ dated because a point-in-time record is the whole point of it.
 
 | File | What it is |
 |---|---|
-| [`whatsapp-agent-termux.md`](plans/whatsapp-agent-termux.md) | The Termux + Baileys phone agent: every decision, the scheduler, the retry ladder, the exit codes, and the acceptance tests that need a real device |
+| [`whatsapp-agent-termux.md`](plans/whatsapp-agent-termux.md) | The Termux + Baileys phone agent: every decision, the scheduler, the retry ladder, the exit codes, and the acceptance tests that need a real device. §12 analyses the **deferred** alternative host (pair once on a home box instead of the phone); §13 records the Baileys dependency pin and what v7 changes |
 
 ### `runbooks/`
 

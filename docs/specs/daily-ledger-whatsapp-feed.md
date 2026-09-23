@@ -83,6 +83,13 @@ These are **normative**. Do not "improve" them without an explicit owner request
 | D12 | Sender host | **Termux + Node + Baileys on Dad's Android phone** — no VPS, no paid API |
 | D13 | Delivery time | **22:00 IST**, matching the existing digest cron |
 
+> **D12 stands, and the alternative is now written down.** D12 fixes the *sender host* as Dad's
+> phone. Pairing once on a server and sending from there is **feasible** — a linked device does not
+> need the phone online — and it is analysed in **§3.6** together with the two constraints that
+> actually decide it (the primary phone must still be used every **14 days**, and the host must hold
+> a long-lived socket). Adopting it needs an explicit owner decision, because it changes D12 and the
+> plan's P2/§1.1. Nothing below assumes it.
+
 ### Consequence of D2 that every reader must internalise
 
 The window is an **audit-instant** window, not a "what did we spend today" window. A
@@ -146,6 +153,51 @@ Telegram is free, official, reliable, and **already implemented** in this repo
 (`src/lib/telegram-digest.ts`). It remains in use for the weekly/monthly digest. The owner
 specifically wants the daily *change feed* in **WhatsApp**, so Telegram is out of scope
 here.
+
+### 3.6 Pair once on a server, then send without the phone — feasible, deferred
+
+The owner's question: *can Dad's WhatsApp be paired once from a server and then post the feed by
+itself, with no agent on the phone?*
+
+**Yes on the mechanism** — and this is not a workaround. WhatsApp's own documentation for linked
+devices says: *"Linked devices work without your phone online, but will log out if your phone is
+unused for over 14 days."* A companion device authenticates itself, holds its own session, and
+sends on its own account. Once linked, the 22:00 post does not involve the phone at all. The
+current design already relies on this: it is why the phone can be asleep, on a charger, or off wifi
+at 22:00 and the message still arrives.
+
+Three constraints decide whether to move the *runtime*:
+
+1. **The primary phone must still be used, at least once every 14 days.** The same WhatsApp page states
+   it plainly: *"You'll need to log in to WhatsApp on your primary phone every 14 days to keep
+   linked devices connected."* So the honest form of the answer is *"pair once, then the phone is
+   never needed at send time"* — **not** *"never touched again"*. If the phone is unused, lost or in a
+   drawer, WhatsApp logs **every** linked device out at once and this feed stops with a `401` (§9,
+   E26). For a phone in daily use that obligation satisfies itself; it is the one thing no host
+   choice can remove, and it is the strongest argument for D9's spare-number alternative.
+2. **The host must hold a live socket.** A Baileys session is a persistent WebSocket, so it cannot
+   run in the serverless functions and cron jobs the rest of this feature uses. "A server" means a
+   machine that stays up — a Raspberry Pi, an old laptop, a mini PC, or a NAS on the home network.
+   A **cloud VPS is still rejected**, for exactly the reason §3.3 gives: a session driven from a
+   datacenter IP is the signature WhatsApp's anti-abuse systems flag. A home box keeps the
+   residential IP *and* removes the phone, which is the whole trade.
+3. **The credential moves with the host, and cannot be carried there by hand.** `auth/` **is** the
+   session. Pairing has to happen **on the machine that will run** (the plan already rejects copying
+   `auth/` between hosts, and it is right to: it moves live session credentials over an untrusted
+   path and breaks on a re-key). One practical consequence in the variant's favour: **QR linking
+   becomes valid**, because the plan's §1.1 prohibition is *host-relative* — it exists because the
+   host is the phone, and a phone cannot scan its own screen. Off the phone, the QR is the ordinary
+   method and the pairing code remains available (and is easier to coordinate down a phone line than
+   a QR that expires while you describe where it is).
+
+**Deferred, not rejected.** What it would buy: the entire §3.2 failure class disappears (Android's
+battery manager and its process limits have no equivalent on a Linux box), the bearer token and the
+WhatsApp session come off a phone that can be lost, and the operator gets `ssh`, `journalctl`, a
+restart policy and log rotation instead of `pkill` in a terminal. What it costs: one more machine to
+maintain and patch — and the *lowest-risk* property of this design (a real companion device on a
+residential IP, §10.5) survives only if that machine is **at home**. The device-level write-up,
+including what is already portable and what is phone-bound, is
+[`docs/plans/whatsapp-agent-termux.md`](../plans/whatsapp-agent-termux.md) §12.
 
 ---
 
@@ -1172,6 +1224,16 @@ entails and the points this section makes normative:
 > system update stops the nightly post until a human notices — and the only signal is an
 > absence.
 
+The dependency's **version** is part of this contract, and it has moved: `package.json` pins
+`@whiskeysockets/baileys: ^6.7.24`, which npm now publishes under its **`legacy`** dist-tag — the
+current `latest` is `7.0.0-rc14` — so no further fixes land on the pinned line. v7 is a migration
+rather than an upgrade, most relevantly because **JIDs become LID-based (`@lid`) by default**, which
+touches anything that addresses a group by JID. The full write-up, including the two upstream
+recommendations this agent should adopt (`markOnlineOnConnect: false`; do **not** call
+`fetchLatestWaWebVersion` on every connect) and the two it already satisfies (`cachedGroupMetadata`,
+never setting the deprecated `printQRInTerminal`), is
+[`docs/plans/whatsapp-agent-termux.md`](../plans/whatsapp-agent-termux.md) §13.
+
 ### 6.5 Agent behaviour — normative
 
 #### Linking — pairing code only (supersedes the earlier QR default)
@@ -1190,6 +1252,12 @@ entails and the points this section makes normative:
   already-linked session requests no code and exits cleanly.
 - Linking is **one-time**; the session persists in `auth/` across restarts, reboots and
   config edits. Only a WhatsApp-side unlink requires re-running `--link`.
+- **The session has one standing expiry, and it is on the phone: it must be used.** WhatsApp's own
+  linked-devices documentation: *"Linked devices work without your phone online, but will log out if
+  your phone is unused for over 14 days."* So the phone is **not** needed at 22:00 — and it **is**
+  needed at least once a fortnight. This is the only recurring human obligation the design leaves
+  behind, it is not configurable, and it is the cause of a `401` that is nobody's mistake (§9, E26).
+  The agent's behaviour on it is unchanged and correct: a 401 is terminal, greppable, and exits `3`.
 - On `connection.update` with `connection: "close"` and a **401**, the session has been
   invalidated (WhatsApp unlinked the device). Do **not** retry in a loop — log a clear
   `RE-LINK REQUIRED` line and exit with a **distinct non-zero code** so `start.sh` can refuse
@@ -1475,6 +1543,8 @@ parameter) so a rehearsal is not blocked by the 6 h freshness grace period.
 | E23 | `POST` carries a key that is **not a real 24-hour window** (`9999-99-99..9999-99-99`, `2026-02-30..2026-03-01`, `2026-01-01..2026-12-31`, a reversed range) | **`400`, nothing written** (`parseFeedKey`, §5.5.3). Shape alone is not validation: these all match the old regex, and a marker is permanent — and because `getRecentDigestSends()` keeps the newest value per channel, a junk key would also render on the Settings card as the feed's last send. |
 | E24 | `POST` carries a window that **has not ended yet** | **`400`, nothing written** (§5.5.3). The marker would otherwise suppress that night's post **and** its fallback push, since both treat an existing marker as "handled" — one bad client (a wrong clock, or a forward `?at=`) would turn into a night that is silently never reported. |
 | E25 | `npm run verify:digest-feed` reports **404** | The running deployment predates the route. The script stops at the first call with that diagnosis rather than running ~30 checks that would all 404. Check the Vercel deployment: an invalid `vercel.json` fails **before** the build, so the previous READY deployment keeps serving and the new routes are simply absent. |
+
+| E26 | Dad's phone is left **unused for more than 14 days** (lost, replaced, or in a drawer) | WhatsApp logs **every** linked device out at once — its documented rule (§6.5). The agent sees a `401` on the socket, logs `RE-LINK REQUIRED` and exits `3`; `start.sh` refuses to restart it. The feed stays down until the phone is used again and `--link` is re-run. **Not preventable from this side**, and not a defect: it is the price of riding along on a primary number, and the reason a spare number would be safer (D9). See §3.6 for the variant in which the runtime moves off the phone — which does **not** remove this dependency |
 
 ---
 

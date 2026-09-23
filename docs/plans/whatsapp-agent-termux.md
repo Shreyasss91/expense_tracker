@@ -34,6 +34,12 @@ scanned by that same phone. There is one phone and one camera.
 > then copy the `auth/` folder to the phone — is explicitly rejected: it copies live WhatsApp
 > session credentials over an untrusted path and breaks the moment WhatsApp re-keys.
 
+> **Scope of that rule: it is host-relative.** The prohibition exists **because the host is the
+> phone** — one phone, one camera. Move the host and the reasoning inverts: on a server the QR is
+> the *ordinary* method, not an impossible one. Two parts of it hold on any host: while the agent
+> runs on the phone it needs no QR mode (an unsupported mode is worse than a missing one), and
+> copying `auth/` between hosts stays rejected. The server-host variant is specified in **§12**.
+
 The pairing-code flow is arguably *easier* anyway: WhatsApp → **Linked devices** → **Link with
 phone number instead** → type the 8-digit code shown in Termux.
 
@@ -42,7 +48,7 @@ phone number instead** → type the 8-digit code shown in Termux.
 | # | Decision | Value | Rationale |
 |---|---|---|---|
 | P1 | Device | Dad's **Samsung** (One UI) | Owner's phone; near-stock Android with Samsung-specific extra steps |
-| P2 | Linking | **Pairing code** | QR is physically impossible on one phone (§1.1) |
+| P2 | Linking | **Pairing code** | QR is physically impossible while the host is the phone (§1.1 — and see §12 before treating this as universal) |
 | P3 | Auto-start | **Termux:Boot installed** | A reboot would otherwise silently stop the feed |
 | P4 | Retry | **Capped and persisted**: ≈2, 5, 15, 30 min after a failure, then stop for the night | Self-heals a blip; cannot hammer WhatsApp during an outage. **Persisted to disk** so a restart cannot re-run a consumed ladder (§6.4) |
 | P5 | Send time | **22:00 IST** daily | Matches the existing digest cron |
@@ -53,6 +59,7 @@ phone number instead** → type the 8-digit code shown in Termux.
 | P10 | Scheduler | **In-process timer + 60 s self-healing tick**, wrapped by `start.sh` | Not `termux-job-scheduler` — see §6.3 |
 | P11 | Transport | Baileys (`@whiskeysockets/baileys`, unofficial) | Accepted risk, recorded in the changelog |
 | P12 | Single instance | A **lock file** in `sent/` guards every mode | Stops a `--now` run from racing the live scheduler into a double post or a corrupt session (§5.9) |
+| P13 | Session expiry | **The primary phone must be used at least once every 14 days** | WhatsApp's rule for linked devices: *"will log out if your phone is unused for over 14 days."* Not configurable, not detectable in advance, and not removed by moving the runtime off the phone (§12) |
 
 ### 1.3 What is NOT this agent's job
 
@@ -1031,6 +1038,7 @@ The two halves are independent; the app side must exist before the agent can do 
 | No post, and `agent.log` has no line for the day | Process was killed (Samsung battery manager) | Re-apply §3.2 (Unrestricted, Never sleeping apps, Keep open in Recents); then `./start.sh` |
 | No post, log stops mid-run | Node crashed | `start.sh` restarts within 30 s — check `agent.log` for the stack |
 | `RE-LINK REQUIRED` in the log | Device unlinked from WhatsApp (removed manually, or session invalidated) | `node agent.mjs --link` and re-enter a pairing code. Investigate *why* it was unlinked |
+| `RE-LINK REQUIRED`, and the feed has been silent for days | **Dad's phone has not been used for over 14 days** — WhatsApp logs every linked device out at once (P13) | Use WhatsApp on the phone, then `node agent.mjs --link`. Nothing on this side can prevent it |
 | Post fails, fallback push fires **every** night | The confirmation POST never succeeds — bad token, or blocked network | Test 3 (§7); verify `DIGEST_AGENT_TOKEN` matches on both sides |
 | Fallback push fires, but the message **is** in the group | Confirmation POST failed after a successful send | Expected per §5.6; check connectivity/token. Do **not** disable the fallback |
 | `401` on every fetch | Token rotated on Vercel but not in `config.json` (or vice versa) | Rotate both together: Vercel env + `config.json`, then restart the agent |
@@ -1058,6 +1066,10 @@ The two halves are independent; the app side must exist before the agent can do 
    Mitigating factors already in the design — a real companion device, a residential IP, one
    message per day, a single fixed destination group. The owner chose Dad's primary number
    over a spare and has accepted the residual risk.
+8. **`auth/` is a live session, not a backup.** Never copy it to another host, and never restore
+   it after a gap: pair on the machine that will run (§12.3). If the host moves, unlink the old
+   device in WhatsApp → Linked devices rather than leaving a stale entry — the 4-device limit is
+   real, and a forgotten device is a forgotten credential.
 
 ---
 
@@ -1077,3 +1089,144 @@ The two halves are independent; the app side must exist before the agent can do 
 | Whether to notify on the phone (a Termux notification) when a **stale** window is skipped | Open, optional — the 22:15 push already covers the household |
 | Optional monthly agent-side self-test (e.g. a silent `--dry-run` weekly) | Out of scope for v1 |
 | Whether the fallback push should also fire when the feed is disabled | **Decided: no** — a deliberate off switch must not generate noise |
+| Running the sender on a **home box instead of the phone** (pair once, send from a server) | **Documented, not adopted** — §12. Feasible and mostly a documentation change; needs an owner decision, because it changes D12 |
+| The Baileys dependency is pinned to the line npm now tags **`legacy`** | **Open** — §13. The pin is deliberate for now (the current release is a `7.0.0` release candidate); v7's LID JIDs are the migration risk to plan for, not to take early |
+
+---
+
+## 12. Alternative host — pairing once on a server
+
+**The question:** can Dad's WhatsApp be paired **once** (by QR, or by pairing code) from a server, and
+then post the daily feed automatically — with no agent on the phone?
+
+**Verdict: yes on the mechanism; not adopted, and not adoptable without an owner decision.** This
+section exists so the analysis is not repeated, exactly as the companion spec's §3 does for the
+alternatives it rejects. **D12 stands** — this document still describes a phone agent. Everything
+below is *what would change*, and the two constraints that decide it.
+
+### 12.1 What is already portable
+
+The agent itself needs no rewrite: every path it touches is relative to its own directory, and none
+of it is Android-aware.
+
+```js
+const CONFIG_PATH = path.join(HERE, "config.json");
+const AUTH_DIR    = path.join(HERE, "auth");
+const SENT_DIR    = path.join(HERE, "sent");
+const LOCK_PATH   = path.join(SENT_DIR, "agent.lock");
+const RETRY_PATH  = path.join(SENT_DIR, "retry-state.json");
+const LOG_PATH    = path.join(HERE, "agent.log");
+```
+
+No `$PREFIX`, no `/data/data`, no `/sdcard`, no Android API, no `termux-*` call. The window maths,
+the persisted retry ladder (§6.4), the marker file, the single-instance lock (§5.9), the exit codes
+(§5.8) and the whole auth path are runtime-independent — and so is the entire test story:
+`npm run test:whatsapp-agent` and `npm run rehearse:whatsapp-agent` would not change a line.
+
+### 12.2 What is genuinely phone-bound
+
+| Where | What | On a Linux host |
+|---|---|---|
+| `start.sh` | shebang `#!/data/data/com.termux/files/usr/bin/sh`, and `termux-wake-lock` | becomes a **systemd unit** (it already degrades gracefully — *"termux-wake-lock not found — is this Termux? continuing without a wake-lock"*) |
+| `boot/termux-boot.sh` | Termux:Boot hook (§3.8) | becomes the same systemd unit's `WantedBy=multi-user.target`; the whole *launch the app once so it can run* class of failure disappears |
+| `agent.mjs` | `BAILEYS_BROWSER = ["Family Ledger", "Termux", "1.0.0"]` — the label in WhatsApp's **Linked devices** | should stop saying `Termux`, so the entry stays truthful about what it is |
+| `package.json` | the `preinstall` hint (*"In Termux: pkg install nodejs-lts"*) and the description | wording only |
+| this document, the runbook, the tool README | "on Dad's phone" throughout | the bulk of the work |
+
+That is the whole port: three shell/config files plus strings. **The work is documentation, not code.**
+
+### 12.3 The three constraints that decide it
+
+**1. The primary phone must still be used every 14 days (P13).** WhatsApp's linked-devices
+documentation, verbatim: *"Linked devices work without your phone online, but will log out if your
+phone is unused for over 14 days"*, and *"You'll need to log in to WhatsApp on your primary phone
+every 14 days to keep linked devices connected."* So the accurate statement of the win is **"the
+phone is never needed at send time"** — *not* "the phone is never needed again". This dependency is
+**not removed by the change**; it is the reason the change is not a cure for the phone. It is
+recorded as spec §9/E26 and as a row in §9 above.
+
+**2. The host must hold a live WebSocket.** A Baileys session cannot run in a Vercel serverless
+function or cron job — the runtime the rest of this feature uses. "A server" has to be a machine
+that stays up:
+
+| Host | Verdict |
+|---|---|
+| **Raspberry Pi 4/5, old laptop, mini PC (N100-class), NAS** | The variant. Keeps the **residential IP** and removes the phone |
+| **Cloud VPS** | Still **rejected** — spec §3.3: a session driven from a datacenter IP is the signature WhatsApp's anti-abuse systems flag, and it adds cost and a host |
+| **This laptop** | Fine for `--link`; wrong for 24/7 — it sleeps |
+| **A spare Android phone** | Changes nothing that matters: that is still Termux, so it does not remove the runtime you are trying to remove |
+
+**3. `auth/` has to be created on the host that runs (§10 item 8).** Pairing is a one-time exchange
+between *this* host and WhatsApp, and the resulting directory **is** the session; §1.1's rejection of
+copying it between hosts is right and survives the move. Pair on the box, and unlink the old device
+afterwards. One thing this constraint *gives back*: **QR linking becomes correct here** — §1.1's
+reasoning is host-relative (§1.1, *Scope of that rule*) — and the pairing code stays available, which
+is the easier one to coordinate remotely (8 digits read down a phone line, versus a QR that expires
+while you describe where it is).
+
+### 12.4 What adopting it would change
+
+| Change | Where |
+|---|---|
+| **D12** — sender host | companion spec §2: *"Termux + Node + Baileys on Dad's Android phone"* |
+| **P2 / §1.1** — linking, and the QR prohibition's scope | this document |
+| `start.sh` + the boot hook → a systemd unit | `tools/whatsapp-agent/` |
+| `BAILEYS_BROWSER`, the README and the runbook | everywhere they say *phone* |
+| §3's setup, §4's JID run and §7's acceptance tests | they are all written as device procedures and would be rewritten for the new host |
+
+### 12.5 What it buys, and what it costs
+
+**Buys:** §3.2 and half of §9's first troubleshooting row disappear outright — Android's battery
+manager and its process limits have no equivalent on a Linux box, and that is the design's weakest
+point. The bearer token and the WhatsApp session come off an interchangeable phone. The operator gets
+`ssh`, `journalctl -u`, a restart policy and log rotation instead of `pkill` in a terminal they may
+not be able to reach. And the adb hop — with the `/sdcard/Download/config.json` window that §3.4
+exists to close — goes away.
+
+**Costs:** one more machine to maintain and patch, and a new host holding a credential that reads the
+household ledger. The design's lowest-risk property (a real companion device on a **residential IP**)
+survives only if the box is at home (§12.3, constraint 2).
+
+**The question that decides it:** has the agent already gone silent once? If it has, this is the
+correct fix — the failure mode it deletes is the one that produced it. If it has not, the trade is
+reliability of the *process* for reliability of *power and network*, plus a host to maintain.
+
+---
+
+## 13. The Baileys dependency — the `legacy` pin, and v7
+
+`tools/whatsapp-agent/package.json` pins **`@whiskeysockets/baileys: ^6.7.24`**.
+
+**Checked against the npm registry on 24 September 2026:**
+
+```text
+latest: 7.0.0-rc14        legacy: 6.7.24   ← what this agent is pinned to
+```
+
+The pinned line is now what npm itself calls **`legacy`**: no further fixes land on it. That is
+accepted rather than accidental — `latest` is a **release candidate** (`7.0.0-rc14`), and this agent's
+value is a message that arrives every night, not the newest dependency. **Moving to v7 is a migration,
+not an upgrade**, and the migration risk is specific and worth naming: **v7 makes JIDs LID-based
+(`@lid`) by default**, and this agent addresses one destination by JID (`groupJid`, §4). The JID maths
+and the window maths are the two things that must not move silently.
+
+Two upstream recommendations this agent **already** satisfies, so a v7 move should keep them:
+
+- **`cachedGroupMetadata`** — a group `sendMessage` otherwise re-fetches the participant list on every
+  send, and upstream's FAQ credits this callback directly with avoiding group-send rate limiting. The
+  agent passes it (and warms it on connect and on `groups.update` / `group-participants.update`).
+- **Never `printQRInTerminal`** — deprecated, and the agent has never set it (§1.1).
+
+Two recommendations worth adopting **regardless of version**, from the same FAQ:
+
+- **`markOnlineOnConnect: false`** — Baileys marks your presence online on connect by default, which
+  *suppresses notifications on the phone*. On a phone whose owner reads WhatsApp, that is a real
+  side-effect of a background agent, and it is a one-line fix.
+- **Do not call `fetchLatestWaWebVersion` on every connect** — upstream advises staying one or two
+  versions behind the default the library ships with, because a newer WhatsApp Web build can be
+  incompatible with the protobufs in hand.
+
+**Not actioned here.** The pin and the library's behaviour at 22:00 are stable and green; this section
+records the state of the dependency so the next reader does not have to re-derive it. Any move to v7
+owes the same evidence every other change to this agent owes: `npm run test:whatsapp-agent`,
+`npm run rehearse:whatsapp-agent`, and one real night watched.

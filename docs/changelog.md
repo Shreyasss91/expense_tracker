@@ -7,6 +7,81 @@ Superseded entries are **annotated, never rewritten** — the audit trail is the
 
 ---
 
+## Pair once from a server, and the 14-day rule nobody had written down — 24 September 2026 (owner request)
+
+**The owner asked whether Dad's WhatsApp could be paired once from a server — with a QR code — and
+then post the daily feed by itself, with no agent on the phone.** The answer is **yes on the
+mechanism**, and researching it turned up a constraint this design had never recorded. Neither is an
+amendment to `docs/specs/master-spec.md`, which is untouched: this is the companion spec's component,
+and the frozen master spec is not implicated.
+
+**The mechanism already holds, and the design depends on it.** A companion device authenticates
+itself and sends on its own account, so the phone does not have to be awake, charged or on wifi at
+22:00 — WhatsApp's own linked-devices documentation: *"Linked devices work without your phone online,
+but will log out if your phone is unused for over 14 days."* Nothing about the current agent changes;
+this is why a message still arrives from a phone that is asleep.
+
+**The constraint, in the same sentence, is the 14-day rule — and it was nowhere in these documents.**
+The same page states it plainly: *"You'll need to log in to WhatsApp on your primary phone every 14
+days to keep linked devices connected."* If Dad's phone goes unused, lost, or into a drawer, WhatsApp
+logs **every** linked device out at once. So the accurate form of the win is *"the phone is never
+needed at send time"* — **not** *"the phone is never needed again"*, and this is **not** removed by
+moving the runtime off the phone. It is now recorded as plan decision **P13**, as spec §9 **E26**, as
+a note in the runbook and the tool README, and as a row in both failure tables. The agent's behaviour
+on it was already correct and does not change: a `401` is terminal, greppable, and exits `3`.
+
+**The variant is now specified rather than improvised: plan §12.** The agent needs no rewrite — every
+path it touches is relative to its own directory, none of it is Android-aware, and the contract test
+and rehearsal would not change a line. What is phone-bound is `start.sh`'s Termux shebang and its
+wake-lock, the boot hook (which becomes a systemd unit), the `BAILEYS_BROWSER` label the household
+sees in Linked devices, and the prose. The two constraints are the 14-day rule, and that a Baileys
+session is a **long-lived WebSocket** — so it cannot live in the serverless functions and cron jobs
+the rest of this feature uses, which makes "a server" mean a **home** machine (Pi, old laptop, mini
+PC, NAS). Spec §3.3 already rejects a cloud VPS, and that rejection is about the datacenter **IP**, so
+it carries over unchanged rather than being reopened.
+
+**The QR prohibition in the plan's §1.1 is host-relative, and now says so.** It exists because the
+host is the phone — one phone, one camera — and it inverts the moment the host is not. That is an
+annotation, not a rewrite: while the agent runs on the phone it still exposes no QR mode, and copying
+`auth/` between hosts stays rejected. `auth/` is the session, so pairing has to happen **on the
+machine that will run** (plan §10, item 8), and moving the host means unlinking the old device rather
+than leaving a stale entry against the 4-device limit.
+
+**Checked the dependency against the registry while answering it, and the pin has drifted into
+`legacy`.** `tools/whatsapp-agent/package.json` asks for `@whiskeysockets/baileys: ^6.7.24`; on 24
+September 2026 npm's `latest` is **`7.0.0-rc14`** and `6.7.24` carries the **`legacy`** dist-tag, so
+no further fixes land on this line. The pin is kept deliberately — `latest` is a release candidate and
+this component's value is a message that arrives every night — but the migration risk is now written
+down (plan §13): **v7 makes JIDs LID-based (`@lid`) by default**, and this agent addresses one
+destination by JID. Two upstream requirements the agent **already** satisfies are recorded so a v7
+move keeps them (`cachedGroupMetadata` — the callback upstream's FAQ credits with avoiding group-send
+rate limiting — and never setting the deprecated `printQRInTerminal`), alongside two recommendations
+worth taking regardless of version: **`markOnlineOnConnect: false`**, because Baileys' presence marks
+the account online on connect and that suppresses notifications on the phone its owner actually reads;
+and **not** calling `fetchLatestWaWebVersion` on every connect, since upstream advises staying one or
+two versions behind the default.
+
+**Deliberately not done.** **D12 is not flipped** — the owner asked whether it is possible, and these
+documents now answer the question without changing the answer. Moving the sender host stays an owner
+decision (it also touches P2 and the plan's §1.1). No code changed: the port is documentation, per
+§12.2. The dependency is **not** bumped to a release candidate, and the master spec is not edited.
+
+**Files:** `docs/specs/daily-ledger-whatsapp-feed.md` (§2 note under the decision table, new **§3.6**,
+the linking bullet in §6.5, the version note closing §6.4, new edge case **E26**);
+`docs/plans/whatsapp-agent-termux.md` (§1.1 scope note, P2's rationale, new **P13**, a row in §9, item
+8 in §10, two rows in §11, new **§12** and **§13**); `docs/runbooks/phone-setup-checklist.md` (the
+obligation note at step 7, a fortnightly line in *After the sitting*, a new *Could this run somewhere
+other than the phone?* section, and a troubleshooting row); `tools/whatsapp-agent/README.md` (a
+Version bullet in Requirements, the caveat in *Link the device*, the exit-`3` row and a troubleshooting
+row); `docs/README.md` (the plan row now names §12 and §13).
+
+**Verified:** `npm run test:doc-counts` — **OK, 2 suites and 6 documented counts, all in agreement**,
+run after the edits because the guard fails closed on reworded prose in exactly the two documents this
+entry touched most. Every relative markdown link resolves — **41 links across 16 files, 0 broken**.
+Docs-only, so `typecheck` and `lint` are not implicated.
+
+---
+
 ## `config.json` generated from `.env.local` — 21 September 2026
 
 **The phone agent's config was the one step in the setup that could only be done on a phone
