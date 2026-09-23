@@ -1,7 +1,7 @@
 # 📒 Family Ledger
 
 A high-speed, low-friction expense tracker for a family household — Dad 👨, Mom 👩, Son 👦.
-Built from the frozen spec in [`docs/SPEC.md`](docs/SPEC.md).
+Built from the frozen spec in [`docs/specs/master-spec.md`](docs/specs/master-spec.md).
 
 ## Stack
 
@@ -60,7 +60,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 | `npm run test:xlsx` | Prove the hand-rolled .xlsx writer emits a valid, complete OPC package (§2.10) |
 | `npm run smoke:prod` | Smoke-test the deployed app: boots, logs in, renders the exact seeded totals, and checks every request is within the response-time budget (default 8s; `SMOKE_MAX_MS` overrides) |
 | `npm run verify:export-live` | Call the deployed app's `/api/export` route and prove the canonical CSV reproduces `seed.csv` |
-| `npm run verify:digest-feed` | Verify the deployed daily ledger feed over real HTTP: auth (401), the 22:00 IST window recomputed independently at pinned `?at=` instants, freshness, and the message contract. Needs `DIGEST_AGENT_TOKEN` in `.env.local` ([spec](docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md)) |
+| `npm run verify:digest-feed` | Verify the deployed daily ledger feed over real HTTP: auth (401), the 22:00 IST window recomputed independently at pinned `?at=` instants, freshness, and the message contract. Needs `DIGEST_AGENT_TOKEN` in `.env.local` ([spec](docs/specs/daily-ledger-whatsapp-feed.md)) |
 | `npm run init:whatsapp-agent-config` | Write the phone agent's `tools/whatsapp-agent/config.json` from `.env.local` (`PROD_URL`, `DIGEST_AGENT_TOKEN`, `DIGEST_AGENT_PHONE`) — the token and the number are never typed on a phone keyboard. Keeps an existing `groupJid` only while `PROD_URL` is unchanged (`--keep-jid` to carry it across a deliberate move); `--force` to overwrite |
 
 ## Architecture notes (spec highlights)
@@ -76,7 +76,7 @@ FAMILY_MASTER_PASSWORD="..."        # the single family password
 
 1. Push the repo to GitHub.
 2. Import the repo in Vercel (framework preset: Next.js).
-3. Add the env vars from `.env.example` (the four core ones, plus `CRON_SECRET` and the §2.10 backup channel vars if you want the monthly backup cron, plus `DIGEST_AGENT_TOKEN` if you want the daily WhatsApp ledger feed — see [`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`](docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md)).
+3. Add the env vars from `.env.example` (the four core ones, plus `CRON_SECRET` and the §2.10 backup channel vars if you want the monthly backup cron, plus `DIGEST_AGENT_TOKEN` if you want the daily WhatsApp ledger feed — see [`docs/specs/daily-ledger-whatsapp-feed.md`](docs/specs/daily-ledger-whatsapp-feed.md)).
 4. Run `npm run db:push && npm run db:seed` against the production database (or via a build step).
 
 The seed data itself is immutable — `seed_data/seed.csv` must not be edited, reordered, deduplicated, or given a trailing newline (§8.3).
@@ -85,7 +85,7 @@ The seed data itself is immutable — `seed_data/seed.csv` must not be edited, r
 
 One message a night into a private family group: the ledger changes for the 24 hours ending **22:00 IST**. What the message *says* is rendered server-side; a small agent in Termux on Dad's phone decides *whether* there is anything to send, sends it, and records that it did — it does no formatting and touches no database.
 
-**Normative:** [`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`](docs/PLAN_WHATSAPP_AGENT_TERMUX.md) · **run sheet:** [`docs/PHONE_SETUP_CHECKLIST.md`](docs/PHONE_SETUP_CHECKLIST.md) · **tool:** [`tools/whatsapp-agent/README.md`](tools/whatsapp-agent/README.md). The four steps below are the shape of it; the run sheet is what you work from on the day.
+**Normative:** [`docs/plans/whatsapp-agent-termux.md`](docs/plans/whatsapp-agent-termux.md) · **run sheet:** [`docs/runbooks/phone-setup-checklist.md`](docs/runbooks/phone-setup-checklist.md) · **tool:** [`tools/whatsapp-agent/README.md`](tools/whatsapp-agent/README.md). The four steps below are the shape of it; the run sheet is what you work from on the day.
 
 **1 · Server, once.** Set `DIGEST_AGENT_TOKEN` on Vercel (`openssl rand -hex 32`) and redeploy. Without it the route answers `503` — deliberately: the agent then fails loudly instead of posting nothing. The 22:15 `/api/cron/digest-fallback` push is the safety net if a night goes unsent, and it needs the VAPID keys to have somewhere to ping.
 

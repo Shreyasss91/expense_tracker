@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 #
 # Wake-lock + crash-restart wrapper for the WhatsApp sender agent.
-# Normative source: docs/PLAN_WHATSAPP_AGENT_TERMUX.md §6.5.
+# Normative source: docs/plans/whatsapp-agent-termux.md §6.5.
 #
 # Run this, not `node agent.mjs`, for the long-running scheduler. It holds a
 # wake-lock so Android does not freeze the socket, and restarts the agent after a
@@ -33,7 +33,7 @@ while true; do
   # nothing is ever delivered — the worst failure mode available here.
   case "$code" in
     2|3|4|7)
-      echo "[$(date)] fatal exit $code — not restarting. See docs/PLAN_WHATSAPP_AGENT_TERMUX.md §5.8 / §9" >> boot.log
+      echo "[$(date)] fatal exit $code — not restarting. See docs/plans/whatsapp-agent-termux.md §5.8 / §9" >> boot.log
       if command -v termux-wake-unlock >/dev/null 2>&1; then termux-wake-unlock; fi
       exit "$code"
       ;;

@@ -1,10 +1,10 @@
 # Daily digest WhatsApp feed — step-by-step setup, by device and tool
 
-**Normative sources: [`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`](../docs/PLAN_WHATSAPP_AGENT_TERMUX.md)
-§3, §4, §7 and [`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`](../docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md).**
+**Normative sources: [`docs/plans/whatsapp-agent-termux.md`](../docs/plans/whatsapp-agent-termux.md)
+§3, §4, §7 and [`docs/specs/daily-ledger-whatsapp-feed.md`](../docs/specs/daily-ledger-whatsapp-feed.md).**
 
 This document is not a new source of truth. It is
-[`docs/PHONE_SETUP_CHECKLIST.md`](../docs/PHONE_SETUP_CHECKLIST.md) with one layer added that the
+[`docs/runbooks/phone-setup-checklist.md`](../docs/runbooks/phone-setup-checklist.md) with one layer added that the
 run sheet leaves implicit: **which device, and which tool, every command goes into.** Where this
 file and any of the sources above disagree, they win and this file gets fixed.
 

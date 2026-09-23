@@ -1,7 +1,7 @@
 # WhatsApp sender agent (Termux + Baileys)
 
 > **Setting this up on the phone?** Use
-> [`docs/PHONE_SETUP_CHECKLIST.md`](../../docs/PHONE_SETUP_CHECKLIST.md) — a printable, tick-box
+> [`docs/runbooks/phone-setup-checklist.md`](../../docs/runbooks/phone-setup-checklist.md) — a printable, tick-box
 > run sheet for the whole sitting, derived from the plan's §3. This file explains the *why*;
 > that one is what you follow while holding the phone.
 
@@ -16,8 +16,8 @@ records that it was posted. This agent fetches that message and delivers it.
 
 | Document | What it is |
 |---|---|
-| [`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`](../../docs/PLAN_WHATSAPP_AGENT_TERMUX.md) | The implementation plan: every decision, the scheduler, the retry ladder, exit codes, acceptance tests. §3 is the setup this README distils. |
-| [`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`](../../docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md) | What the window means and what the endpoint returns. |
+| [`docs/plans/whatsapp-agent-termux.md`](../../docs/plans/whatsapp-agent-termux.md) | The implementation plan: every decision, the scheduler, the retry ladder, exit codes, acceptance tests. §3 is the setup this README distils. |
+| [`docs/specs/daily-ledger-whatsapp-feed.md`](../../docs/specs/daily-ledger-whatsapp-feed.md) | What the window means and what the endpoint returns. |
 
 If this README and the plan disagree, **the plan wins** — and the README should be fixed.
 
@@ -105,7 +105,7 @@ npm install
 **Preferred: generate the file on the laptop from `.env.local`.** `config.json` lives in Termux's
 home directory, which nothing on the laptop can write to (`adb` runs as `shell` and cannot reach
 `/data/data/com.termux` without root), so it is generated here and pushed — see
-`docs/PHONE_SETUP_CHECKLIST.md` step 5. Typing the token and the number by hand is exactly where
+`docs/runbooks/phone-setup-checklist.md` step 5. Typing the token and the number by hand is exactly where
 the two failures this setup fears most come from: a token with a stray character reads as
 "production rejects us", and a mangled number requests a pairing code for a **different** phone.
 
@@ -323,7 +323,7 @@ refusing a second process. No network, no Baileys, no WhatsApp.
 
 What neither can reach is the part only the phone can prove: **linking, delivery, the socket 401
 path and the boot hook.** Those are the plan's
-[§7 acceptance tests](../../docs/PLAN_WHATSAPP_AGENT_TERMUX.md). Rehearse against a **past**
+[§7 acceptance tests](../../docs/plans/whatsapp-agent-termux.md). Rehearse against a **past**
 window so tonight's genuine post is untouched.
 
 ---

@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * The daily ledger-change feed's read + record endpoints, called by the
- * Termux/Baileys agent on Dad's phone (docs/PLAN_WHATSAPP_AGENT_TERMUX.md).
+ * Termux/Baileys agent on Dad's phone (docs/plans/whatsapp-agent-termux.md).
  *
  *   GET  → the **finished message string**. The format lives on the server, so
  *          the poster holds no formatting logic at all.
@@ -32,7 +32,7 @@ export const dynamic = "force-dynamic";
  *          handler: the poster is an external, non-browser client with no
  *          NextAuth session cookie, so a Server Action cannot serve it. The
  *          deviation from SPEC §7 was authorized by the owner on
- *          18 September 2026 (docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md §15.1).
+ *          18 September 2026 (docs/specs/daily-ledger-whatsapp-feed.md §15.1).
  *
  * `src/middleware.ts` excludes every `api` route from its matcher, so this
  * route must authenticate itself — hence the bearer token below, the same

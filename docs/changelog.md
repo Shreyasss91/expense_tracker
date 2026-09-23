@@ -1,6 +1,6 @@
 # Changelog — Family Ledger Specification
 
-All amendments to `SPEC.md` are recorded here. The spec is frozen; entries below exist
+All amendments to `docs/specs/master-spec.md` are recorded here. The spec is frozen; entries below exist
 only because the user explicitly authorized each change.
 
 Superseded entries are **annotated, never rewritten** — the audit trail is the point.
@@ -39,7 +39,7 @@ Vercel:** no route reads the sender's number, and the server's only WhatsApp-sid
 `DIGEST_AGENT_TOKEN`.
 
 **Contract test 63 → 93 assertions**, which the count guard caught immediately and correctly —
-`PLAN_WHATSAPP_AGENT_TERMUX.md:881` and `:1021` and `SPEC_DAILY_LEDGER_WHATSAPP_FEED.md:1615` all
+`docs/plans/whatsapp-agent-termux.md:881` and `:1021` and `docs/specs/daily-ledger-whatsapp-feed.md:1615` all
 said 63, and `npm run test:doc-counts` failed with both numbers before any of the three were edited.
 The first ten pin the builder to the same rules a hand-written file gets — a `+` or spaces in the
 number refused rather than repaired, a trailing slash on `PROD_URL` trimmed, the key order matching
@@ -81,7 +81,7 @@ the JID belongs in the laptop's copy too.
 touched: the happy path wrote the six fields in order and `0600`; `+919663322589` refused with exit 1
 and wrote **nothing**; an unchanged re-run was a no-op at exit 0; a changed phone without `--force`
 refused at exit 1 naming `phone`; and the same change with `--force` wrote while the discovered
-`groupJid` survived. `docs/PHONE_SETUP_CHECKLIST.md` step 5 and the agent's `README.md` now lead with
+`groupJid` survived. `docs/runbooks/phone-setup-checklist.md` step 5 and the agent's `README.md` now lead with
 the generator and the `adb push`, including the reminder to delete the `/sdcard` copy — shared
 storage is readable by other apps, and that file holds a token.
 
@@ -91,9 +91,9 @@ storage is readable by other apps, and that file holds a token.
 
 **Three live documents told a reader to expect the wrong number from the phone agent's contract
 test.** `npm run test:whatsapp-agent` printed **63** checks when this was found — the suite is at
-**93** now, and this entry records the whole movement; `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`
+**93** now, and this entry records the whole movement; `docs/plans/whatsapp-agent-termux.md`
 §7 said **51 assertions**, that plan's §11 status note said **51 assertions**, the companion spec's
-Phase 7 list said **51 assertions**, and `docs/PHONE_SETUP_CHECKLIST.md` — the printable run sheet
+Phase 7 list said **51 assertions**, and `docs/runbooks/phone-setup-checklist.md` — the printable run sheet
 for the phone sitting — said **51 checks pass**. The 12 extra checks are not new: they are the
 message store and the counter cache, added on 19 September (`63 checks, up from 51`), which updated
 this file's own summary line and nothing else. The rehearsal's **51** is correct in all three
@@ -120,7 +120,7 @@ line and both numbers. It is fail-closed on the two ways it could have rotted si
 stops printing a parseable count fails rather than matching nothing, and a document whose sentence is
 reworded so the claim's pattern no longer matches fails rather than being skipped. Both were
 confirmed by mutation, because a guard that cannot fail is worth nothing: the plan's count swapped to
-51 (`PLAN_WHATSAPP_AGENT_TERMUX.md:881 says 51, npm run test:whatsapp-agent prints 63`), the §11
+51 (`docs/plans/whatsapp-agent-termux.md:881 says 51, npm run test:whatsapp-agent prints 63`), the §11
 sentence reworded (`no longer contains this claim`), and the contract test's summary stripped of its
 count (`printed no … summary`) — each exit 1, each then restored. The contract test had to start
 printing its count to be checkable at all, which is exactly how the wrong 51 survived: the rehearsal
@@ -211,7 +211,7 @@ concluded the code was correct, and so would a reviewer. The code fix landed fir
 which reported the divergence rather than editing the frozen spec); this entry is the amendment the
 owner authorized afterwards.
 
-**Amended files:** `docs/SPEC.md` only — the §7.1 paragraph, one bullet in §7.2, the top-of-file
+**Amended files:** `docs/specs/master-spec.md` only — the §7.1 paragraph, one bullet in §7.2, the top-of-file
 amendment note, and the amendment list in the header table. **Not changed:** the other three cron
 routes (`digest`, `backup`, `push` — they read or notify), any schema, any migration, and
 `seed.csv`.
@@ -535,7 +535,7 @@ byte-identical. `test:cache-refresh` is **65 checks**, up from 51.
 
 ## Daily ledger-change feed — review found five defects, all now fixed — 19 September 2026
 
-A read-through of the 18 September feature against its own spec (`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`)
+A read-through of the 18 September feature against its own spec (`docs/specs/daily-ledger-whatsapp-feed.md`)
 and against the phone agent's upstream API turned up **five defects that every existing suite was
 blind to**, because each one lives on a path that only real data or a real device can reach. All five
 are fixed, and every fix carries a test that fails without it.
@@ -604,7 +604,7 @@ be restricted. **No retry policy changed.**
   > `null` is a **meaningful value** for `reviewed_at` (pending review), so it is written through
   > explicitly rather than omitted, or "absent" and "pending" would be indistinguishable. A missing
   > or unparseable value falls back to pending review rather than writing an `Invalid Date`.
-  > `docs/SPEC.md` is still **not amended**: §2.12's restore contract does not mention `reviewed_at`,
+  > `docs/specs/master-spec.md` is still **not amended**: §2.12's restore contract does not mention `reviewed_at`,
   > and nothing here contradicts it. `test:ledger-feed` is now **122 checks** (119 → 122).
 - **The 403 retry loop.** See above: making it terminal would contradict upstream's own reconnection
   guidance. The 22:15 fallback push is still what surfaces a night that never posted.
@@ -634,7 +634,7 @@ run on a device (18 September 2026).** The service half of the contract below is
 verified against the live deployment. The Termux + Baileys agent is **written, committed and
 unit-tested** — see the phone-agent block at the end of this entry — but has never touched a
 phone, so linking and delivery are still unproven. The complete hand-off specification is
-**`docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md`**; this entry is its summary.
+**`docs/specs/daily-ledger-whatsapp-feed.md`**; this entry is its summary.
 
 Owner request: every night at **10 PM IST**, post one message into a **new private WhatsApp
 group containing only Dad, Mom and Son**, listing (1) every transaction **added** in the
@@ -704,12 +704,12 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   `/api/cron/*` routes (and `POST /api/import`, which is itself a mutation). Without the POST
   a confirmed send could not be recorded, which would also make the 22:15 fallback ping fire
   every night even after a successful post. Full clause-by-clause analysis in
-  `docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md` §15.
+  `docs/specs/daily-ledger-whatsapp-feed.md` §15.
   **Owner authorization — granted 18 September 2026.** The deviation was presented with both
   the reason a Server Action cannot serve here (the poster is an external, non-browser client
   with no session cookie) and the cost of avoiding it (D11 record lost, and a fallback push
   every night after a successful post). The owner **authorized** the mutating route, so it may
-  be implemented as specified. **`docs/SPEC.md` is still not amended** — the frozen document
+  be implemented as specified. **`docs/specs/master-spec.md` is still not amended** — the frozen document
   remains frozen, and this entry plus spec §15.1 are the record.
 - **Transport is a decision, not an implementation detail.** No free official route into a
   WhatsApp group exists: Meta's Groups API requires an **Official Business Account**, caps
@@ -718,7 +718,7 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   Baileys companion-device agent on Dad's Android phone**, posting from Dad's own number —
   which is also the lowest-ban-risk form of an unofficial session, since it behaves as an
   ordinary linked device from a residential IP rather than from a datacenter.
-- **Phone-side plan and runbook:** `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`. Three binding
+- **Phone-side plan and runbook:** `docs/plans/whatsapp-agent-termux.md`. Three binding
   decisions were taken while planning the device: linking uses a **pairing code, never a QR**
   (a QR rendered by Termux on Dad's phone cannot be scanned by that same phone — this
   **supersedes** the earlier "prefer QR by default" wording); **Termux:Boot is installed** so a
@@ -729,7 +729,7 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
   battery-optimisation exemption: Unrestricted battery, absent from *Sleeping apps*, exempt
   from *Put unused apps to sleep*, and kept open from the Recents card.
 - **Phone-agent plan hardened after a cold re-read — 18 September 2026 (plan docs only, no
-  app code).** Re-reading `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` the way a fresh implementer would
+  app code).** Re-reading `docs/plans/whatsapp-agent-termux.md` the way a fresh implementer would
   surfaced **four things that could not have been built as written**, and each was fixed in the
   plan rather than in prose:
   1. **The retry ladder contradicted the wrapper.** It was described as living "in memory"
@@ -762,7 +762,7 @@ preceding 24 hours, (2) every **edit** made in that window rendered as *before �
 - **Accepted risk, on the record:** Baileys drives the undocumented WhatsApp Web protocol and
   the linked number could be restricted. The owner chose Dad's primary number over a spare
   one, accepting that residual risk.
-- `docs/SPEC.md` is **not amended** by this feature. The existing weekly/monthly aggregate
+- `docs/specs/master-spec.md` is **not amended** by this feature. The existing weekly/monthly aggregate
   digest (§6.8) — Telegram auto-send plus WhatsApp Click-to-Chat — is **untouched**; the two
   messages are different shapes on different triggers, and both fire on the
   7th/14th/21st/28th and month-end.
@@ -890,7 +890,7 @@ libuv assertion on Windows (`UV_HANDLE_CLOSING`), aborting with exit 127 instead
 
 **Still outstanding:** a deployment that actually contains the routes (see the next section — the
 verifier cannot even reach the token check yet) and the phone agent
-(`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`).
+(`docs/plans/whatsapp-agent-termux.md`).
 
 > **Resolved 18 September 2026** by the `vercel.json` fix below: the deployment went `READY` and
 > the verifier then passed against production — see the end of the *Incident + hardening*
@@ -990,7 +990,7 @@ invariant; the count is not — the spec's §8 expectation was corrected to say 
 
 **The agent now exists in the repository.** `tools/whatsapp-agent/` holds the Termux + Baileys
 sender that posts the rendered feed to the family group at 22:00 IST — the phone half of the
-contract, per `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`.
+contract, per `docs/plans/whatsapp-agent-termux.md`.
 
 | File | Role |
 |---|---|
@@ -1069,7 +1069,7 @@ implying it was verified.
 
 ### A printable run sheet for the phone session — 18 September 2026
 
-`docs/PHONE_SETUP_CHECKLIST.md`. The plan's §3 states every step and why it exists; the README
+`docs/runbooks/phone-setup-checklist.md`. The plan's §3 states every step and why it exists; the README
 repeats it with the reasoning attached. Neither is what anyone wants to be reading while holding
 someone else's phone and typing with one thumb — and a *skipped* step here fails silently and days
 later, which is the worst combination available: §3.2 (Samsung background settings) and §3.8 (the
@@ -1188,7 +1188,7 @@ the rule the spec already states: **compare failures and the exit code, never th
 
 The phone remains the one thing none of this can verify. Every check above runs on a laptop;
 `--link`, `--groups`, delivery, the socket 401 path and the boot hook still need the device, which
-is what `docs/PHONE_SETUP_CHECKLIST.md` exists to make survivable.
+is what `docs/runbooks/phone-setup-checklist.md` exists to make survivable.
 
 ---
 
@@ -1401,7 +1401,7 @@ longer repeats.
 ## SPEC sync — the September 2026 audit-remediation wave recorded — 3 September 2026
 
 Owner request: "update spec doc to have all the features that have been implemented."
-`SPEC.md` had recorded everything through the 25–26 August passes but **none** of the
+`docs/specs/master-spec.md` had recorded everything through the 25–26 August passes but **none** of the
 2–3 September audit-remediation work (commits `6f8f2be`…`a666bb2`, 33 commits). This
 entry records that sync. No normative rule changed today — this documents what shipped.
 
@@ -1863,7 +1863,7 @@ or a bug fix; normative §-sections are unchanged except where noted.
   (§6.2 Amendment 10). The member chip **reassigns this transaction's member** — a
   local, validated form field — rather than the app-wide `active_member_id` cookie that
   Quick Add's chip switches (§3.2.1); this distinction is unchanged from
-  `SPEC_AMENDMENT_7_MEMBER_REASSIGNMENT.md`, only its location moved. **Delete** moves
+  `docs/specs/amendment-07-member-reassignment.md`, only its location moved. **Delete** moves
   to a small icon button beside the sticky Save button; the standalone "Member" select
   row from the 18 Aug layout is gone now that member selection lives in the header.
 - **§6.4 (Transactions List View):** the "tap to edit" interaction now opens this bottom
@@ -2261,7 +2261,7 @@ second review pass; amendment 15 is a security/environment clarification added i
 pass. All are integrated into this same v1.2 entry.
 
 **`seed.csv` was not changed.** It was audited read-only and found clean. Every discrepancy
-resolved in this entry lay in `SPEC.md`, never in the data. The file remains the source of
+resolved in this entry lay in `docs/specs/master-spec.md`, never in the data. The file remains the source of
 truth established by v1.1, and remains immutable.
 
 ### Corrected — transaction count 1,156 → 1,157
@@ -2290,7 +2290,7 @@ during the v1.1 audit (categories 205/155/139/99/78/77/66/63/46/43/40/31/22/19/1
 tags 864 lifestyle / 170 one_time / 123 recurring; members 904 Dad / 253 Mom) — and each set
 sums to 1,157, not 1,156. Only the reported total was ever wrong.
 
-Updated in `SPEC.md`: the header Companion File row and §8. §8 also gains a permanent
+Updated in `docs/specs/master-spec.md`: the header Companion File row and §8. §8 also gains a permanent
 counting caveat so the same mistake cannot recur.
 
 ### Audited — duplicate rows confirmed intentional (new §8.2)
@@ -2493,7 +2493,7 @@ architectural change, and no implementation authorization.
   configurable `SEED_NAMESPACE` could silently re-ID the entire transaction history.
 - **§9.2 Secret Management (normative)** — the connection string is supplied *exclusively*
   through `DATABASE_URL`. Actual secret values must never be committed or documented in
-  `SPEC.md`, `CHANGELOG.md`, `README.md`, `.env.example`, source code, generated
+  `docs/specs/master-spec.md`, `docs/changelog.md`, `README.md`, `.env.example`, source code, generated
   documentation, or client-side code. Local development uses `.env.local`; Vercel receives
   secrets through the platform's environment configuration; `.env.example` may be committed
   but holds placeholders only. `FAMILY_MASTER_PASSWORD` follows the same rule as

@@ -31,8 +31,8 @@ import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const PLAN = "docs/PLAN_WHATSAPP_AGENT_TERMUX.md";
-const SPEC = "docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md";
+const PLAN = "docs/plans/whatsapp-agent-termux.md";
+const SPEC = "docs/specs/daily-ledger-whatsapp-feed.md";
 
 // Each claim: the npm script, the summary line it must print its count in, and
 // every place a document quotes that count. `quoted[].pattern` must contain

@@ -2,7 +2,7 @@
  * Daily ledger feed verification — `npm run verify:digest-feed`.
  *
  * Answers one question about the deployed app: **do `/api/digest/day` and its
- * auth behave exactly as docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md promises?**
+ * auth behave exactly as docs/specs/daily-ledger-whatsapp-feed.md promises?**
  *
  * It is the spec's §8 manual curl block made runnable, plus the checks a human
  * would not bother doing by hand:
@@ -527,7 +527,7 @@ async function main() {
 
   note("POST status=sent is NOT exercised: it would write the send marker, suppress tonight's post");
   note("and disable the 22:15 fallback, with no way to undo it from this script. The agent's first");
-  note("real post confirms that path — see docs/PLAN_WHATSAPP_AGENT_TERMUX.md §7.");
+  note("real post confirms that path — see docs/plans/whatsapp-agent-termux.md §7.");
 
   /* report --------------------------------------------------------------- */
   if (failures > 0) {

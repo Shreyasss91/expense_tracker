@@ -45,6 +45,6 @@ EDIT
 
 The creation rule and edit rule must not be conflated. Removing the historical client-supplied `memberId` fallback from `createTransaction()` does **not** prohibit member reassignment during `updateTransaction()`.
 
-## Relationship to SPEC.md
+## Relationship to docs/specs/master-spec.md
 
 This is a normative clarification of §3.2, §3.2.1 and §7.1. It does not introduce a new feature, database structure, authentication mechanism, or scope expansion. The existing transaction-edit behavior is explicitly authorized and should be preserved.

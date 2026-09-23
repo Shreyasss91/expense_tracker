@@ -5,7 +5,7 @@
  * **Why this exists.** `config.json` lives on the PHONE, in Termux's home
  * directory, which nothing on this laptop can write to: `adb` runs as the
  * `shell` user and cannot reach `/data/data/com.termux` without root. So the file
- * must be generated here and pushed (see docs/PHONE_SETUP_CHECKLIST.md). Before
+ * must be generated here and pushed (see docs/runbooks/phone-setup-checklist.md). Before
  * this script that meant hand-typing a 64-character token and a phone number on
  * a phone keyboard — which is where the two failures this project fears most
  * come from:

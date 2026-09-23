@@ -7,9 +7,9 @@
  * *whether* there is anything to send, sends it, and records that it did.
  *
  * NORMATIVE SOURCES — read these before changing anything here:
- *   - `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` — this component's implementation plan
+ *   - `docs/plans/whatsapp-agent-termux.md` — this component's implementation plan
  *     (phone setup, CLI surface, exit codes, the retry ladder, acceptance tests)
- *   - `docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md` §6 — the contract it consumes
+ *   - `docs/specs/daily-ledger-whatsapp-feed.md` §6 — the contract it consumes
  *
  * Deliberately NOT this agent's job (plan §1.3): it does no formatting, touches
  * no database, knows nothing about the window beyond echoing back the

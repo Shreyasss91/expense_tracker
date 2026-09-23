@@ -13,7 +13,7 @@ import { z } from "zod";
 /**
  * Digest settings + manual digest sends (§19 / owner schedule), plus the
  * daily ledger-change feed's master switch (§5.6 of
- * docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md).
+ * docs/specs/daily-ledger-whatsapp-feed.md).
  *
  * Manual sends are deliberately NOT idempotent — the user clicked "send",
  * so re-sending is their intent. The automatic cron path (per-period

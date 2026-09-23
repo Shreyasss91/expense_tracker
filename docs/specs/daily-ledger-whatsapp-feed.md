@@ -2,15 +2,15 @@
 
 | | |
 |---|---|
-| **Document status** | ✅ **App side implemented and verified 18 September 2026**; phone agent pending (`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`) |
+| **Document status** | ✅ **App side implemented and verified 18 September 2026**; phone agent pending (`docs/plans/whatsapp-agent-termux.md`) |
 | **Date** | 18 September 2026 |
 | **Feature owner decision** | Yes — every clause below is an owner decision or a consequence of one |
 | **Supersedes** | Nothing. This is **additive**; the existing weekly/monthly digest (§6.8) is untouched |
 | **Audience** | AI code generators / LLMs / development agents. This document is written to be **self-sufficient** — a fresh agent should be able to implement the whole feature from this file plus the codebase |
-| **Companion files** | `docs/SPEC.md` (frozen master spec), `docs/CHANGELOG.md` (amendment log), `docs/AUDIT-2026-09-17.md`, and **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`** (the device-level plan + runbook for Part B) |
+| **Companion files** | `docs/specs/master-spec.md` (frozen master spec), `docs/changelog.md` (amendment log), `docs/audits/2026-09-17.md`, and **`docs/plans/whatsapp-agent-termux.md`** (the device-level plan + runbook for Part B) |
 
-> **Read this first.** `docs/SPEC.md` is **FROZEN**. Do not edit it. Every deviation this
-> feature introduces is recorded in `docs/CHANGELOG.md`, per that file's stated governance
+> **Read this first.** `docs/specs/master-spec.md` is **FROZEN**. Do not edit it. Every deviation this
+> feature introduces is recorded in `docs/changelog.md`, per that file's stated governance
 > rule ("the spec is frozen; entries below exist only because the user explicitly authorized
 > each change"). See [§12 Documentation Obligations](#12--documentation-obligations), and
 > [§15 Conflicts](#15-frozen-specmd-conflict-report) for the clause-by-clause comparison and
@@ -1056,7 +1056,7 @@ different triggers (calendar periods vs. rolling 24 h) and different transports.
 ## 6. Part B — The Phone Agent (Termux + Baileys)
 
 > **The device-level implementation plan and operational runbook live in
-> `docs/PLAN_WHATSAPP_AGENT_TERMUX.md`** — phone app installs, Samsung's background-killer
+> `docs/plans/whatsapp-agent-termux.md`** — phone app installs, Samsung's background-killer
 > settings, the module breakdown, the group-JID discovery run, the scheduler, the retry
 > ladder, the acceptance tests and the failure runbook. This section defines only the
 > **behavioural contract**; where the two disagree on a device detail, the plan document wins.
@@ -1134,8 +1134,8 @@ tools/whatsapp-agent/
 ### 6.4 One-time setup
 
 The **authoritative, ordered, step-by-step version is
-`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §3** (target device: Dad's Samsung, One UI), with
-**`docs/PHONE_SETUP_CHECKLIST.md`** as its printable tick-box run sheet. Summary of what it
+`docs/plans/whatsapp-agent-termux.md` §3** (target device: Dad's Samsung, One UI), with
+**`docs/runbooks/phone-setup-checklist.md`** as its printable tick-box run sheet. Summary of what it
 entails and the points this section makes normative:
 
 1. Install **Termux from F-Droid or GitHub** — **not** the Play Store build, which is
@@ -1220,7 +1220,7 @@ entails and the points this section makes normative:
   have.
 
 > The full scheduler — the self-healing tick, the boundary helper, and why
-> `termux-job-scheduler` is rejected — is `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §6.
+> `termux-job-scheduler` is rejected — is `docs/plans/whatsapp-agent-termux.md` §6.
 
 #### One run
 
@@ -1386,7 +1386,7 @@ Add to `package.json`:
 > confirmation path, and against a live window it would write the send marker — suppressing
 > tonight's post and disabling the 22:15 fallback, with no delete endpoint to undo it. The
 > writing path is therefore confirmed by the agent's first real post (see
-> `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §7), not by this script. The `failed` branch it *does*
+> `docs/plans/whatsapp-agent-termux.md` §7), not by this script. The `failed` branch it *does*
 > exercise makes the deployment log one line, carrying a detail string that says it was
 > intentional.
 >
@@ -1407,7 +1407,7 @@ Add to `package.json`:
 > **If it stops at the first call with a `404`**, the running deployment predates the routes.
 > That is not a script bug: Vercel validates `vercel.json` *before* the build, so an invalid
 > config fails the deployment and the previous one keeps serving — exactly what happened on
-> 18 September 2026 (see *Incident + hardening* in `docs/CHANGELOG.md`). A `503` instead means
+> 18 September 2026 (see *Incident + hardening* in `docs/changelog.md`). A `503` instead means
 > the deployment has no `DIGEST_AGENT_TOKEN`; a `401` on the token check means the local token
 > and the Vercel one differ.
 
@@ -1436,7 +1436,7 @@ npm run test:ledger-feed     # the new suite
 ```
 
 The **phone agent's** acceptance tests are separate and live in
-`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §7 — including the single-instance lock check and the
+`docs/plans/whatsapp-agent-termux.md` §7 — including the single-instance lock check and the
 "consumed retry ladder survives a restart" test. They are runnable at any hour via the agent's
 `--at <ISO>` flag, which pins the evaluation instant (and forwards it to this endpoint's `at`
 parameter) so a rehearsal is not blocked by the 6 h freshness grace period.
@@ -1517,14 +1517,14 @@ parameter) so a rehearsal is not blocked by the 6 h freshness grace period.
 
 ## 12. Documentation Obligations
 
-This repo has a specific governance rule, stated at the top of `docs/CHANGELOG.md`:
+This repo has a specific governance rule, stated at the top of `docs/changelog.md`:
 
-> All amendments to `SPEC.md` are recorded here. The spec is frozen; entries below exist only
+> All amendments to `docs/specs/master-spec.md` are recorded here. The spec is frozen; entries below exist only
 > because the user explicitly authorized each change.
 
 Therefore, as part of this work:
 
-1. **Add a new entry to `docs/CHANGELOG.md`**, matching the existing house style (see the
+1. **Add a new entry to `docs/changelog.md`**, matching the existing house style (see the
    "Master-password change retires existing sessions — 13 September 2026 (owner request)"
    entry for the shape): a heading with the date and `(owner request)`, a short statement of
    what the owner asked for, then bullets naming the concrete files and the normative rules
@@ -1535,13 +1535,13 @@ Therefore, as part of this work:
    - the new cron job and why it is a separate job (Hobby's once-per-day-per-job limit);
    - the new `app_settings` keys;
    - that the Settings digest card gains a third channel.
-2. **Do not edit `docs/SPEC.md`.** If a normative clause there genuinely conflicts, raise it
+2. **Do not edit `docs/specs/master-spec.md`.** If a normative clause there genuinely conflicts, raise it
    with the owner rather than amending the frozen document. The one conflict found was raised
    and **authorized by the owner on 18 September 2026** (§15.1) — the record lives in
-   `docs/CHANGELOG.md`; the frozen spec itself is untouched.
+   `docs/changelog.md`; the frozen spec itself is untouched.
 3. **Update `tools/whatsapp-agent/README.md`** with the verbatim one-time setup (§6.4) — it is
    the only place a human will look. **Done 18 September 2026**, and stated to defer to
-   `docs/PLAN_WHATSAPP_AGENT_TERMUX.md` wherever the two could disagree.
+   `docs/plans/whatsapp-agent-termux.md` wherever the two could disagree.
 4. ~~Add the `DIGEST_AGENT_TOKEN` placeholder to `.env.example`~~ — **done 18 September 2026**
    (§7, SPEC §9.1), together with the `tools/whatsapp-agent/{config.json,auth/,sent/}`
    `.gitignore` entries. Both landed ahead of the implementation so the credential path was
@@ -1611,13 +1611,13 @@ work left**
 - [x] `tools/whatsapp-agent/` (agent, config template, `.npmrc`, start.sh, README) — **done**.
 - [x] `.gitignore` entries for `config.json`, `auth/`, `sent/` — **done 18 September 2026**.
       Still **verify with `git status`** before any commit that touches that directory.
-- [x] Build the agent per **`docs/PLAN_WHATSAPP_AGENT_TERMUX.md` §5** — **done**, including the
+- [x] Build the agent per **`docs/plans/whatsapp-agent-termux.md` §5** — **done**, including the
       repo-side contract test (`npm run test:whatsapp-agent`, **93 assertions**) and the laptop
       rehearsal (`npm run rehearse:whatsapp-agent`, **51 checks**), both green.
 - [ ] On the phone, following that document's §3 in order: F-Droid **Termux + Termux:Boot** →
       Samsung background settings → Node → **pairing-code link** (`--link`) → **`--groups`** →
       JID into `config.json` → boot hook (then reboot-test it) → `./start.sh`. Work from
-      **`docs/PHONE_SETUP_CHECKLIST.md`** — the same steps as a printable run sheet that ends
+      **`docs/runbooks/phone-setup-checklist.md`** — the same steps as a printable run sheet that ends
       with the acceptance checks worth doing on the day.
 
 > Phase 7's code is complete but **unverified on a device**, and no amount of local testing can
@@ -1628,7 +1628,7 @@ work left**
 
 **Phase 8 — documentation** — ✅ **done 18 September 2026**
 
-- [x] `docs/CHANGELOG.md` entry (§12), including the implementation block.
+- [x] `docs/changelog.md` entry (§12), including the implementation block.
 - [x] `npm run typecheck`, `npm run lint`, `npm run test:ledger-feed` (68/68) and
       `npm run test:digest` (38/38) green.
 
@@ -1652,13 +1652,13 @@ work left**
 
 ---
 
-## 15. Frozen-`SPEC.md` Conflict Report
+## 15. Frozen-`docs/specs/master-spec.md` Conflict Report
 
-`docs/SPEC.md` carries a **standing directive**: *"No deviations, no 'helpful' additions
+`docs/specs/master-spec.md` carries a **standing directive**: *"No deviations, no 'helpful' additions
 outside this scope, and no architectural changes are permitted. (if you have 'helpful'
 additions, architectural changes -- first present to it to user, ask for permission, no
 silent folding ins)"*. This section is that presentation, for the record. It was produced by
-comparing this document against `SPEC.md` clause by clause.
+comparing this document against `docs/specs/master-spec.md` clause by clause.
 
 ### 15.1 The one real deviation — **authorized by the owner, 18 September 2026**
 
@@ -1670,7 +1670,7 @@ comparing this document against `SPEC.md` clause by clause.
 | **Precedent it follows** | The `/api/cron/*` routes are already exactly this pattern — bearer-authenticated route handlers that bypass `auth()`. §7's own list also includes `POST /api/import`, which is itself a mutation. |
 | **Can it be avoided?** | No — not without breaking the feature. Without the POST, a confirmed send cannot be recorded, which would (a) lose the D11 record on the Settings card and (b) make the D10 fallback push fire **every** night, even after a successful post, because nothing would distinguish *sent* from *not sent*. |
 | **Severity** | Low operational risk, but a **genuine** deviation in wording. Under the standing directive it required the owner's authorization — which is recorded in the next row. |
-| **Owner authorization — granted 18 September 2026** | The deviation was presented to the owner together with the reason a Server Action cannot be used and the consequence of *not* taking it (no D11 record on the Settings card, and the D10 fallback push firing **every** night even after a successful post). The owner **authorized** the mutating `POST /api/digest/day`. Implementation of this route is therefore permitted **without amending `docs/SPEC.md`**: the frozen document stays frozen, and the deviation is recorded here and in `docs/CHANGELOG.md`. |
+| **Owner authorization — granted 18 September 2026** | The deviation was presented to the owner together with the reason a Server Action cannot be used and the consequence of *not* taking it (no D11 record on the Settings card, and the D10 fallback push firing **every** night even after a successful post). The owner **authorized** the mutating `POST /api/digest/day`. Implementation of this route is therefore permitted **without amending `docs/specs/master-spec.md`**: the frozen document stays frozen, and the deviation is recorded here and in `docs/changelog.md`. |
 
 ### 15.2 Deviations designed OUT (no sign-off needed)
 
@@ -1684,7 +1684,7 @@ no longer deviate. Do not "restore" the earlier behaviour.
 | §7.2 — *"**All dashboard analytics are computed in SQL** … Fetching transactions and reducing them in JavaScript is prohibited."* | The closing total was a JavaScript reduce over the fetched `added` rows. | The total is a **SQL `SUM`** over the same window predicate, matching `getDigestData()`. See §5.4.6. |
 | §9.1 — *"each feature fails loudly as 'not configured' when its variable is absent — never silently; see `.env.example`"* | `.env.example` was not mentioned anywhere. | `.env.example` **must** gain a `DIGEST_AGENT_TOKEN` placeholder in the file's existing per-feature comment style. See §7. |
 
-### 15.3 Extensions recorded in `docs/CHANGELOG.md` (not contradictions)
+### 15.3 Extensions recorded in `docs/changelog.md` (not contradictions)
 
 | SPEC clause | Relationship |
 |---|---|
@@ -1714,4 +1714,4 @@ The two clauses are in tension inside the frozen document itself.
 
 This feature touches neither and must not be used as an excuse to "clean it up". It is
 recorded here only so a future reader does not attribute the inconsistency to this work.
-House rule: superseded clauses are **annotated in `CHANGELOG.md`, never rewritten in place**.
+House rule: superseded clauses are **annotated in `docs/changelog.md`, never rewritten in place**.

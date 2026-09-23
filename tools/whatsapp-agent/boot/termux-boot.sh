@@ -1,7 +1,7 @@
 #!/data/data/com.termux/files/usr/bin/sh
 #
 # Termux:Boot hook — makes the agent survive a phone reboot.
-# Normative source: docs/PLAN_WHATSAPP_AGENT_TERMUX.md §3.8.
+# Normative source: docs/plans/whatsapp-agent-termux.md §3.8.
 #
 # INSTALL:
 #   mkdir -p ~/.termux/boot

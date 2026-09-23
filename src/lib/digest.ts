@@ -40,7 +40,7 @@ export const DIGEST_SENT_KEY_PREFIX = "digest_sent:";
 
 /**
  * A delivery channel. `whatsapp_feed` is the daily ledger-change feed
- * (docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md) — a third channel sharing this
+ * (docs/specs/daily-ledger-whatsapp-feed.md) — a third channel sharing this
  * history surface, recorded under its own `digest_sent:whatsapp_feed:<key>`
  * namespace so it can never collide with the weekly/monthly WhatsApp digest.
  */

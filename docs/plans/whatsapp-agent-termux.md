@@ -6,7 +6,7 @@
 | **Date** | 18 September 2026 |
 | **Device** | Dad's **Samsung** phone (One UI), Android |
 | **Owner decisions** | Samsung · Termux:Boot **yes** · retry **capped** · sender = Dad's number · pairing-code linking |
-| **Companion spec** | `docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md` — **§6 is the contract** for what the agent must do. This document is the *how* and the *operate* |
+| **Companion spec** | `docs/specs/daily-ledger-whatsapp-feed.md` — **§6 is the contract** for what the agent must do. This document is the *how* and the *operate* |
 | **Supersedes** | SPEC §6.5's "**prefer QR by default**" — see [§1.1](#11-superseded-qr-linking). A QR cannot be scanned by the same phone displaying it |
 
 > **Division of responsibility.** The companion spec owns the *contract*: the window, the
@@ -124,7 +124,7 @@ together (§7).
 Do these in order. Steps 3.2 (Samsung battery) and 3.8 (boot) are the ones that decide
 whether this runs for months or dies on day three.
 
-> **Doing this for real?** [`docs/PHONE_SETUP_CHECKLIST.md`](PHONE_SETUP_CHECKLIST.md) is this
+> **Doing this for real?** [`docs/runbooks/phone-setup-checklist.md`](../runbooks/phone-setup-checklist.md) is this
 > section as a printable tick-box run sheet, ending with the eight acceptance checks worth doing
 > on the day. Print it and work down it — transcribing steps from prose onto a phone is where
 > things get skipped, and a skipped step here fails silently and days later.
@@ -1026,7 +1026,7 @@ The two halves are independent; the app side must exist before the agent can do 
 > remains is **device work that no agent in a terminal can perform**: §3's one-time setup, the
 > two runs that need a linked WhatsApp session (`--link`, `--groups`), and the acceptance tests
 > in §7. Everything up to the first `./start.sh` is one sitting on Dad's phone, and
-> [`docs/PHONE_SETUP_CHECKLIST.md`](PHONE_SETUP_CHECKLIST.md) is the run sheet for it.
+> [`docs/runbooks/phone-setup-checklist.md`](../runbooks/phone-setup-checklist.md) is the run sheet for it.
 
 | Item | Status |
 |---|---|

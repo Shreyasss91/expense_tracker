@@ -1,6 +1,6 @@
 # Phone setup checklist — the whole session, in order
 
-**Normative source: [`docs/PLAN_WHATSAPP_AGENT_TERMUX.md`](PLAN_WHATSAPP_AGENT_TERMUX.md) §3,
+**Normative source: [`docs/plans/whatsapp-agent-termux.md`](../plans/whatsapp-agent-termux.md) §3,
 §4 and §7.** This is the printable run sheet for one sitting on Dad's phone; the plan explains
 *why* each step exists, and `tools/whatsapp-agent/README.md` has the same material with the
 reasoning attached. Where any of them disagree, the plan wins.

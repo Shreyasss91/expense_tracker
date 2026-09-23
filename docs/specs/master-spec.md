@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `CHANGELOG.md`) |
-| **Version** | 1.3 (see `CHANGELOG.md`) |
-| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `CHANGELOG.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `CHANGELOG.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `CHANGELOG.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `CHANGELOG.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `CHANGELOG.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `CHANGELOG.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `CHANGELOG.md`), 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `CHANGELOG.md` and `AUDIT-2026-09-01.md`), and 5–17 September 2026 (owner-requested: tag-only Quick Add memory, weekly/monthly Telegram + WhatsApp digest with last-sent history, collapsible Settings, assignment bulk/filter/totals, push dispatch record, September-audit hardening; see `CHANGELOG.md` and `AUDIT-2026-09-17.md`), and 19 September 2026 (owner decision: `/api/cron/recurring` reclassified as a mutation and bound by §7.2's revalidation rule; see `CHANGELOG.md`) |
+| **Document Status** | ❄️ FROZEN — no changes permitted (amendments recorded in `docs/changelog.md`) |
+| **Version** | 1.3 (see `docs/changelog.md`) |
+| **Date** | 12 August 2026 — amended 15 August 2026 (3 owner decisions; see `docs/changelog.md`), 16 August 2026 (budgets, bills, exclude-bills, expense-focused cards, ledger reconciliation, Phase-2 remediation; see `docs/changelog.md`), 18 August 2026 (Amendments 7–9: single-page Quick Add, note-based category suggestions + inline creation, name-only category chips; see `docs/changelog.md`), 19 August 2026 (Amendments 10–12: Amount+Tag row, member-switch chip, dynamic sticky CTA, and an edit sheet matching Quick Add's shell; see `docs/changelog.md`), 19 August 2026 (Amendments 17–19: recurring templates, Review tab for month-end reconciliation, Telegram monthly digest; see `docs/changelog.md`), 24 August 2026 (Amendment 20: nullable categories / capture-first workflow, bulk categorize + delete, Review merged into the Ledger; see `docs/changelog.md`), 25–26 August 2026 (two-level category hierarchy, UX/PWA pass — offline capture, pacing, splits, auto-recurring; see `docs/changelog.md`), 2–3 September 2026 (full-project audit remediation: 12 data-integrity/security fixes, 12 new features §2.1–§2.12, UI/UX §3.1–§3.8, PWA/a11y/consistency/perf passes; see `docs/changelog.md` and `docs/audits/2026-09-01.md`), and 5–17 September 2026 (owner-requested: tag-only Quick Add memory, weekly/monthly Telegram + WhatsApp digest with last-sent history, collapsible Settings, assignment bulk/filter/totals, push dispatch record, September-audit hardening; see `docs/changelog.md` and `docs/audits/2026-09-17.md`), and 19 September 2026 (owner decision: `/api/cron/recurring` reclassified as a mutation and bound by §7.2's revalidation rule; see `docs/changelog.md`) |
 | **Target Audience** | AI Code Generators / LLMs / Development Agents |
 | **Project Type** | Full-Stack Web Application (Family Expense Tracker) |
 | **Hosting Target** | Vercel (Hobby Tier) |
@@ -14,10 +14,10 @@
 > **v1.2 amendment pass — 15 August 2026.** Three owner decisions are incorporated into
 > this document: (1) **dark mode is permitted** (§6.1, §11); (2) the **Quick Add sequence
 > is Amount → Details → Category** (§6.2); (3) the **family password is environment-managed**
-> with no in-app change facility (§6.5, §9). Each is recorded in `CHANGELOG.md`. No
+> with no in-app change facility (§6.5, §9). Each is recorded in `docs/changelog.md`. No
 > implementation, schema, migration, or `seed.csv` change accompanied these amendments.
 > *(The Quick Add sequence bullet is superseded by the 18 August 2026 single-page
-> amendment — see below and `CHANGELOG.md`.)*
+> amendment — see below and `docs/changelog.md`.)*
 >
 > **16 August 2026 — budgets authorized by the owner** (§6.7, §4.2, §11): monthly budgets
 > (total + per-category, per-month or as an every-month default) are a new v1.2 feature
@@ -25,13 +25,13 @@
 > iterations added: an expense-focused dashboard summary strip and ledger header, a
 > spent-vs-budget bar under the ledger month strip, a global "exclude bills" toggle
 > (`app_settings`), a Bills summary card, and a one-tap "It's a bill" Quick Add
-> shortcut (§6.2–§6.7). All recorded in `CHANGELOG.md`.
+> shortcut (§6.2–§6.7). All recorded in `docs/changelog.md`.
 >
 > **18 August 2026 — Quick Add is a single page** (§6.2): the **Amount → Details →
 > Category** sequence is superseded by one scrollable sheet — amount text input, tag
 > chips, date/time, note, category grid (tap to select) and a single **Add transaction**
 > button. The one-tap "It's a bill" shortcut and the full-screen numpad are removed with
-> the multi-step flow. Recorded in `CHANGELOG.md`.
+> the multi-step flow. Recorded in `docs/changelog.md`.
 >
 > **19 August 2026 — Add-transaction UI restructure, Amendments 10–12** (§6.2, §6.4): the
 > separate Amount field and Tag chip selector merge into one **Amount+Tag row** — a
@@ -46,12 +46,12 @@
 > centered modal into a bottom sheet matching Quick Add's shell** — grip handle, header
 > button + a per-transaction member-reassignment dropdown chip, the same field order,
 > and a dynamic sticky "Save ₹1,250 · Dining Out" CTA, with Delete moved to a small icon
-> button beside Save (Amendment 12). Recorded in `CHANGELOG.md`.
+> button beside Save (Amendment 12). Recorded in `docs/changelog.md`.
 
 > **17 August 2026 — Expense-only ledger (§4.1, §4.2, §5.2, §6.3, §6.4, §6.6, §7.1):** the
 > `type` column and `transactionTypeEnum` are removed. The ledger is now expense-only,
 > `tag` is `NOT NULL`, the 6-month trend becomes a bar chart, and the CSV export drops
-> to 7 columns. Recorded in `CHANGELOG.md`.
+> to 7 columns. Recorded in `docs/changelog.md`.
 
 > **24 August 2026 — Capture-first categories, bulk actions, Review in Ledger (Amendment 20; §4.2, §5.3, §6.2, §6.3, §6.4, §6.6):**
 > `transactions.category_id` becomes **nullable** — NULL means *uncategorized* (a state,
@@ -62,7 +62,7 @@
 > Uncategorized slice while Top category ignores it. The Review tab merges into the Ledger
 > page as a pinned collapsible queue (`/review` redirects); its pending-count badge rides
 > the Ledger nav item. CSV export writes an empty category cell for uncategorized rows.
-> Full details in `CHANGELOG.md`.
+> Full details in `docs/changelog.md`.
 
 > **19 September 2026 — `/api/cron/recurring` is a mutation (owner decision; §7.1, §7.2):** the
 > §7.1 paragraph below listed the `/api/cron/*` routes as "read streams and crons, not
@@ -71,7 +71,7 @@
 > list and §7.2's revalidation rule is extended to bind it explicitly, because a route handler has
 > no caller to revalidate on its behalf — the gap that let the 06:00 IST auto-stamp go unseen by
 > the cached dashboard, category chips, recurring suggestions and template list until their TTLs
-> expired. No schema, migration or `seed.csv` change. Recorded in `CHANGELOG.md`.
+> expired. No schema, migration or `seed.csv` change. Recorded in `docs/changelog.md`.
 
 ---
 
@@ -523,7 +523,7 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
    the **member chip**, which is a real dropdown: tapping it switches the app-wide active
    member (§3.2) via the same `updateActiveMember` Server Action as the global header
    switcher, applied optimistically and reverted if the switch fails.
-3. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“, or „Yesterday · 14:32“, or „12 Aug 2026 · 14:32“ once the date is more than a day away, with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. **The collapsed/expanded choice no longer persists (Amendment 11, 19 Aug 2026)** — every open of the sheet starts collapsed on today's date and the current time, on every device; tapping it open keeps it expanded only for the rest of that tab's session. *(Superseded: the choice previously persisted per device in `localStorage` — see `CHANGELOG.md`.)*
+3. **Date/Time:** pickers default to *now* **in `Asia/Kolkata`** (§5.7); the time is normalized `HH:MM` → `HH:MM:00` (§5.6). They sit at the very top, collapsed behind a compact summary („Today · 14:32“, or „Yesterday · 14:32“, or „12 Aug 2026 · 14:32“ once the date is more than a day away, with a pencil) that reveals the pickers when tapped — the defaults are rarely changed, so the frequently edited fields stay together below. **The collapsed/expanded choice no longer persists (Amendment 11, 19 Aug 2026)** — every open of the sheet starts collapsed on today's date and the current time, on every device; tapping it open keeps it expanded only for the rest of that tab's session. *(Superseded: the choice previously persisted per device in `localStorage` — see `docs/changelog.md`.)*
 4. **Amount + Tag row (Amendment 10, 19 Aug 2026):** the Amount input and the Tag selector share one `flex` row rather than stacking. **Amount** is a ₹-prefixed text input (`flex-1`, mobile decimal keypad) that sanitizes on every keystroke to a value that always fits `NUMERIC(12,2)` — digits and at most one decimal separator, at most 2 decimal digits, at most 10 integer digits — and is captured as integer paise (§5.8). **Tag** is a compact 2×2 cluster beside it: the currently selected tag renders large in the left column (spanning both rows, defaults `lifestyle`, then remembers the last committed tag — §5.2; `recurring` flags bills), with the other two tags stacked as small tap-to-swap buttons in the right column — tapping one swaps it into the selected slot. A live `≈ ₹` preview (or "Enter a valid amount" once a submit was attempted with none) renders under the row.
 4a. **Template strip (Amendment 17, 19 Aug 2026):** rendered only when ≥ 1 template exists — a horizontal scrollable row of chips between the Date/Time row and the Amount+Tag row. Each chip shows `name · ₹whole` (e.g. "ICICI Term Insurance · ₹2,500"). Tap → **prefills** amount, category, tag, note from the template; date/time stay at their IST defaults (§5.7); every field remains editable; commit still only via the Add button. Prefill **overrides** last-entry memory for that open; a successful commit still updates last-entry memory (§6.2). Templates carry no member — the currently active member is stamped at commit time (§3.2).
 5. **Note (optional):** a single-line text input, 140 characters max — it **opens
@@ -554,7 +554,7 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
    An uncategorized save's success toast carries a **Categorize** action deep-linking to
    the Ledger's `category=uncategorized` view.
 
-> **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. *(Same-day field order, owner request: **Date/Time** moved to the top — collapsed behind a „Today · 14:32“ summary in Quick Add, with a pencil revealing the pickers — followed by **Amount → Tag → Note → Category**; the edit-transaction dialog mirrors the same Date/Time-first order.)* See `CHANGELOG.md`.
+> **Single-page flow is normative — owner amendment, 18 Aug 2026.** The earlier normative sequence **Amount → Details → Category** (owner amendment, 15 Aug 2026 — category tap was the committing step) is **superseded**: all fields now live on one scrollable sheet and the category tap only selects. The 16 Aug 2026 one-tap **"It's a bill"** shortcut (whose purpose was to skip the Details step) is removed along with the full-screen numpad. *(Same-day field order, owner request: **Date/Time** moved to the top — collapsed behind a „Today · 14:32“ summary in Quick Add, with a pencil revealing the pickers — followed by **Amount → Tag → Note → Category**; the edit-transaction dialog mirrors the same Date/Time-first order.)* See `docs/changelog.md`.
 >
 > **Amount+Tag row, member switch, dynamic CTA — owner amendment, 19 Aug 2026
 > (Amendments 10–12).** Step 3 (Amount) and step 4 (Tag) above from the 18 Aug pass are
@@ -564,7 +564,7 @@ One-handed mobile use, < 5 seconds, **one bottom sheet**:
 > applies — a plain **Enter** now submits from every field, note included. The sheet's
 > own header gains a **member-switch dropdown** and an **Add transaction** button wired
 > to the same submit path as the footer CTA (superseding the earlier plain `<h2>` heading
-> and non-interactive member badge). See `CHANGELOG.md`.
+> and non-interactive member badge). See `docs/changelog.md`.
 
 ### 6.3 Dashboard View
 - **Header:** Month/Year picker (e.g., "August 2026"). Month boundaries computed in `Asia/Kolkata` (§5.7).
@@ -651,8 +651,8 @@ The rows above are retained for the record and for any future income-driven surf
   **member-reassignment dropdown chip**, field order Date/Time → Amount+Tag → Note →
   Category, sticky footer with dynamic "Save ₹1,250[ · Category]" CTA, delete icon, and
   **Save as template** (requires a category — templates must have one). The member chip
-  reassigns *this transaction's* member only (§3.2.1, `SPEC_AMENDMENT_7_MEMBER_
-  REASSIGNMENT.md`). **On ≥lg viewports the edit sheet docks as a right-side panel**
+  reassigns *this transaction's* member only (§3.2.1, `docs/specs/amendment-07-member-reassignment.md`).
+  **On ≥lg viewports the edit sheet docks as a right-side panel**
   instead of a bottom sheet (Layout pass).
 - **Bulk actions (Amendment 20):** long-press a row (or the Select control) arms multi-
   select — checkboxes, count, and a sticky bar with **Assign**, **Delete**, All/Clear,
@@ -696,7 +696,7 @@ collapsed, with **Expand all / Collapse all** controls beside the heading and a
 smooth height animation. A URL hash (`#whatsapp-digest`, `#offline-entries`, …)
 opens and scrolls to that section on load, which is also how deep-links from
 toasts and the dashboard land.
-- Manage categories: **create (inline from the edit dialog; the bulk picker and Quick Add do not create), rename, emoji, reorder, move-between-groups, merge** (§6.8). The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered** — **merge** (§2.12) is the sanctioned way to retire a leaf. New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; the "inline from Quick Add" wording by Amendment 20 — see `CHANGELOG.md`.)*
+- Manage categories: **create (inline from the edit dialog; the bulk picker and Quick Add do not create), rename, emoji, reorder, move-between-groups, merge** (§6.8). The `slug` (§5.3) is immutable and is not exposed in the UI. Category **deletion is not offered** — **merge** (§2.12) is the sanctioned way to retire a leaf. New categories appear in this list **immediately** — it live-syncs whenever the server-side category set changes — and are flagged in a small **„Recently created“** strip at the top (per-device `localStorage`, a convenience hint only). *(The "rename, emoji, reorder only" wording is superseded by Amendment 8 — 18 Aug 2026; the "inline from Quick Add" wording by Amendment 20 — see `docs/changelog.md`.)*
 - **Family password (environment-managed — owner amendment, 15 Aug 2026):** the password is `FAMILY_MASTER_PASSWORD`, an environment variable supplied via `.env.local` / the deployment platform (§9). The application provides **no in-app password-change facility in v1.2**; changing the password is an **environment/deployment administration operation** (update the env var on the deployment platform and redeploy). No credentials table, password database, password-management subsystem, or deployment-control architecture exists or is authorized. **Changing the password signs out every existing session** — env var plus redeploy is the entire mechanism (see §3.1 point 5).
 - Member list: **name, emoji, colour and order editable**. The member `slug` (§3.2.2) is immutable and is **not exposed in the UI**. Member **deletion is not offered in v1** — the FK from `transactions.member_id` must never be left dangling.
 - **Templates (Amendment 17 + §6.8):** a Templates card edits recurring prefills — name, amount, category, tag, note, auto-add day (1–28), auto-add member — plus per-template **Paused**, **Amount varies** and **Skip this month** controls. Deletion is permitted.
@@ -740,7 +740,7 @@ so it always describes exactly what the user was looking at (UX pass, 24 Aug 202
 
 > **Budget limits + over-budget alerts was in the §11 v1 exclusion list.** The owner
 > explicitly authorized budgets as a v1.2 feature on 16 Aug 2026; this section is the
-> resulting specification (recorded in `CHANGELOG.md`). All other §11 exclusions stand.
+> resulting specification (recorded in `docs/changelog.md`). All other §11 exclusions stand.
 
 **Model:** one `budgets` row per **(month, category)** scope (§4.2):
 
@@ -813,7 +813,7 @@ the category. This is a client-side, in-app alert only — no email/telegram not
 `replaceBudgetScope` (delete-then-insert, `src/db/budget-mutations.ts`), `revalidatePath('/')`
 + `revalidateTag('transactions')`.
 
-### 6.8 September 2026 feature wave — audit remediation (§2.1–§2.12 of `AUDIT-2026-09-01.md`)
+### 6.8 September 2026 feature wave — audit remediation (§2.1–§2.12 of `docs/audits/2026-09-01.md`)
 
 The 2–3 September 2026 pass, driven by the full-project audit, shipped the following
 **implemented** features on top of the 24–26 August state. Each is normative now.
@@ -868,7 +868,7 @@ the same SQL aggregates as the dashboard (§7.2) via `src/lib/insights.ts`.
 Attach at capture time or later from the edit dialog; a paperclip marker on
 ledger rows signals "there is a photo behind this number".
 
-**§2.10 Export and backup (see `CHANGELOG.md`, 2 Sept 2026).** Streaming export
+**§2.10 Export and backup (see `docs/changelog.md`, 2 Sept 2026).** Streaming export
 in 4 formats — canonical 7-column CSV (byte-identical to §6.6), 16-column
 extended CSV, full-fidelity JSON (`family-ledger-export@1`), and a real XLSX —
 via GET `/api/export`, batched and capped (100k rows). An **import path**
@@ -895,7 +895,7 @@ leaf-only). The dashboard gains a **category × month compare matrix**
 deleted transactions.
 
 **§2.13 Weekly + monthly digest on Telegram and WhatsApp (owner request,
-7 Sept 2026; see `CHANGELOG.md`).** One shared engine serves both channels:
+7 Sept 2026; see `docs/changelog.md`).** One shared engine serves both channels:
 `src/lib/digest-format.ts` (pure, DB-free — period math, Telegram HTML and
 WhatsApp `*markdown*` formatters, phone normalization to E.164 digits, wa.me
 link builder) plus `src/lib/digest.ts` (`getDigestData(start, end)` — totals,
@@ -920,7 +920,7 @@ record (ISO timestamp) to `app_settings`, so the automatic gate and the
 displayed history can never disagree; `getRecentDigestSends()` plus
 `periodKeyLabel()` render the per-channel "Last sent" blocks.
 
-**September-audit hardening (17 Sept 2026, see `AUDIT-2026-09-17.md`).**
+**September-audit hardening (17 Sept 2026, see `docs/audits/2026-09-17.md`).**
 Offline replay is idempotent: `createTransaction` accepts the queue entry's
 stable `clientId` and derives a deterministic transaction id
 (`offlineTransactionId`), with a pre-write existence check plus
@@ -1050,7 +1050,7 @@ The repo includes a `seed.csv` file containing **1,157 historical transactions**
 
 **Audited structure (verified 12 Aug 2026 against the file itself):** 1,158 lines = 1 header + 1,157 data rows; exactly 8 fields on every row; no quoting, no embedded commas, no CRLF, no empty or whitespace-padded fields; ASCII only; sorted ascending by date with zero out-of-order rows; all amounts positive and within `NUMERIC(12,2)`; all dates `YYYY-MM-DD`; all times `HH:MM`; all tags valid enum members; 19 distinct categories; every row `type=expense`.
 
-> ⚠️ **Counting caveat.** `seed.csv` has **no trailing newline**, so `wc -l` reports 1,157 — one short — because it counts newline *characters* and the final row is unterminated. The correct count is obtained with a record counter such as `awk 'END{print NR}'` (1,158 incl. header). **1,157 is the canonical data-row count.** This exact miscount produced the erroneous "1,156" figure in spec v1.1; see `CHANGELOG.md`.
+> ⚠️ **Counting caveat.** `seed.csv` has **no trailing newline**, so `wc -l` reports 1,157 — one short — because it counts newline *characters* and the final row is unterminated. The correct count is obtained with a record counter such as `awk 'END{print NR}'` (1,158 incl. header). **1,157 is the canonical data-row count.** This exact miscount produced the erroneous "1,156" figure in spec v1.1; see `docs/changelog.md`.
 
 **Seed Script Logic (`npm run db:seed`):**
 1. Read `seed.csv`, **preserving each row's verbatim raw source line before parsing** (§8.1 Implementation Requirement), then parse that same line's fields.
@@ -1168,7 +1168,7 @@ when its variable is absent — never silently; see `.env.example`):
 
 The application uses **Neon PostgreSQL**. The database connection string is supplied **exclusively** through the `DATABASE_URL` environment variable.
 
-**Actual secret values MUST NOT be committed to the repository or documented in** `SPEC.md`, `CHANGELOG.md`, `README.md`, `.env.example`, source code, generated documentation, or client-side code.
+**Actual secret values MUST NOT be committed to the repository or documented in** `docs/specs/master-spec.md`, `docs/changelog.md`, `README.md`, `.env.example`, source code, generated documentation, or client-side code.
 
 - **Local development** uses `.env.local`.
 - **Production / Vercel deployments** receive secrets through the deployment platform's environment-variable configuration.
@@ -1268,7 +1268,7 @@ If a secret is ever observed in conversation, in a terminal, or in a file, it mu
 > feature (§6.7). The 25 Aug 2026 UX/PWA pass removed **PWA/offline-first** and
 > **automated recurring generation**; the 2–3 Sept 2026 audit-remediation pass removed
 > **receipt attachments** and **scheduled digest delivery** (§6.8). All other items above
-> remain excluded. See `CHANGELOG.md`.*
+> remain excluded. See `docs/changelog.md`.*
 
 ---
 

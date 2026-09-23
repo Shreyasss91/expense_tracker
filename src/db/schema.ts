@@ -113,7 +113,7 @@ export const transactions = pgTable(
  * Budget scopes are intentionally replaced with sequential DELETE + INSERT statements
  * rather than a database transaction because the application's neon-http driver does
  * not provide transaction support for this path. The accepted non-atomic failure mode
- * is documented in SPEC.md §6.7.
+ * is documented in docs/specs/master-spec.md §6.7.
  */
 export const budgets = pgTable(
   "budgets",

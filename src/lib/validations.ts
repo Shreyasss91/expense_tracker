@@ -173,7 +173,7 @@ export const setExcludeBillsSchema = z.object({
 
 /**
  * The daily ledger-change feed's master switch (§5.6 of
- * docs/SPEC_DAILY_LEDGER_WHATSAPP_FEED.md). Off silences the feed AND the
+ * docs/specs/daily-ledger-whatsapp-feed.md). Off silences the feed AND the
  * 22:15 fallback ping — the owner turned it off deliberately.
  */
 export const setFeedEnabledSchema = z.object({

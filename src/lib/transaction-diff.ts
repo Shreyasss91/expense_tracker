@@ -115,7 +115,7 @@ export interface RestoreInsertValues {
  * original one. That is not cosmetic — the daily feed decides window membership
  * on `created_at`, so an unfaithful restore shows a deleted-and-undone expense
  * as a brand-new **Added** entry, and D6 ("a delete plus its Undo reports
- * neither") could never hold. See SPEC_DAILY_LEDGER_WHATSAPP_FEED §5.4.4 step 3,
+ * neither") could never hold. See docs/specs/daily-ledger-whatsapp-feed.md §5.4.4 step 3,
  * whose "only if its own created_at falls inside the window" presumes exactly
  * this preservation.
  *

@@ -445,7 +445,7 @@ console.log(
   failures === 0
     ? `\nAll ${checks} rehearsal checks passed.\n` +
         "The agent's plumbing is sound. Linking and delivery still need the phone:\n" +
-        "docs/PLAN_WHATSAPP_AGENT_TERMUX.md §7.\n"
+        "docs/plans/whatsapp-agent-termux.md §7.\n"
     : `\n${failures} of ${checks} rehearsal checks failed.\n`,
 );
 process.exit(failures === 0 ? 0 : 1);

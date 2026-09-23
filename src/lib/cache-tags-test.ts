@@ -22,7 +22,7 @@
  * The audit that produced these rules found **three real gaps** in a six-site
  * cache layer, each of which had survived review: the daily recurring cron
  * invalidated nothing at all, and two readers were tagged for the ledger while
- * also depending on `categories` and `templates`. See docs/CHANGELOG.md,
+ * also depending on `categories` and `templates`. See docs/changelog.md,
  * "The cached reads, audited".
  */
 import { readFileSync, readdirSync } from "node:fs";
